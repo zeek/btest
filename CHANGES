@@ -1,0 +1,26 @@
+0.22 | 2011-02-08 14:06:13 -0800
+
+  * BTest is now hosted along with the other Bro repositories on
+    git.bro-ids.org.
+
+0.21 | 2011-01-09 21:29:18 -0800
+
+  * In btest.cfg, option values can now include commands to execute in
+    backticks.
+
+    Example:
+    
+        [environment]
+        CC=clang -emit-llvm -g `hilti-config --cflags`
+    
+  * Limiting substitutions to replacing whole words.
+
+  * Adding "substitutions". Substitutions are similar to filters, yet
+    they do not adapt the input but the command line being exectued.
+    See README for more information.
+
+  * Instead of giving a test's file name on the command line, one can
+    now also use its "dotted" name as it's printed out when btest is
+    running (e.g., "foo.bar"). That allows for easier copy/paste.
+
+  * Starting CHANGES.

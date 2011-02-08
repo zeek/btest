@@ -17,7 +17,7 @@ import fnmatch
 import ConfigParser
 
 Name ="btest"
-Version = 0.21
+Version = 0.22
 
 ConfigDefault = "btest.cfg"
 Config = None

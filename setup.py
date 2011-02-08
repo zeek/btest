@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='btest',
-      version="0.21",
+      version="0.22",
       description='A simple unit testing framework',
       author='Robin Sommer',
       author_email='robin@icir.org',
