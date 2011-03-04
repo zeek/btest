@@ -1,3 +1,10 @@
+0.22-2 | 2011-03-03 21:44:18 -0800
+
+  * Two new helper scripts for spawning processes in the background.
+    See README for more information.
+
+  * btest-diff can now deal with files specificied with paths.
+    
 0.22 | 2011-02-08 14:06:13 -0800
 
   * BTest is now hosted along with the other Bro repositories on

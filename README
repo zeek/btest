@@ -38,9 +38,10 @@ Installation is simple and standard::
     > cd btest-0.22
     > python setup.py install
 
-This will install two scripts: ``btest`` is the main driver program,
-and ``btest-diff`` is an additional tool that can be used by tests
-to compare output with a previously established baseline.
+This will install a few scripts: ``btest`` is the main driver program,
+and there are number of further helper scripts that we discuss below
+(including ``btest-diff``, which is a tool for comparing output to a
+previously established baseline).
 
 Writing a Simple Test
 =====================
@@ -494,6 +495,39 @@ canonification, set the environment variable
 from stdin and writing the canonified version to stdout. Note that
 both baseline and current output are passed through the filter
 before their differences are computed.
+
+Running Processes in the Background
+===================================
+
+Sometimes processes need to be spawned in the background for a test,
+in particular if multiple processes need to cooperate in some fashion.
+``btest`` comes with two helper scripts to make life easier in such a
+situation:
+
+``btest-bg-run <tag> <cmdline>``
+    This is a script that runs ``<cmdline>`` in the background, i.e.,
+    it's like using ``cmdline &`` in a shell script. Test execution
+    continues immediately with the next command. Note that the spawned
+    command is *not* run in the current directory, but instead in a
+    newly created sub-directory called ``<tag>``. This allows 
+    spawning multiple instances of the same process without needing to
+    wory about conflicting outputs. If you want to access a command's
+    output later, like with ``btest-diff``, use ``<tag>/foo.log`` to
+    access it. 
+
+``btest-bg-wait [-k] <timeout>``
+
+    This scripts waits for all processes previousluy spawned via
+    ``btest-bg-run`` to finish. If any of them exits with a non-zero
+    return code, ``btest-bg-wait`` does so as well, indicating a
+    failed test. ``<timeout>>`` is mandatory and gives the maximum
+    number of seconds to wait for any of the processes to terminate.
+    If any process hasn't done so when the timeout expires, it will be
+    killed and the test is considered to be failed as long as ``-k``
+    is not given. If ``-k`` is given, pending processes are still
+    killed but the test continues normally, i.e., non-termination is
+    not considered a failure in this case. This script also collect
+    the processes' stdout and stderr outputs for diagnostics output.
 
 To-Do List
 ==========
