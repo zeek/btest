@@ -55,7 +55,7 @@ if [ -e $TEST_BASELINE/$canon ]; then
    diff -au $@ $diff1 $diff2 >>$TEST_DIAGNOSTICS
    result=$?
 else
-   echo "== Error===============================" >>$TEST_DIAGNOSTICS
+   echo "== Error ===============================" >>$TEST_DIAGNOSTICS
    echo "test-diff: no baseline found." >>$TEST_DIAGNOSTICS
    result=1
 fi

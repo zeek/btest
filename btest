@@ -30,9 +30,10 @@ RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
 RE_END_FILE = re.compile("@TEST-END-FILE")
 
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-RE_EXEC = ("exec", re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_EXEC     = ("exec",     re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_REQUIRES = ("requires", re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, )
+Commands = (RE_EXEC, RE_REQUIRES)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -150,6 +151,7 @@ class Test(object):
 
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
+        self.requires = [cmd.strip() for cmd in cmds["requires"]]
 
         if Substitutions:
             for (key, val) in Substitutions.items():
@@ -216,6 +218,24 @@ class Test(object):
         self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "w")
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
+        for cmd in self.requires:
+            if not self.execute((cmd, True), apply_filter=(filter != None)):
+                global Skipped
+                Skipped += 1
+
+                if Options.verbose:
+                    output("... %s not available, skipped" % name)
+
+                else:
+                    if not Options.brief:
+                        output("not available, skipped")
+
+                if Options.diagfile:
+                    print >>Options.diagfile, "%s ... not available, skipped" % name
+
+                self.finish()
+                return
+
         for cmd in self.cmdlines:
             if not self.execute(cmd, apply_filter=(filter != None)):
                 global Failed
@@ -223,6 +243,7 @@ class Test(object):
 
                 if Options.verbose:
                     output("... %s failed" % name)
+
                 else:
                     if Options.brief:
                         output("%s ..." % name, nl=False)
@@ -250,6 +271,9 @@ class Test(object):
             if not Options.tmps:
                 self.rmTmp()
 
+        self.finish()
+
+    def finish(self):
         try:
             # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
             os.rmdir(self.baseline)
@@ -262,7 +286,6 @@ class Test(object):
 
     def execute(self, cmd, apply_filter=False):
         (cmdline, expect_success) = cmd
-
 
         # See if we need to apply a filter.
         filter_cmd = None
@@ -583,6 +606,7 @@ mkdir(BaselineDir)
 mkdir(TmpDir)
 
 Failed = 0
+Skipped = 0
 
 for test in tests:
 
@@ -597,5 +621,6 @@ for test in tests:
         test.run()
 
 if Failed > 0:
-    output("%d test%s failed" % (Failed, "s" if Failed > 1 else ""))
+    skipped = ", %d skipped" if Skipped > 0 else ""
+    output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", Skipped))
 
