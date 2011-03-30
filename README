@@ -407,6 +407,11 @@ supported:
             information across ``btest`` runs. (This is where
             ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
 
+    .. note:: If a command returns the special exit code 100, the test
+              is considered failed, however subsequent test commands
+              are still run. ``btest-diff`` uses this to continue in
+              the case that no baseline has yet been established.
+
 ``@TEST-EXEC-FAIL: <cmdline>``
     Like ``@TEST-EXEC``, except that this expects the command to
     *fail*, i.e., the test is aborted when the return code is zero.

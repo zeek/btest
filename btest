@@ -151,7 +151,11 @@ class Test(object):
 
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
-        self.requires = [cmd.strip() for cmd in cmds["requires"]]
+
+        if "requires" in cmds:
+            self.requires = [cmd.strip() for cmd in cmds["requires"]]
+        else:
+            self.requires = []
 
         if Substitutions:
             for (key, val) in Substitutions.items():
@@ -219,7 +223,10 @@ class Test(object):
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-            if not self.execute((cmd, True), apply_filter=(filter != None)):
+
+            (success, rc) = self.execute((cmd, True), apply_filter=(filter != None))
+
+            if not success:
                 global Skipped
                 Skipped += 1
 
@@ -236,28 +243,24 @@ class Test(object):
                 self.finish()
                 return
 
+        failed = False
+
         for cmd in self.cmdlines:
-            if not self.execute(cmd, apply_filter=(filter != None)):
-                global Failed
-                Failed += 1
 
-                if Options.verbose:
-                    output("... %s failed" % name)
+            (success, rc) = self.execute(cmd, apply_filter=(filter != None))
 
-                else:
-                    if Options.brief:
-                        output("%s ..." % name, nl=False)
+            if not success:
+                failed = True
 
-                    output("failed")
+                if rc != 100:
+                    break
 
                 if Options.diag or Options.diagall:
                     self.showDiag()
 
                 if Options.diagfile:
-                    print >>Options.diagfile, "%s ... failed" % name
                     self.showDiag(Options.diagfile)
 
-                break
         else:
             if Options.verbose:
                     output("... %s ok" % name)
@@ -270,6 +273,22 @@ class Test(object):
 
             if not Options.tmps:
                 self.rmTmp()
+
+        if failed:
+            global Failed
+            Failed += 1
+
+            if Options.verbose:
+                output("... %s failed" % name)
+
+            else:
+                if Options.brief:
+                    output("%s ..." % name, nl=False)
+
+                output("failed")
+
+            if Options.diagfile:
+                print >>Options.diagfile, "%s ... failed" % name
 
         self.finish()
 
@@ -303,11 +322,13 @@ class Test(object):
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
             filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(self.localfile))
-            if not self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_filter=False):
-                return False
+            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_filter=False)
+            if not success:
+                return (False, rc)
 
-            if not self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_filter=False):
-                return False
+            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_filter=False)
+            if not success:
+                return (False, rc)
 
             localfile = self.localfile
 
@@ -333,20 +354,20 @@ class Test(object):
 
         try:
             subprocess.check_call(cmdline, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
-        except subprocess.CalledProcessError, e:
 
+        except subprocess.CalledProcessError, e:
             if expect_success:
                 self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, e.returncode)]
-                return False
+                return (False, e.returncode)
 
             else:
-                return True
+                return (True, e.returncode)
 
         if not expect_success:
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
-            return False
+            return (False, 0)
 
-        return True
+        return (True, 0)
 
     def rmTmp(self):
         os.chdir(TmpDir)
@@ -622,5 +643,5 @@ for test in tests:
 
 if Failed > 0:
     skipped = ", %d skipped" if Skipped > 0 else ""
-    output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", Skipped))
+    output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", skipped))
 

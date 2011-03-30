@@ -57,7 +57,7 @@ if [ -e $TEST_BASELINE/$canon ]; then
 else
    echo "== Error ===============================" >>$TEST_DIAGNOSTICS
    echo "test-diff: no baseline found." >>$TEST_DIAGNOSTICS
-   result=1
+   result=100
 fi
 
 echo "=======================================" >>$TEST_DIAGNOSTICS
