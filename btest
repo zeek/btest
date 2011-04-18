@@ -252,14 +252,14 @@ class Test(object):
             if not success:
                 failed = True
 
-                if rc != 100:
-                    break
-
                 if Options.diag or Options.diagall:
                     self.showDiag()
 
                 if Options.diagfile:
                     self.showDiag(Options.diagfile)
+
+                if rc != 100:
+                    break
 
         else:
             if Options.verbose:
