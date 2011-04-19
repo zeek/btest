@@ -261,7 +261,8 @@ class Test(object):
                 if rc != 100:
                     break
 
-        else:
+
+        if not failed:
             if Options.verbose:
                     output("... %s ok" % name)
             else:
