@@ -243,14 +243,31 @@ class Test(object):
                 self.finish()
                 return
 
-        failed = False
+        failures = 0
 
         for cmd in self.cmdlines:
 
             (success, rc) = self.execute(cmd, apply_filter=(filter != None))
 
             if not success:
-                failed = True
+                failures += 1
+
+                if failures == 1:
+
+                    global Failed
+                    Failed += 1
+
+                    if Options.verbose:
+                        output("... %s failed" % name)
+
+                    else:
+                        if Options.brief:
+                            output("%s ..." % name, nl=False)
+
+                        output("failed")
+
+                    if Options.diagfile:
+                        print >>Options.diagfile, "%s ... failed" % name
 
                 if Options.diag or Options.diagall:
                     self.showDiag()
@@ -261,8 +278,7 @@ class Test(object):
                 if rc != 100:
                     break
 
-
-        if not failed:
+        if failures == 0:
             if Options.verbose:
                     output("... %s ok" % name)
             else:
@@ -274,22 +290,6 @@ class Test(object):
 
             if not Options.tmps:
                 self.rmTmp()
-
-        if failed:
-            global Failed
-            Failed += 1
-
-            if Options.verbose:
-                output("... %s failed" % name)
-
-            else:
-                if Options.brief:
-                    output("%s ..." % name, nl=False)
-
-                output("failed")
-
-            if Options.diagfile:
-                print >>Options.diagfile, "%s ... failed" % name
 
         self.finish()
 
