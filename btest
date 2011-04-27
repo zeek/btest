@@ -620,7 +620,8 @@ else:
     tests = Config.configured_tests
 
 if not tests:
-    error("no tests given")
+    output("no tests given")
+    sys.exit(0)
 
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
@@ -645,4 +646,5 @@ for test in tests:
 if Failed > 0:
     skipped = ", %d skipped" if Skipped > 0 else ""
     output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", skipped))
+    sys.exit(1)
 
