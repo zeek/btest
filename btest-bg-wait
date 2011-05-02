@@ -29,6 +29,8 @@ timeout=$1
 
 procs=`cat .bgprocs`
 
+trap "kill -9 $procs" EXIT
+
 rm -f .timeout
 touch .timeout
 
@@ -116,6 +118,8 @@ while true; do
 
     sleep 1
 done
+
+trap - EXIT
 
 # All terminated either by themselves, or with a benign timeout.
 

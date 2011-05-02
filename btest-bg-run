@@ -31,7 +31,7 @@ cd $dir
 
 echo $@ >.cmdline
 
-setsid $helper "$@" >.stdout >.stderr &
+setsid $helper "$@" >.stdout 2>.stderr &
 
 sleep 1
 
