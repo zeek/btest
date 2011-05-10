@@ -1,0 +1,15 @@
+#! /usr/bin/env python
+
+import os
+import sys
+
+os.setsid()
+
+prog = sys.argv[1]
+
+try:
+	args = sys.argv[1:]
+except:
+	args = []
+
+os.execvp(prog, args)
