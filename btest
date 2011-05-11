@@ -644,7 +644,7 @@ for test in tests:
         test.run()
 
 if Failed > 0:
-    skipped = ", %d skipped" if Skipped > 0 else ""
+    skipped = (", %d skipped" % Skipped) if Skipped > 0 else ""
     output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", skipped))
     sys.exit(1)
 
