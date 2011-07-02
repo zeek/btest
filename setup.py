@@ -8,6 +8,6 @@ setup(name='btest',
       author='Robin Sommer',
       author_email='robin@icir.org',
       url='http://www.icir.org/robin/btest',
-      scripts=['btest', 'btest-diff', "btest-bg-run", "btest-bg-run-helper", "btest-bg-wait"],
+      scripts=['btest', 'btest-diff', "btest-bg-run", "btest-bg-run-helper", "btest-bg-wait", "btest-setsid"],
       include_dirs=["examples", "Baseline"]
      )

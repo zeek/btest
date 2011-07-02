@@ -407,9 +407,25 @@ supported:
             information across ``btest`` runs. (This is where
             ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
 
+    .. note:: If a command returns the special exit code 100, the test
+              is considered failed, however subsequent test commands
+              are still run. ``btest-diff`` uses this to continue in
+              the case that no baseline has yet been established.
+
 ``@TEST-EXEC-FAIL: <cmdline>``
     Like ``@TEST-EXEC``, except that this expects the command to
     *fail*, i.e., the test is aborted when the return code is zero.
+
+``@TEST-REQUIRES: <cmdline>``
+    Defines a condition that must be met for the test to be executed.
+    The given command line will be run before any of the actual test
+    commands, and it must return success for the test to continue. If
+    it does not return success, the rest of the test will be skipped
+    but doing so will not be considered an error. This allows to write
+    conditional tests that may not always make sense to run, depending
+    on whether external constraints are satisfied or not (say, whether
+    a particular library is available). Multiple requirements may be
+    specified and then all must be met for the test to continue.
 
 ``@TEST-START-NEXT``
     This is a short-cut for defining multiple test inputs in the

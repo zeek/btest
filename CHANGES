@@ -1,3 +1,19 @@
+0.22-9 | 2011-05-02 08:41:34 -0700
+
+  * A number of bug fixes, and output polishing. (Robin Sommer)
+
+  * More robust background execution by btest-bg-*. (Robin Sommer)
+
+0.22-4 | 2011-03-29 21:38:13 -0700
+
+  * A test command can now signal to btest that even if it fails
+    subsequent test commands should still run by returning exit code 100.
+    btest-diff uses this to continue in the case that no baseline has
+    yet been established.
+
+  * New test option @TEST-REQUIRES for running a test conditionally.
+    See the README for more information.
+
 0.22-2 | 2011-03-03 21:44:18 -0800
 
   * Two new helper scripts for spawning processes in the background.

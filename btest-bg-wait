@@ -29,6 +29,8 @@ timeout=$1
 
 procs=`cat .bgprocs`
 
+trap "kill -9 $procs" EXIT
+
 rm -f .timeout
 touch .timeout
 
@@ -50,6 +52,15 @@ function kill_procs
         if [ ! -e $p/.exitcode ]; then
             kill -1 `cat $p/.pid` 2>/dev/null
             cat $p/.cmdline >>.timeout
+        fi
+    done
+
+    sleep 1
+
+    for p in $procs; do
+        if [ ! -e $p/.exitcode ]; then
+            kill -9 `cat $p/.pid` 2>/dev/null
+            sleep 1
         fi
     done
 }
@@ -107,6 +118,8 @@ while true; do
 
     sleep 1
 done
+
+trap - EXIT
 
 # All terminated either by themselves, or with a benign timeout.
 
