@@ -116,8 +116,11 @@ collect_output
 result=0
 for p in $procs; do
     rc=`cat $p/.exitcode`
+    pid=`cat $p/.pid`
+    cmdline=`cat $p/.cmdline`
+
     if [ $rc != 0 ]; then
-        printf ">>> process failed: [%s] %s" "$pid" "$cmdline\\n" >> .stderr
+        echo ">>> process $pid failed with exitcode $rc: $cmdline" >> .stderr
         result=1
     fi
 done
