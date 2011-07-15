@@ -651,3 +651,7 @@ if Failed > 0:
     output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", skipped))
     sys.exit(1)
 
+else:
+    output("all tests successful")
+    sys.exit(0)
+
