@@ -201,6 +201,9 @@ class Test(object):
         os.chdir(self.tmpdir)
 
         for (fname, lines) in self.files:
+            subdir = os.path.dirname(fname)
+            if subdir != "":
+                mkdir(subdir)
             try:
                 ffile = open(fname, "w")
             except IOError, e:
