@@ -1,4 +1,8 @@
-0.22-9 | 2011-05-02 08:41:34 -0700
+0.22-6 | 2011-07-19 17:38:03 -0700
+
+  * Teach btest's TEST-START-FILE to make subdirectories (Jon Siwek)
+    
+0.22-5 | 2011-05-02 08:41:34 -0700
 
   * A number of bug fixes, and output polishing. (Robin Sommer)
 
