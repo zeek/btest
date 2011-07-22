@@ -202,7 +202,7 @@ class Test(object):
 
         for (fname, lines) in self.files:
             subdir = os.path.dirname(fname)
-            if subdir != '':
+            if subdir != "":
                 mkdir(subdir)
             try:
                 ffile = open(fname, "w")
