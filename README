@@ -182,6 +182,10 @@ and 1 otherwise.
         to authoritative and records it as the version to compare
         with in future runs.
 
+    -u, --update-interactive
+        For failed tests, btest will stop and ask whether the user
+        wants to record a new baseline.
+
     -d, --diagnostics
         Reports diagnostics for all failed tests. The diagnostics
         include the command line that failed, its output to standard
@@ -400,17 +404,27 @@ supported:
 
         ``TEST_MODE``
             This is normally set to ``TEST``, but will be ``UPDATE``
-            if ``btest`` is run with ``--update-baselin``.
+            if ``btest`` is run with ``--update-baseline`` and
+            ``UPDATE_INTERACTIVE`` with ``--update-interactive``.
 
         ``TEST_BASELINE``
             A filename where the command can save permanent
             information across ``btest`` runs. (This is where
             ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
 
-    .. note:: If a command returns the special exit code 100, the test
-              is considered failed, however subsequent test commands
-              are still run. ``btest-diff`` uses this to continue in
-              the case that no baseline has yet been established.
+        ``TEST_NAME``
+            The name of the currently executing test.
+
+    .. note::
+
+        If a command returns the special exit code 100, the test is
+        considered failed, however subsequent test commands are still
+        run. ``btest-diff`` uses this to continue in the case that no
+        baseline has yet been established.
+
+        If a command returns the special exit code 200, the test is
+        considered failed and all further test executions are aborted.
+
 
 ``@TEST-EXEC-FAIL: <cmdline>``
     Like ``@TEST-EXEC``, except that this expects the command to

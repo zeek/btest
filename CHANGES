@@ -1,3 +1,19 @@
+0.22-18 | 2011-07-23 11:54:07 -0700
+
+  * A new option -u for interactively updating baselines.
+
+  * Teach btest's TEST-START-FILE to make subdirectories (Jon Siwek)
+
+  * Output polishing. (Robin Sommer)
+
+  * Have distutils install 'btest-setsid' script. (Jon Siwek)
+
+  * A portable setsid. (Robin Sommer)
+
+  * Fixes for background execution of processes.
+    
+  * Fixing exit codes. (Robin Sommer)
+
 0.22-6 | 2011-07-19 17:38:03 -0700
 
   * Teach btest's TEST-START-FILE to make subdirectories (Jon Siwek)

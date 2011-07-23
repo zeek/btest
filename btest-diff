@@ -1,8 +1,9 @@
 #! /usr/bin/env bash
 #
-# TEST_MODE={TEST|UPDATE}
+# TEST_MODE={TEST|UPDATE|UPDATE_INTERACTIVE}
 # TEST_BASELINE
 # TEST_DIAGNOSTICS
+# TEST_NAME
 #
 # TEST_DIFF_CANONIFIER
 
@@ -64,9 +65,26 @@ echo "=======================================" >>$TEST_DIAGNOSTICS
 
 if [ "$TEST_MODE" == "TEST" ]; then
    exit $result
-fi
 
-if [ "$TEST_MODE" == "UPDATE" ]; then
+elif [ "$TEST_MODE" == "UPDATE_INTERACTIVE" ]; then
+
+   if [ "$result" == 0 ]; then
+       exit 0
+   fi
+
+   btest-ask-update
+   rc=$?
+
+   echo -n "$TEST_NAME ..." >/dev/tty
+
+   if [ $rc == 0 ]; then
+       cp $input $TEST_BASELINE/$canon
+       exit 0
+   fi
+
+   exit $rc
+
+elif [ "$TEST_MODE" == "UPDATE" ]; then
    cp $input $TEST_BASELINE/$canon
    exit 0
 fi

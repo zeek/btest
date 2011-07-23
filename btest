@@ -17,7 +17,7 @@ import fnmatch
 import ConfigParser
 
 Name ="btest"
-Version = 0.22
+Version = "0.22-dev"
 
 ConfigDefault = "btest.cfg"
 Config = None
@@ -99,6 +99,7 @@ class Test(object):
         self.diag = None
         self.baseline = None
         self.files = []
+        self.requires = []
 
         # Parse the test's content.
     def parse(self, content):
@@ -154,8 +155,6 @@ class Test(object):
 
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
-        else:
-            self.requires = []
 
         if Substitutions:
             for (key, val) in Substitutions.items():
@@ -267,7 +266,7 @@ class Test(object):
                         if Options.brief:
                             output("%s ..." % name, nl=False)
 
-                        output("failed")
+                        output(" failed")
 
                     if Options.diagfile:
                         print >>Options.diagfile, "%s ... failed" % name
@@ -277,6 +276,10 @@ class Test(object):
 
                 if Options.diagfile:
                     self.showDiag(Options.diagfile)
+
+                if rc == 200:
+                    # Abort all tests.
+                    sys.exit(1)
 
                 if rc != 100:
                     break
@@ -393,6 +396,7 @@ class Test(object):
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
+        env["TEST_NAME"] = self.name
 
         return env
 
@@ -541,8 +545,10 @@ def readTestFile(filename):
 ### Main
 
 optparser = optparse.OptionParser(usage="%prog [options] <directorys>", version=Version)
-optparser.add_option("-U", "--update-baseline", action="store_const", dest="mode", const="UPDATE", default="TEST",
+optparser.add_option("-U", "--update-baseline", action="store_const", dest="mode", const="UPDATE",
                      help="create a new baseline from the tests' output")
+optparser.add_option("-u", "--update-interactive", action="store_const", dest="mode", const="UPDATE_INTERACTIVE",
+                     help="interactively asks whether to update baseline for a failed test")
 optparser.add_option("-d", "--diagnostics", action="store_true", dest="diag", default=False,
                      help="show diagnostic output for failed tests")
 optparser.add_option("-D", "--diagnostics-all", action="store_true", dest="diagall", default=False,
@@ -564,6 +570,7 @@ optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", defau
 optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
                      help="active substitution in given config file section")
 
+optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
 
 (basedir, fname) = os.path.split(Options.config)
