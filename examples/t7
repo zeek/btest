@@ -1,0 +1,6 @@
+@TEST-USE-PROFILES -default example
+@TEST-EXEC: echo "Stuff" > out_new
+@TEST-EXEC: %TRANSFORM
+@TEST-EXEC: test -d /tmp/btest_tmp
+@TEST-EXEC: test -f out_orig
+

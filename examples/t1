@@ -1,2 +1,3 @@
+@TEST-USE-PROFILES example
 @TEST-EXEC: echo "Foo" | grep -q Foo
 @TEST-EXEC: test -d .
