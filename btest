@@ -715,15 +715,6 @@ testdirs = getOption("TestDirs", None).split()
 if testdirs:
     Config.configured_tests = findTests(testdirs)
 
-if args:
-    tests = findTests(args)
-else:
-    tests = Config.configured_tests
-
-if not tests:
-    output("no tests given")
-    sys.exit(0)
-
 ProfileDir = os.path.abspath(getOption("ProfileDir", os.path.join(defaults["testbase"], "profiles")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
@@ -741,20 +732,36 @@ Failed = 0
 Skipped = 0
 
 for profile in profiles:
-    profile.setup()
+    if( not profile.setup() ):
+        print "Unable to load profile: " + profile.name()
+        profile.finish()
+        continue
+    # In some cases, profiles may alter tests.  Thus, we have to re-load ALL tests
+    # for each loaded profile.
+    if args:
+        tests = findTests(args)
+    else:
+        tests = Config.configured_tests
+
+    if not tests:
+        output("no tests given")
+        sys.exit(0)
+    
     for test in tests:
+        test.setProfile(profile)
         if not test:
+            # print "There is no test!"
             continue
         if not test.supports(profile.name()):
+            # print "This test does not support " + profile.name()
             continue
-        
-        test.setProfile(profile)
         if Filters:
             test2 = copy.deepcopy(test)
             test.run()
             test2.run(filter=Options.filter)
         else:
             test.run()
+    
     profile.finish()
 
 if Failed > 0:
