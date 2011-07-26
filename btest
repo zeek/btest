@@ -514,7 +514,6 @@ class Test(object):
 # Walk the given directory and return all test files.
 def findTests(paths):
     tests = []
-
     ignore_files = getOption("IgnoreFiles", "").split()
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
@@ -712,8 +711,6 @@ if(getOption("TestDirs", None) == None):
     sys.exit(0)
 
 testdirs = getOption("TestDirs", None).split()
-if testdirs:
-    Config.configured_tests = findTests(testdirs)
 
 ProfileDir = os.path.abspath(getOption("ProfileDir", os.path.join(defaults["testbase"], "profiles")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
@@ -731,7 +728,10 @@ for curr in os.listdir(ProfileDir):
 Failed = 0
 Skipped = 0
 
+basedir = os.getcwd()
+
 for profile in profiles:
+    os.chdir(basedir)
     if( not profile.setup() ):
         print "Unable to load profile: " + profile.name()
         profile.finish()
@@ -741,6 +741,7 @@ for profile in profiles:
     if args:
         tests = findTests(args)
     else:
+        Config.configured_tests = findTests(testdirs)
         tests = Config.configured_tests
 
     if not tests:
