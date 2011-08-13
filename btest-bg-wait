@@ -29,8 +29,6 @@ timeout=$1
 
 procs=`cat .bgprocs`
 
-trap "kill -9 $procs" EXIT
-
 rm -f .timeout
 touch .timeout
 
@@ -52,6 +50,9 @@ function kill_procs
         if [ ! -e $p/.exitcode ]; then
             kill -1 `cat $p/.pid` 2>/dev/null
             cat $p/.cmdline >>.timeout
+            if [ "$1" == "timeout" ]; then
+                touch $p/.timeout
+            fi
         fi
     done
 
@@ -93,6 +94,8 @@ function collect_output
     done
 }
 
+trap kill_procs EXIT
+
 while true; do
 
     if check_procs; then
@@ -104,7 +107,7 @@ while true; do
 
     if [ $timeout -le 0 ]; then
         # Timeout exceeded.
-        kill_procs
+        kill_procs timeout
 
         if [ $timeout_ok == 1 ]; then
             # Just continue.
@@ -128,6 +131,11 @@ collect_output
 # See if any returned an error.
 result=0
 for p in $procs; do
+    if [ -e $p/.timeout ]; then
+        # we're here because timeouts are ok, so don't mind the exit code
+        # if we initiated killing the process due to timeout
+        continue
+    fi
     rc=`cat $p/.exitcode`
     pid=`cat $p/.pid`
     cmdline=`cat $p/.cmdline`
