@@ -1,3 +1,8 @@
+
+0.22-27 | 2011-08-12 22:56:12 -0700
+
+  * Fix btest-bg-wait's kill trap and -k option. (Jon Siwek)
+
 0.22-18 | 2011-07-23 11:54:07 -0700
 
   * A new option -u for interactively updating baselines.
@@ -11,13 +16,13 @@
   * A portable setsid. (Robin Sommer)
 
   * Fixes for background execution of processes.
-    
+
   * Fixing exit codes. (Robin Sommer)
 
 0.22-6 | 2011-07-19 17:38:03 -0700
 
   * Teach btest's TEST-START-FILE to make subdirectories (Jon Siwek)
-    
+
 0.22-5 | 2011-05-02 08:41:34 -0700
 
   * A number of bug fixes, and output polishing. (Robin Sommer)
@@ -40,7 +45,7 @@
     See README for more information.
 
   * btest-diff can now deal with files specificied with paths.
-    
+
 0.22 | 2011-02-08 14:06:13 -0800
 
   * BTest is now hosted along with the other Bro repositories on
@@ -52,10 +57,10 @@
     backticks.
 
     Example:
-    
+
         [environment]
         CC=clang -emit-llvm -g `hilti-config --cflags`
-    
+
   * Limiting substitutions to replacing whole words.
 
   * Adding "substitutions". Substitutions are similar to filters, yet

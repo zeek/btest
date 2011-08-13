@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.6
+#! /usr/bin/env python
 #
 # Main test driver.
 
@@ -16,9 +16,9 @@ import glob
 import fnmatch
 import ConfigParser
 
-Name ="btest"
-Version = "0.22-dev"
+VERSION = "0.22-27" # Automatically filled in.
 
+Name ="btest"
 ConfigDefault = "btest.cfg"
 Config = None
 
@@ -544,7 +544,7 @@ def readTestFile(filename):
 
 ### Main
 
-optparser = optparse.OptionParser(usage="%prog [options] <directorys>", version=Version)
+optparser = optparse.OptionParser(usage="%prog [options] <directorys>", version=VERSION)
 optparser.add_option("-U", "--update-baseline", action="store_const", dest="mode", const="UPDATE",
                      help="create a new baseline from the tests' output")
 optparser.add_option("-u", "--update-interactive", action="store_const", dest="mode", const="UPDATE_INTERACTIVE",
