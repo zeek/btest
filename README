@@ -1,12 +1,14 @@
 .. -*- mode: rst; -*-
 
+.. Version number is filled in automatically.
+.. |version| replace:: 0.22-27
 .. |date| date::
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
 ============================================
 
-:Version: 0.22
+:Version: |version|
 :Home: http://www.icir.org/robin/btest
 :Author: Robin Sommer <robin@icir.org>
 :Date: |date|
