@@ -6,6 +6,7 @@
 # TEST_NAME
 #
 # TEST_DIFF_CANONIFIER
+# TEST_DIFF_BRIEF
 
 if [ "$TEST_DIAGNOSTICS" = "" ]; then
     TEST_DIAGNOSTICS=/dev/stdout
@@ -35,8 +36,14 @@ trap delete_tmps 0
 result=2
 
 rm -f $TEST_DIAGNOSTICS
+
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
-cat $input >>$TEST_DIAGNOSTICS
+
+if [ "$TEST_DIFF_BRIEF" == "" ]; then
+    cat $input >>$TEST_DIAGNOSTICS
+else
+    echo "<Content not shown>" >>$TEST_DIAGNOSTICS
+fi
 
 if [ -e $TEST_BASELINE/$canon ]; then
 
