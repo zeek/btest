@@ -1,0 +1,6 @@
+# List of tests to exclude from the current profile.
+# Each line in this file is a regular expression; if ANY
+# of the lines in this file matches the current test, the
+# test is skipped.
+examples.t7
+

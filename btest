@@ -31,7 +31,6 @@ RE_ENV = re.compile("\$\{(\w+)\}")
 RE_START_NEXT_TEST = re.compile("@TEST-START-NEXT")
 RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
 RE_END_FILE = re.compile("@TEST-END-FILE")
-RE_PROFILES = re.compile("@TEST-USE-PROFILES +(.*)")
 
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
 RE_EXEC     = ("exec",     re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
@@ -97,12 +96,48 @@ class Profile(object):
     be used to extend test coverage to alternate program configurations (e.g. running the same tests
     with varied output formats).
     """
+    
+    RE_COMMENT=re.compile(r"\s*#.*")
+
     def __init__(self, path):
         self.path = os.path.abspath(path)
         self._setup = os.path.abspath(os.path.join(path, "setup"))
         self._finish = os.path.abspath(os.path.join(path, "finish"))
         self._supported = os.path.abspath(os.path.join(path, "supported"))
         self._transform = os.path.abspath(os.path.join(path, "transform"))
+        self._include = os.path.abspath(os.path.join(path, "include"))
+        self._exclude = os.path.abspath(os.path.join(path, "exclude"))
+        
+        if(os.path.exists(self._include)):
+            self._include = open(self._include)
+            self._include = [re.compile(reg.strip()) for reg in self._include if not Profile.RE_COMMENT.match(reg) and len(reg.strip()) > 1]
+        else:
+            self._include = None
+        if(os.path.exists(self._exclude)):
+            self._exclude = open(self._exclude)
+            self._exclude = [re.compile(reg.strip()) for reg in self._exclude if not Profile.RE_COMMENT.match(reg) and len(reg.strip()) > 1]
+        else:
+            self._exclude = None
+
+    def includes(self, t):
+        # If we have neither an includes nor an excludes, we assume we run the test
+        if not self._include and not self._exclude:
+            return True
+        # Otherwise, apply excludes...
+        for reg in self._exclude:
+            if reg.match(t):
+                return False
+        # Then includes...
+        for reg in self._include:
+            if reg.match(t):
+                return True
+        # If our test wasn't found in either list...
+        # If we had an includes file, we assume that ONLY files listed in include may be run as part of the test.
+        if self._include:
+            return False
+        # If we ONLY had an excludes file and no include file, we include the file if it wasn't in excludes
+        if self._exclude and not self._include:
+            return True
 
     def __repr__(self):
         return self.name() + " at '" + self.path + "' -- Supported: " + str(self.supported())
@@ -165,7 +200,6 @@ class Test(object):
         self.profile = None
         self.files = []
         self.requires = []
-        self.tags = []
 
     def setProfile(self, nProf):
         self.profile = nProf
@@ -178,10 +212,6 @@ class Test(object):
             if line.find("@TEST-IGNORE") >= 0:
                 # Ignore this file.
                 return False
-
-            m = RE_PROFILES.search(line)
-            if m:
-                self.tags = m.group(1).split(' ')
 
             for (tag, regexp, multiple, optional, group1, group2) in Commands:
                 m = regexp.search(line)
@@ -249,19 +279,6 @@ class Test(object):
         clone.content = content
 
         return clone
-
-    def supports(self, target):
-        """
-        Checks to see if this test should be run under the profile described by 'target'
-        Note that profile names prefixed by '-' define profiles that *must* be excluded; 
-        the most common use-case for this is '-default'
-        """
-        for p in self.tags:
-            if(p == target):
-                return True
-            if( ('-' + target) == p):
-                return False
-        return target == 'default' # 'default' profile is always supported unless explicitly disabled (via '-default')
 
     def run(self, filter=None):
         if self.number > 1:
@@ -650,6 +667,8 @@ optparser.add_option("-c", "--config", action="store", type="string", dest="conf
                      help="configuration file")
 optparser.add_option("-F", "--filter", action="store", type="string", dest="filter", default=None,
                      help="active filter in given config file section")
+optparser.add_option("-P", "--profile", action="store", type="string", dest="profile", default=None,
+                     help="run tests belonging to the specified profile")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
 optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
@@ -718,6 +737,7 @@ BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["te
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
+use_profile = Options.profile
 profiles = []
 
 for curr in os.listdir(ProfileDir):
@@ -732,6 +752,8 @@ basedir = os.getcwd()
 
 for profile in profiles:
     os.chdir(basedir)
+    if(use_profile and profile.name() != use_profile):
+        continue
     if( not profile.setup() ):
         print "Unable to load profile: " + profile.name()
         profile.finish()
@@ -753,8 +775,7 @@ for profile in profiles:
         if not test:
             # print "There is no test!"
             continue
-        if not test.supports(profile.name()):
-            # print "This test does not support " + profile.name()
+        if not profile.includes(test.name):
             continue
         if Filters:
             test2 = copy.deepcopy(test)
@@ -762,7 +783,6 @@ for profile in profiles:
             test2.run(filter=Options.filter)
         else:
             test.run()
-    
     profile.finish()
 
 if Failed > 0:

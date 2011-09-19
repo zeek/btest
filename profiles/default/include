@@ -1,0 +1,5 @@
+# List of tests to include.
+# Each line in this file is treated as a regular expression and applied to each test;
+# if *ANY* of the regular expressions defined in this file match the current test, then
+# that test is run.
+.*
