@@ -102,9 +102,17 @@ class Profile(object):
     def __init__(self, path):
         self.path = os.path.abspath(path)
         self._setup = os.path.abspath(os.path.join(path, "setup"))
+        if not os.path.exists(self._setup):
+            self._setup = None
         self._finish = os.path.abspath(os.path.join(path, "finish"))
+        if not os.path.exists(self._finish):
+            self._finish = None
         self._supported = os.path.abspath(os.path.join(path, "supported"))
+        if not os.path.exists(self._supported):
+            self._supported = None
         self._transform = os.path.abspath(os.path.join(path, "transform"))
+        if not os.path.exists(self._transform):
+            self._transform = None
         self._include = os.path.abspath(os.path.join(path, "include"))
         self._exclude = os.path.abspath(os.path.join(path, "exclude"))
         
@@ -112,16 +120,19 @@ class Profile(object):
             self._include = open(self._include)
             self._include = [re.compile(reg.strip()) for reg in self._include if not Profile.RE_COMMENT.match(reg) and len(reg.strip()) > 1]
         else:
-            self._include = None
+            self._include = []
         if(os.path.exists(self._exclude)):
             self._exclude = open(self._exclude)
             self._exclude = [re.compile(reg.strip()) for reg in self._exclude if not Profile.RE_COMMENT.match(reg) and len(reg.strip()) > 1]
         else:
-            self._exclude = None
+            self._exclude = []
 
     def includes(self, t):
+        """
+        Tests the test 't' to see if this profile supports it.
+        """
         # If we have neither an includes nor an excludes, we assume we run the test
-        if not self._include and not self._exclude:
+        if len(self._include) == 0 and len(self._exclude) == 0:
             return True
         # Otherwise, apply excludes...
         for reg in self._exclude:
@@ -133,10 +144,10 @@ class Profile(object):
                 return True
         # If our test wasn't found in either list...
         # If we had an includes file, we assume that ONLY files listed in include may be run as part of the test.
-        if self._include:
+        if len(self._include) > 0:
             return False
         # If we ONLY had an excludes file and no include file, we include the file if it wasn't in excludes
-        if self._exclude and not self._include:
+        if len(self._exclude) > 0 and len(self._include) == 0:
             return True
 
     def __repr__(self):
@@ -156,6 +167,8 @@ class Profile(object):
         For an idea of what this might look like, take a look at the example profile in
         the profiles directory of btest.
         """
+        if not self._setup:
+            return True
         rc = os.system(self._setup)
         return rc == 0
 
@@ -166,6 +179,8 @@ class Profile(object):
         might look like, take a look at the example profile in the 'profiles' directory of
         btest.
         """
+        if not self._finish:
+            return True
         rc = os.system(self._finish)
         return rc == 0
     
@@ -175,6 +190,8 @@ class Profile(object):
         by the diff.  This transformation MUST only alter the format of the data; it must not modify
         the data itself.
         """
+        if not self._transform:
+            return True
         rc = os.system(self._transform)
         return rc == 0
 
@@ -183,6 +200,8 @@ class Profile(object):
         Runs the 'supported' script to determine if this profile is supported on the platform doing
         the testing.
         """
+        if not self._supported:
+            return True
         rc = os.system(self._supported)
         return rc == 0
 
@@ -447,7 +466,8 @@ class Test(object):
         cmdline = RE_INPUT.sub(localfile, cmdline)
         cmdline = RE_DIR.sub(self.dir, cmdline)
         cmdline = RE_PROFILE.sub(profile.name(), cmdline)
-        cmdline = RE_TRANSFORM.sub(profile._transform, cmdline)
+        if(profile._transform):
+            cmdline = RE_TRANSFORM.sub(profile._transform, cmdline)
 
         # Replace environment variables.
         def replace_with_env(m):
