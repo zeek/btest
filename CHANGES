@@ -1,4 +1,15 @@
 
+0.3 | 2011-10-18 10:25:00 -0700
+
+  * Cleaning up distribution. (Robin Sommer)
+
+0.22-28 | 2011-09-15 15:18:11 -0700
+
+  * New environment variable TEST_DIFF_BRIEF. If set btest-diff no
+    longer includes a mismatching file's full content it the
+    diagnostic output. This can be useful if the file being compared
+    is very large. (Robin Sommer)
+
 0.22-27 | 2011-08-12 22:56:12 -0700
 
   * Fix btest-bg-wait's kill trap and -k option. (Jon Siwek)

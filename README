@@ -1,43 +1,46 @@
-.. -*- mode: rst; -*-
-
+..	-*- mode: rst-mode -*-
+..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.22-27
-.. |date| date::
+.. |version| replace:: 0.3
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
 ============================================
 
-:Version: |version|
-:Home: http://www.icir.org/robin/btest
-:Author: Robin Sommer <robin@icir.org>
-:Date: |date|
+.. class:: opening
+
+    The ``btest`` is simple framework for writing unit tests. Freely
+    borrowing some ideas from other packages, it's main objective to
+    provide am easy-to-use, straight-forward driver for a suite of
+    shell-based tests. Each test consists of a set of command lines that
+    will be executed, and success is determined based on their exit
+    codes. ``btest`` comes with some additional tools that can be used
+    within such tests to compare output against a previously established
+    baseline.
 
 .. contents::
 
-Introduction
-============
+Download
+========
 
-The ``btest`` is simple framework for writing unit tests. Freely
-borrowing some ideas from other packages, it's main objective to
-provide am easy-to-use, straight-forward driver for a suite of
-shell-based test. Each test consists of a set of command lines that
-will be executed, and success is determined based on their exit
-codes. In addition, output can optionally be compared against a
-previously established baseline.
+You can find the latest BTest release for download at
+http://www.bro-ids.org/download.
 
-Downloads
-=========
+BTest's git repository is located at `git://git.bro-ids.org/btest.git
+<git://git.bro-ids.org/btest.git>`__. You can browse the repository
+`here <http://git.bro-ids.org/btest.git>`__.
 
-* `btest-0.22.tar.gz <http://www.icir.org/robin/btest/btest-0.22.tar.gz>`_
+This document describes BTest |version|. See the `CHANGES
+<{{git('btest:CHANGES')}}>`__ file for version history.
+
 
 Installation
 ============
 
 Installation is simple and standard::
 
-    > tar xzvf btest-0.22.tar.gz
-    > cd btest-0.22
+    > tar xzvf btest-*.tar.gz
+    > cd btest-*
     > python setup.py install
 
 This will install a few scripts: ``btest`` is the main driver program,
@@ -567,7 +570,7 @@ To-Do List
 The following features would be nice to have:
 
 * Parallelize execution of tests for faster execution on multi-core
-  systems.
+  systems (prototype exists).
 
 * Output test results in a machine-readable format that can then be
   parsed and pretty-printed by some frontend tool (potentially

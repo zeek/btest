@@ -1,14 +1,13 @@
 
-WWW = $(HOME)/www/btest
-
 all:
 
 .PHONY: dist
 
-dist: 
-	python setup.py sdist
+dist:
+	rm -rf build/*.tar.gz
+	python setup.py sdist -d build
+	@printf "Package: "; echo build/*.tar.gz
 
 www: dist
-	rst2html.py README >$(WWW)/index.html
 	cp dist/* $(WWW)
 	# cp CHANGES $(WWW)
