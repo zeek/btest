@@ -355,20 +355,19 @@ class Test(object):
 
         cmdline = RE_ENV.sub(replace_with_env, cmdline)
 
-        print >>self.log, cmdline, "(expect %s)" % ("success" if expect_success else "failure")
+        print >>self.log, cmdline, "(expect %s)" % (("failure","success")[expect_success])
 
         env = self.prepareEnv()
 
-        try:
-            subprocess.check_call(cmdline, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
+        retcode = subprocess.call(cmdline, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
 
-        except subprocess.CalledProcessError, e:
+        if retcode != 0:
             if expect_success:
-                self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, e.returncode)]
-                return (False, e.returncode)
+                self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, retcode)]
+                return (False, retcode)
 
             else:
-                return (True, e.returncode)
+                return (True, retcode)
 
         if not expect_success:
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
@@ -617,7 +616,10 @@ if Options.subst:
 # Add the directory where this executable is located to PATH.
 addpath = os.path.abspath(os.path.dirname(sys.argv[0]))
 oldpath = os.environ["PATH"]
-os.environ["PATH"] = "%s:%s" % (addpath, oldpath) if oldpath else addpath
+if oldpath:
+    os.environ["PATH"] = "%s:%s" % (addpath, oldpath)
+else:
+    os.environ["PATH"] = addpath
 
 Config.configured_tests = []
 testdirs = getOption("TestDirs", None).split()
@@ -654,8 +656,11 @@ for test in tests:
         test.run()
 
 if Failed > 0:
-    skipped = (", %d skipped" % Skipped) if Skipped > 0 else ""
-    output("%d test%s failed%s" % (Failed, "s" if Failed > 1 else "", skipped))
+    if Skipped > 0:
+        skipped = (", %d skipped" % Skipped)
+    else:
+        skipped = ""
+    output("%d test%s failed%s" % (Failed, ("","s")[Failed > 1], skipped))
     sys.exit(1)
 
 else:
