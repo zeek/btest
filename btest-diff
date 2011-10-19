@@ -39,7 +39,7 @@ rm -f $TEST_DIAGNOSTICS
 
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 
-if [ "$TEST_DIFF_BRIEF" == "" ]; then
+if [ "$TEST_DIFF_BRIEF" == "" -o ! -e $TEST_BASELINE/$canon ]; then
     cat $input >>$TEST_DIAGNOSTICS
 else
     echo "<Content not shown>" >>$TEST_DIAGNOSTICS
