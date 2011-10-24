@@ -1,5 +1,15 @@
 
-0.3 | 2011-10-18 10:25:00 -0700
+0.3 | 2011-10-24 09:35:07 -0700
+
+  * More graceful error handling at startup if btest.cfg not found.
+    (Robin Sommer)
+
+  * Python 2.4 compat changes. (Jon Siwek)
+
+  * When in brief mode, btest-diff now shows full output if we don't
+    have a baseline yet. (Robin Sommer)
+
+  * Adding executable permission back to script. (Robin Sommer)
 
   * Cleaning up distribution. (Robin Sommer)
 
