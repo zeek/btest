@@ -16,7 +16,7 @@ import glob
 import fnmatch
 import ConfigParser
 
-VERSION = "0.3" # Automatically filled in.
+VERSION = "0.3-5" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -579,6 +579,9 @@ if not basedir:
 
 os.chdir(basedir)
 
+if not os.path.exists(Options.config):
+    error("configuration file '%s' not found" % Options.config)
+
 defaults=os.environ
 defaults["testbase"] = os.path.abspath(basedir)
 defaults["default_path"] = os.environ["PATH"]
@@ -622,9 +625,9 @@ else:
     os.environ["PATH"] = addpath
 
 Config.configured_tests = []
-testdirs = getOption("TestDirs", None).split()
+testdirs = getOption("TestDirs", None)
 if testdirs:
-    Config.configured_tests = findTests(testdirs)
+    Config.configured_tests = findTests(testdirs.split())
 
 if args:
     tests = findTests(args)
