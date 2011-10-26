@@ -1,5 +1,5 @@
 
-0.3 | 2011-10-25 19:50:36 -0700
+0.3 | 2011-10-25 19:58:26 -0700
 
   * More graceful error handling at startup if btest.cfg not found.
     (Robin Sommer)
