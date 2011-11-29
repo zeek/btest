@@ -7,7 +7,7 @@
 BTest - A Simple Driver for Basic Unit Tests
 ============================================
 
-.. class:: opening
+.. rst-class:: opening
 
     The ``btest`` is simple framework for writing unit tests. Freely
     borrowing some ideas from other packages, it's main objective to
@@ -30,8 +30,8 @@ BTest's git repository is located at `git://git.bro-ids.org/btest.git
 <git://git.bro-ids.org/btest.git>`__. You can browse the repository
 `here <http://git.bro-ids.org/btest.git>`__.
 
-This document describes BTest |version|. See the `CHANGES
-<{{git('btest:CHANGES')}}>`__ file for version history.
+This document describes BTest |version|. See the ``CHANGES``
+file for version history.
 
 
 Installation
@@ -39,9 +39,9 @@ Installation
 
 Installation is simple and standard::
 
-    > tar xzvf btest-*.tar.gz
-    > cd btest-*
-    > python setup.py install
+    tar xzvf btest-*.tar.gz
+    cd btest-*
+    python setup.py install
 
 This will install a few scripts: ``btest`` is the main driver program,
 and there are number of further helper scripts that we discuss below
