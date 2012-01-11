@@ -16,7 +16,7 @@ import glob
 import fnmatch
 import ConfigParser
 
-VERSION = "0.3" # Automatically filled in.
+VERSION = "0.31" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"

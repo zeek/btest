@@ -1,4 +1,8 @@
 
+0.31 | 2011-11-29 12:11:49 -0600
+
+  * Submodule README conformity changes. (Jon Siwek)
+
 0.3 | 2011-10-25 19:58:26 -0700
 
   * More graceful error handling at startup if btest.cfg not found.
