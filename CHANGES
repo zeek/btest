@@ -1,4 +1,8 @@
 
+0.31-2 | 2012-01-25 16:58:29 -0800
+
+  * Don't add btest's path to PATH anymore. (Jon Siwek)
+
 0.31 | 2011-11-29 12:11:49 -0600
 
   * Submodule README conformity changes. (Jon Siwek)

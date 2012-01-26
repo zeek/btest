@@ -16,7 +16,7 @@ import glob
 import fnmatch
 import ConfigParser
 
-VERSION = "0.31" # Automatically filled in.
+VERSION = "0.31-2" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -615,14 +615,6 @@ if Options.subst:
 
     for (name, value) in Config.items(sec):
         Substitutions[name] = value
-
-# Add the directory where this executable is located to PATH.
-addpath = os.path.abspath(os.path.dirname(sys.argv[0]))
-oldpath = os.environ["PATH"]
-if oldpath:
-    os.environ["PATH"] = "%s:%s" % (addpath, oldpath)
-else:
-    os.environ["PATH"] = addpath
 
 Config.configured_tests = []
 testdirs = getOption("TestDirs", None)
