@@ -20,6 +20,8 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
+import output
+
 VERSION = "0.22-27" # Automatically filled in.
 
 Name ="btest"
@@ -97,9 +99,10 @@ class TestManager(multiprocessing.managers.SyncManager):
     def __init__(self):
         super(TestManager, self).__init__()
 
-    def run(self, tests, groups):
+    def run(self, tests, groups, output_handler):
         self.start()
 
+        self._output_handler = output_handler
         self._lock = self.Lock()
         self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
         self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
@@ -159,21 +162,32 @@ class TestManager(multiprocessing.managers.SyncManager):
     def lock(self):
         return self._lock
 
-    def testSucceeded(self):
+    def testStart(self, test):
         with self._lock:
+            self._output_handler.testStart(test)
+
+    def testCommand(self, test, cmdline):
+        with self._lock:
+            self._output_handler.testCommand(test, cmdline)
+
+    def testSucceeded(self, test):
+        with self._lock:
+            self._output_handler.testSucceeded(test)
             self._succeeded.value += 1
 
-    def testFailed(self):
+    def testFailed(self, test):
         with self._lock:
+            self._output_handler.testFailed(test)
             self._failed.value += 1
 
-    def testSkipped(self):
+    def testSkipped(self, test):
         with self._lock:
+            self._output_handler.testSkipped(test)
             self._skipped.value += 1
 
 # One test.
 class Test(object):
-    def __init__(self, file):
+    def __init__(self, file, output_handler):
         self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
         self.name = None
@@ -186,28 +200,10 @@ class Test(object):
         self.filter = None
         self.files = []
         self.requires = []
-        self.buffered_output = []
+        self.output_handler = output_handler
 
     def setFilter(self, filter):
         self.filter = filter
-
-    def output(self, msg, nl=True, file=None):
-        if not Options.threads:
-            output(msg, nl, file)
-            return
-
-        self.buffered_output += [(msg, nl, file)]
-
-    def error(self, msg):
-        error(msg)
-
-    def replayOutput(self, mgr):
-        if not Options.threads:
-            return
-
-        with mgr.lock():
-            for (msg, nl, file) in self.buffered_output:
-                output(msg, nl, file)
 
         # Parse the test's content.
     def parse(self, content):
@@ -229,7 +225,7 @@ class Test(object):
 
                     if not multiple:
                         if tag in cmds:
-                            self.error("%s: %d defined multiple times." % (test, tag))
+                            error("%s: %d defined multiple times." % (test, tag))
 
                         cmds[tag] = value
 
@@ -242,7 +238,7 @@ class Test(object):
         # Make sure all non-optional commands are there.
         for (tag, regexp, multiple, optional, group1, group2) in Commands:
             if not optional and not tag in cmds:
-                self.error("%s: mandatory %s command not found." % (self.file, tag))
+                error("%s: mandatory %s command not found." % (self.file, tag))
 
         (name, ext) = os.path.splitext(self.file)
 
@@ -274,6 +270,7 @@ class Test(object):
         clone.name = self.name
         clone.group = self.group
         clone.cmdlines = self.cmdlines
+        clone.output_handlers = self.output_handlers
 
         clone.content = content
 
@@ -291,8 +288,7 @@ class Test(object):
         if Options.threads:
             name = "[%s] %s" % (multiprocessing.current_process().name, name)
 
-        if Options.verbose or not Options.brief:
-            self.output("%s ..." % name, nl=Options.verbose)
+        mgr.testStart(self)
 
         self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
         self.diag = os.path.join(self.tmpdir, ".diag")
@@ -312,7 +308,7 @@ class Test(object):
             try:
                 ffile = open(fname, "w")
             except IOError, e:
-                self.error("cannot write test's additional file '%s'" % fname)
+                error("cannot write test's additional file '%s'" % fname)
 
             for line in lines:
                 print >>ffile, line,
@@ -334,18 +330,7 @@ class Test(object):
             (success, rc) = self.execute((cmd, True), apply_filter=(self.filter != None))
 
             if not success:
-                mgr.testSkipped()
-
-                if Options.verbose:
-                    self.output("... %s not available, skipped" % name)
-
-                else:
-                    if not Options.brief:
-                        self.output("not available, skipped")
-
-                if Options.diagfile:
-                    self.output("%s ... not available, skipped" % name, True, Options.diagfile)
-
+                mgr.testSkipped(self)
                 self.finish()
                 return
 
@@ -359,25 +344,7 @@ class Test(object):
                 failures += 1
 
                 if failures == 1:
-                    mgr.testFailed()
-
-                    if Options.verbose:
-                        self.output("... %s failed" % name)
-
-                    else:
-                        if Options.brief:
-                            self.output("%s ..." % name, nl=False)
-
-                        self.output(" failed")
-
-                    if Options.diagfile:
-                        self.output("%s ... failed" % name, True, Options.diagfile)
-
-                if Options.diag or Options.diagall:
-                    self.showDiag()
-
-                if Options.diagfile:
-                    self.showDiag(Options.diagfile)
+                    mgr.testFailed(self)
 
                 if rc == 200:
                     # Abort all tests.
@@ -387,16 +354,7 @@ class Test(object):
                     break
 
         if failures == 0:
-            mgr.testSucceeded()
-
-            if Options.verbose:
-                    self.output("... %s ok" % name)
-            else:
-                if not Options.brief:
-                    self.output("ok")
-
-            if Options.diagall:
-                self.showDiag()
+            mgr.testSucceeded(self)
 
             if not Options.tmps:
                 self.rmTmp()
@@ -444,8 +402,7 @@ class Test(object):
 
             localfile = self.localfile
 
-        if Options.verbose:
-            self.output("  > %s" % cmdline)
+        mgr.testCommand(self, cmdline)
 
         # Replace special names.
         cmdline = RE_INPUT.sub(localfile, cmdline)
@@ -489,7 +446,7 @@ class Test(object):
                 subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir, shell=True)
 
         except OSError, e:
-            self.error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
+            error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
     def prepareEnv(self):
@@ -503,27 +460,6 @@ class Test(object):
     def addFiles(self, files):
         # files is a list of tuple (fname, lines).
         self.files = files
-
-    def showDiag(self, file=None):
-        for line in self.diagmsgs:
-            self.output("  % " + line, file=file)
-
-        for f in (self.diag, ".stderr"):
-            if not f:
-                continue
-
-            if os.path.isfile(f):
-                self.output("  % cat " + os.path.basename(f), file=file)
-                for line in open(f):
-                    self.output("  " + line.strip(), file=file)
-                self.output("", file=file)
-
-        if Options.wait and not file:
-            self.output("<Enter> ...")
-            try:
-                sys.stdin.readline()
-            except KeyboardInterrupt:
-                sys.exit(1)
 
 # Walk the given directory and return all test files.
 def findTests(paths):
@@ -690,11 +626,36 @@ defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(Options.config)
 
+# Determine output handlers to use.
+
+output_handlers = []
+
+if Options.diagall:
+    output_handlers += [output.Diag(True, None)]
+
+elif Options.diagall:
+    output_handlers += [output.Diag(False, None)]
+
 if Options.diagfile:
     try:
-        Options.diagfile = open(Options.diagfile, "a")
+        diagfile = open(Options.diagfile, "a")
+        output_handlers += [output.DiagFile(False, diagfile)]
+
     except IOError, e:
         print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
+
+if Options.verbose:
+    output_handlers += [output.Verbose()]
+
+if Options.brief:
+    output_handlers += [output.Brief()]
+
+if not output_handlers:
+    output_handlers += [output.Standard()]
+
+output_handler = output.Forwarder(output_handlers)
+
+# Evaluate other command line options.
 
 if Config.has_section("environment"):
     for (name, value) in Config.items("environment"):
@@ -755,7 +716,7 @@ mkdir(BaselineDir)
 mkdir(TmpDir)
 
 groups = set([t.group for t in tests if t.group])
-(succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups))
+(succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups), output_handler)
 total = succeeded + failed + skipped
 
 if total != len(tests):
