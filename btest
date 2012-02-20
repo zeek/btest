@@ -20,7 +20,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
-import output
+import OutputHandlers
 
 VERSION = "0.22-27" # Automatically filled in.
 
@@ -137,7 +137,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
             for t in tests:
                 t.run(self)
-                t.replayOutput(self)
+                self.testReplayOutput(t)
 
     def nextTests(self, groups):
         with self._lock:
@@ -184,6 +184,10 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.testSkipped(test)
             self._skipped.value += 1
+
+    def testReplayOutput(self, test):
+        with self._lock:
+            self._output_handler.replayOutput(test)
 
 # One test.
 class Test(object):
@@ -264,13 +268,12 @@ class Test(object):
     # Copies all control information over to a new Test but replaces test
     # content with a new one.
     def clone(self, content):
-        clone = Test("")
+        clone = Test("", self.output_handler)
         clone.file = self.file
         clone.number = self.number + 1
         clone.name = self.name
         clone.group = self.group
         clone.cmdlines = self.cmdlines
-        clone.output_handlers = self.output_handlers
 
         clone.content = content
 
@@ -288,6 +291,7 @@ class Test(object):
         if Options.threads:
             name = "[%s] %s" % (multiprocessing.current_process().name, name)
 
+        self.mgr = mgr
         mgr.testStart(self)
 
         self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
@@ -330,7 +334,7 @@ class Test(object):
             (success, rc) = self.execute((cmd, True), apply_filter=(self.filter != None))
 
             if not success:
-                mgr.testSkipped(self)
+                self.mgr.testSkipped(self)
                 self.finish()
                 return
 
@@ -344,7 +348,7 @@ class Test(object):
                 failures += 1
 
                 if failures == 1:
-                    mgr.testFailed(self)
+                    self.mgr.testFailed(self)
 
                 if rc == 200:
                     # Abort all tests.
@@ -354,7 +358,7 @@ class Test(object):
                     break
 
         if failures == 0:
-            mgr.testSucceeded(self)
+            self.mgr.testSucceeded(self)
 
             if not Options.tmps:
                 self.rmTmp()
@@ -402,7 +406,7 @@ class Test(object):
 
             localfile = self.localfile
 
-        mgr.testCommand(self, cmdline)
+        self.mgr.testCommand(self, cmdline)
 
         # Replace special names.
         cmdline = RE_INPUT.sub(localfile, cmdline)
@@ -462,7 +466,7 @@ class Test(object):
         self.files = files
 
 # Walk the given directory and return all test files.
-def findTests(paths):
+def findTests(paths, output_handler):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
@@ -470,7 +474,7 @@ def findTests(paths):
 
     for path in paths:
         if os.path.isfile(path):
-            tests += readTestFile(path)
+            tests += readTestFile(path, output_handler)
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
@@ -479,7 +483,7 @@ def findTests(paths):
                         if fnmatch.fnmatch(file, glob):
                             break
                     else:
-                        tests += readTestFile(os.path.join(dirpath, file))
+                        tests += readTestFile(os.path.join(dirpath, file), output_handler)
 
                 # Don't recurse into these.
                 for skip in ignore_dirs:
@@ -499,11 +503,11 @@ def findTests(paths):
     return tests
 
 # Read the given test file and instantiate one or more tests from it.
-def readTestFile(filename):
+def readTestFile(filename, output_handler):
 
     def newTest(content, previous):
         if not previous:
-            t = Test(filename)
+            t = Test(filename, output_handler)
             if t.parse(content):
                 return t
             else:
@@ -631,29 +635,29 @@ Config.read(Options.config)
 output_handlers = []
 
 if Options.diagall:
-    output_handlers += [output.Diag(True, None)]
+    output_handlers += [OutputHandlers.Diag(Options, True, None)]
 
-elif Options.diagall:
-    output_handlers += [output.Diag(False, None)]
+elif Options.diag:
+    output_handlers += [OutputHandlers.Diag(Options, False, None)]
 
 if Options.diagfile:
     try:
         diagfile = open(Options.diagfile, "a")
-        output_handlers += [output.DiagFile(False, diagfile)]
+        output_handlers += [OutputHandlers.Diag(Options, False, diagfile)]
 
     except IOError, e:
         print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
 
 if Options.verbose:
-    output_handlers += [output.Verbose()]
+    output_handlers += [OutputHandlers.Verbose(Options, )]
 
 if Options.brief:
-    output_handlers += [output.Brief()]
+    output_handlers += [OutputHandlers.Brief(Options, )]
 
 if not output_handlers:
-    output_handlers += [output.Standard()]
+    output_handlers += [OutputHandlers.Standard(Options, )]
 
-output_handler = output.Forwarder(output_handlers)
+output_handler = OutputHandlers.Forwarder(Options, output_handlers)
 
 # Evaluate other command line options.
 
@@ -685,12 +689,12 @@ oldpath = os.environ["PATH"]
 os.environ["PATH"] = "%s:%s" % (addpath, oldpath) if oldpath else addpath
 
 Config.configured_tests = []
-testdirs = getOption("TestDirs", None).split()
+testdirs = getOption("TestDirs", "").split()
 if testdirs:
-    Config.configured_tests = findTests(testdirs)
+    Config.configured_tests = findTests(testdirs, output_handler)
 
 if args:
-    tests = findTests(args)
+    tests = findTests(args, output_handler)
 else:
     tests = Config.configured_tests
 
