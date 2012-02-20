@@ -51,6 +51,9 @@ def output(msg, nl=True, file=None):
     else:
         print >>file, msg,
 
+def warning(msg):
+    print >>sys.stderr, "warning:", msg
+
 def error(msg):
     print >>sys.stderr, msg
     sys.exit(1)
@@ -73,6 +76,25 @@ def getOption(key, default):
         return default
 
 reBackticks = re.compile(r"`(([^`]|\`)*)`")
+
+def readStateFile():
+    try:
+        # Read state file.
+        tests = []
+
+        for line in open(StateFile):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            tests += [line]
+
+        tests = findTests(tests, output_handler)
+
+    except IOError:
+        return (False, [])
+
+    return (True, tests)
 
 # We monkey-patch the OptionParser to expand backticks.
 def cpExpandBackticks(self, section, option, rawval, vars):
@@ -108,6 +130,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
         self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
         self._tests = self.list(tests)
+        self._failed_tests = self.list([])
 
         num_threads = Options.threads
 
@@ -125,6 +148,16 @@ class TestManager(multiprocessing.managers.SyncManager):
         else:
             # No threads, just run all directly.
             self.threadRun(groups)
+
+        try:
+            state = open(StateFile, "w")
+        except IOError, e:
+            error("cannot open state file %s" % StateFile)
+
+        for t in self._failed_tests:
+            print >>state, t
+
+        state.close()
 
         return (self._succeeded.value, self._failed.value, self._skipped.value)
 
@@ -179,6 +212,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.testFailed(test)
             self._failed.value += 1
+            self._failed_tests += [test.name]
 
     def testSkipped(self, test):
         with self._lock:
@@ -613,6 +647,8 @@ optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads",
                      help="number of threads to run tests in simultaniously; 0 disables threading")
 optparser.add_option("-g", "--group", action="store", type="string", dest="group", default=None,
                      help="execute only test of given group, or '-' for those without any group")
+optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
+                     help="Execute commands for tests that failed last time")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -693,10 +729,31 @@ testdirs = getOption("TestDirs", "").split()
 if testdirs:
     Config.configured_tests = findTests(testdirs, output_handler)
 
+StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
+TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
+BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+
 if args:
+    if Options.rerun:
+        error("With --rerun, no further tests can be given on command line")
+
     tests = findTests(args, output_handler)
+
 else:
-    tests = Config.configured_tests
+    if Options.rerun:
+        (success, tests) = readStateFile()
+
+        if success:
+            if not tests:
+                output("no tests failed last time")
+                sys.exit(0)
+
+        else:
+            warning("cannot read state file, executing all tests")
+            tests = Config.configured_tests
+
+    else:
+        tests = Config.configured_tests
 
 if Options.group:
     def rightGroup(t):
@@ -711,11 +768,9 @@ if Options.group:
     tests = [t for t in tests if rightGroup(t)]
 
 if not tests:
-    output("no tests given")
+    output("no tests to execute")
     sys.exit(0)
 
-TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
-BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
