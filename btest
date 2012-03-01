@@ -72,7 +72,7 @@ def mkdir(dir):
 def getOption(key, default):
     try:
         return Config.get("btest", key)
-    except ConfigParser.NoSectionError:
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         return default
 
 reBackticks = re.compile(r"`(([^`]|\`)*)`")
