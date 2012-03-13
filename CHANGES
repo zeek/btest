@@ -1,4 +1,27 @@
 
+0.31-13 | 2012-03-13 15:59:51 -0700
+
+  * Adding new option -r that reruns all tests that failed last time.
+    btest now always records all failed tests in a file called. (Robin
+    Sommer)
+
+  * Internal restructuring to factor output out into sublcasses.
+    (Robin Sommer)
+
+  * Adding parallel test execution to btest. (Robin Sommer)
+    
+        - A new option "-j <n>" allows to run up to <n> tests in
+          parallel.
+
+        - A new @TEST-GROUP directive allows to group tests that can't
+          be parallelized. All tests of the same group will be
+          executed sequentially.
+
+        - A new option "-g <group>" allows to run only tests of a
+          certain group, or with "-g -" all tests that don't have a
+          group.
+
+
 0.31-2 | 2012-01-25 16:58:29 -0800
 
   * Don't add btest's path to PATH anymore. (Jon Siwek)

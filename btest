@@ -15,8 +15,12 @@ import copy
 import glob
 import fnmatch
 import ConfigParser
+import time
+import multiprocessing
+import multiprocessing.managers
+import multiprocessing.sharedctypes
 
-VERSION = "0.31-2" # Automatically filled in.
+VERSION = "0.31-13" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -32,8 +36,9 @@ RE_END_FILE = re.compile("@TEST-END-FILE")
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
 RE_EXEC     = ("exec",     re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
 RE_REQUIRES = ("requires", re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
+RE_GROUP    = ("group",    re.compile("@TEST-GROUP: *(.*)"), False, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -43,6 +48,9 @@ def output(msg, nl=True, file=None):
         print >>file, msg
     else:
         print >>file, msg,
+
+def warning(msg):
+    print >>sys.stderr, "warning:", msg
 
 def error(msg):
     print >>sys.stderr, msg
@@ -62,10 +70,29 @@ def mkdir(dir):
 def getOption(key, default):
     try:
         return Config.get("btest", key)
-    except ConfigParser.NoSectionError:
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         return default
 
 reBackticks = re.compile(r"`(([^`]|\`)*)`")
+
+def readStateFile():
+    try:
+        # Read state file.
+        tests = []
+
+        for line in open(StateFile):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            tests += [line]
+
+        tests = findTests(tests, output_handler)
+
+    except IOError:
+        return (False, [])
+
+    return (True, tests)
 
 # We monkey-patch the OptionParser to expand backticks.
 def cpExpandBackticks(self, section, option, rawval, vars):
@@ -87,8 +114,116 @@ def cpExpandBackticks(self, section, option, rawval, vars):
 cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
 ConfigParser.ConfigParser._interpolate = cpExpandBackticks
 
+# Main class distributing the work across threads.
+class TestManager(multiprocessing.managers.SyncManager):
+    def __init__(self):
+        super(TestManager, self).__init__()
+
+    def run(self, tests, groups, output_handler):
+        self.start()
+
+        self._output_handler = output_handler
+        self._lock = self.Lock()
+        self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
+        self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
+        self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
+        self._tests = self.list(tests)
+        self._failed_tests = self.list([])
+
+        num_threads = Options.threads
+
+        if num_threads:
+            threads = []
+
+            for i in range(num_threads):
+                t = multiprocessing.Process(name="#%d" % (i+1), target=lambda : self.threadRun(groups[i::num_threads]))
+                t.start()
+                threads += [t]
+
+            for t in threads:
+                t.join()
+
+        else:
+            # No threads, just run all directly.
+            self.threadRun(groups)
+
+        try:
+            state = open(StateFile, "w")
+        except IOError, e:
+            error("cannot open state file %s" % StateFile)
+
+        for t in self._failed_tests:
+            print >>state, t
+
+        state.close()
+
+        return (self._succeeded.value, self._failed.value, self._skipped.value)
+
+    def threadRun(self, groups):
+        while True:
+            tests = self.nextTests(groups)
+            if not tests:
+                # No more work for us.
+                return
+
+            for t in tests:
+                t.run(self)
+                self.testReplayOutput(t)
+
+    def nextTests(self, groups):
+        with self._lock:
+            for i in range(len(self._tests)):
+                t = self._tests[i]
+                if t and (not t.group or t.group in groups):
+                    del self._tests[i]
+
+                    tests = [t]
+
+                    if Filters:
+                        filtered_test = copy.deepcopy(test)
+                        filtered_test.setFilter(Options.filter)
+                        tests += [filtered_test]
+                        self._pending.release()
+
+                    return tests
+
+        # No more tests for this group.
+        return None
+
+    def lock(self):
+        return self._lock
+
+    def testStart(self, test):
+        with self._lock:
+            self._output_handler.testStart(test)
+
+    def testCommand(self, test, cmdline):
+        with self._lock:
+            self._output_handler.testCommand(test, cmdline)
+
+    def testSucceeded(self, test):
+        with self._lock:
+            self._output_handler.testSucceeded(test)
+            self._succeeded.value += 1
+
+    def testFailed(self, test):
+        with self._lock:
+            self._output_handler.testFailed(test)
+            self._failed.value += 1
+            self._failed_tests += [test.name]
+
+    def testSkipped(self, test):
+        with self._lock:
+            self._output_handler.testSkipped(test)
+            self._skipped.value += 1
+
+    def testReplayOutput(self, test):
+        with self._lock:
+            self._output_handler.replayOutput(test)
+
+# One test.
 class Test(object):
-    def __init__(self, file):
+    def __init__(self, file, output_handler):
         self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
         self.name = None
@@ -98,8 +233,13 @@ class Test(object):
         self.tmpdir = None
         self.diag = None
         self.baseline = None
+        self.filter = None
         self.files = []
         self.requires = []
+        self.output_handler = output_handler
+
+    def setFilter(self, filter):
+        self.filter = filter
 
         # Parse the test's content.
     def parse(self, content):
@@ -136,22 +276,17 @@ class Test(object):
             if not optional and not tag in cmds:
                 error("%s: mandatory %s command not found." % (self.file, tag))
 
-        # self.name = cmds["name"]
-        # self.group = cmds["group"]
-        # self.diagin = cmds["diag-in"] if "diag-in" in cmds else None
-
         (name, ext) = os.path.splitext(self.file)
 
         self.name = name.replace("/", ".")
         while self.name.startswith("."):
             self.name = self.name[1:]
 
-        self.group = os.path.dirname(self.file).replace("/", ".")
-        while self.group.startswith("."):
-            self.group = self.group[1:]
-
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
+
+        if "group" in cmds:
+            self.group = cmds["group"]
 
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
@@ -162,32 +297,34 @@ class Test(object):
 
         return True
 
-    # Copies all control information over t a new Test but replaces test content
-    # with a new one.
+    # Copies all control information over to a new Test but replaces test
+    # content with a new one.
     def clone(self, content):
-        clone = Test("")
+        clone = Test("", self.output_handler)
         clone.file = self.file
         clone.number = self.number + 1
         clone.name = self.name
         clone.group = self.group
-#       clone.diagin = self.diagin
         clone.cmdlines = self.cmdlines
 
         clone.content = content
 
         return clone
 
-    def run(self, filter=None):
+    def run(self, mgr):
         if self.number > 1:
             self.name = "%s-%d" % (self.name, self.number)
 
-        if not filter:
+        if not self.filter:
             name = self.name
         else:
-            name = "%s (%s)" % (self.name, filter)
+            name = "%s (%s)" % (self.name, self.filter)
 
-        if Options.verbose or not Options.brief:
-            output("%s ..." % name, nl=Options.verbose)
+        if Options.threads:
+            name = "[%s] %s" % (multiprocessing.current_process().name, name)
+
+        self.mgr = mgr
+        mgr.testStart(self)
 
         self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
         self.diag = os.path.join(self.tmpdir, ".diag")
@@ -197,9 +334,10 @@ class Test(object):
         self.rmTmp()
         mkdir(self.baseline)
         mkdir(self.tmpdir)
-        os.chdir(self.tmpdir)
 
         for (fname, lines) in self.files:
+            fname = os.path.join(self.tmpdir, fname)
+
             subdir = os.path.dirname(fname)
             if subdir != "":
                 mkdir(subdir)
@@ -225,23 +363,10 @@ class Test(object):
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-
-            (success, rc) = self.execute((cmd, True), apply_filter=(filter != None))
+            (success, rc) = self.execute((cmd, True), apply_filter=(self.filter != None))
 
             if not success:
-                global Skipped
-                Skipped += 1
-
-                if Options.verbose:
-                    output("... %s not available, skipped" % name)
-
-                else:
-                    if not Options.brief:
-                        output("not available, skipped")
-
-                if Options.diagfile:
-                    print >>Options.diagfile, "%s ... not available, skipped" % name
-
+                self.mgr.testSkipped(self)
                 self.finish()
                 return
 
@@ -249,33 +374,13 @@ class Test(object):
 
         for cmd in self.cmdlines:
 
-            (success, rc) = self.execute(cmd, apply_filter=(filter != None))
+            (success, rc) = self.execute(cmd, apply_filter=(self.filter != None))
 
             if not success:
                 failures += 1
 
                 if failures == 1:
-
-                    global Failed
-                    Failed += 1
-
-                    if Options.verbose:
-                        output("... %s failed" % name)
-
-                    else:
-                        if Options.brief:
-                            output("%s ..." % name, nl=False)
-
-                        output(" failed")
-
-                    if Options.diagfile:
-                        print >>Options.diagfile, "%s ... failed" % name
-
-                if Options.diag or Options.diagall:
-                    self.showDiag()
-
-                if Options.diagfile:
-                    self.showDiag(Options.diagfile)
+                    self.mgr.testFailed(self)
 
                 if rc == 200:
                     # Abort all tests.
@@ -285,14 +390,7 @@ class Test(object):
                     break
 
         if failures == 0:
-            if Options.verbose:
-                    output("... %s ok" % name)
-            else:
-                if not Options.brief:
-                    output("ok")
-
-            if Options.diagall:
-                self.showDiag()
+            self.mgr.testSucceeded(self)
 
             if not Options.tmps:
                 self.rmTmp()
@@ -325,6 +423,7 @@ class Test(object):
 
         if not filter_cmd or not expect_success: # Do not apply filter if we expect failure.
             localfile = self.localfile
+
         else:
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
@@ -339,8 +438,7 @@ class Test(object):
 
             localfile = self.localfile
 
-        if Options.verbose:
-            output("  > %s" % cmdline)
+        self.mgr.testCommand(self, cmdline)
 
         # Replace special names.
         cmdline = RE_INPUT.sub(localfile, cmdline)
@@ -359,15 +457,15 @@ class Test(object):
 
         env = self.prepareEnv()
 
-        retcode = subprocess.call(cmdline, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
-
-        if retcode != 0:
+        try:
+            subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
+        except subprocess.CalledProcessError, e:
             if expect_success:
-                self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, retcode)]
-                return (False, retcode)
+                self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, e.returncode)]
+                return (False, e.returncode)
 
             else:
-                return (True, retcode)
+                return (True, e.returncode)
 
         if not expect_success:
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
@@ -376,8 +474,6 @@ class Test(object):
         return (True, 0)
 
     def rmTmp(self):
-        os.chdir(TmpDir)
-
         try:
             if os.path.isfile(self.tmpdir):
                 os.remove(self.tmpdir)
@@ -391,41 +487,261 @@ class Test(object):
     # Prepares the environment for the child processes.
     def prepareEnv(self):
         env = copy.deepcopy(os.environ)
-
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
-
         return env
 
     def addFiles(self, files):
         # files is a list of tuple (fname, lines).
         self.files = files
 
-    def showDiag(self, file=None):
-        for line in self.diagmsgs:
-            output("  % " + line, file=file)
+### Output handlers.
 
-        for f in (self.diag, ".stderr"):
+class OutputHandler:
+    def __init__(self, options):
+        """Base class for reporting progress and results to user. We derive
+        several classes from this one, with the one being used depending on
+        which output the users wants.
+
+        A handler's method are called from test TestMgr and may be called
+        interleaved from different tests. However, the TestMgr locks before
+        each call so that it's guaranteed that two calls don't run
+        concurrently.
+
+        options: An optparser with the global options.
+        """
+        self._buffered_output = {}
+        self._options = options
+
+    def options(self):
+        """Returns the current optparser instance."""
+        return self._options
+
+    def threadPrefix(self):
+        """In threaded mode, returns a string with the thread's name in a form
+        suitable to prefix output with. In non-threaded mode, returns the
+        empty string."""
+        if self.options().threads:
+            return "[%s]" % multiprocessing.current_process().name
+        else:
+            return ""
+
+    def _output(self, msg, nl=True, file=None):
+        if not file:
+            file = sys.stderr
+
+        if nl:
+            print >>file, msg
+        else:
+            if msg:
+                print >>file, msg,
+
+    def output(self, test, msg, nl=True, file=None):
+        """Output one line of output to user. In non-threaded mode, this will
+        be printed out directly to stderr. In threaded-mode, this will be
+        buffered until the test has finished; then all output is printed as a
+        block.
+
+        This should only be called from other members of this class, or
+        derived classes, not from tests.
+        """
+        if not self.options().threads:
+            self._output(msg, nl, file)
+            return
+
+        else:
+            try:
+                self._buffered_output[test.name] += [(msg, nl, file)]
+            except KeyError:
+                self._buffered_output[test.name] = [(msg, nl, file)]
+
+    def replayOutput(self, test):
+        """Prints out all output buffered in threaded mode by output()."""
+        if not test.name in self._buffered_output:
+            return
+
+        for (msg, nl, file) in self._buffered_output[test.name]:
+            self._output(msg, nl, file)
+
+        self._buffered_output[test.name] = []
+
+    # Methods to override.
+    def testStart(self, test):
+        """Called just before a test begins."""
+        pass
+
+    def testCommand(self, test, cmdline):
+        """Called just before a command line is exected for a trace."""
+        pass
+
+    def testSucceeded(self, test):
+        """Called when a test was successful."""
+        pass
+
+    def testFailed(self, test):
+        """Called when a test failed."""
+        pass
+
+    def testSkipped(self, test):
+        """Called when a test is skipped because its dependencies aren't met."""
+        pass
+
+
+class Forwarder(OutputHandler):
+    """
+    Forwards output to several other handlers.
+
+    options: An optparser with the global options.
+
+    handlers: List of output handlers to forward to.
+    """
+
+    def __init__(self, options, handlers):
+        OutputHandler.__init__(self, options)
+        self._handlers = handlers
+
+    def testStart(self, test):
+        """Called just before a test begins."""
+        for h in self._handlers:
+            h.testStart(test)
+
+    def testCommand(self, test, cmdline):
+        """Called just before a command line is exected for a trace."""
+        for h in self._handlers:
+            h.testCommand(test, cmdline)
+
+    def testSucceeded(self, test):
+        """Called when a test was successful."""
+        for h in self._handlers:
+            h.testSucceeded(test)
+
+    def testFailed(self, test):
+        """Called when a test failed."""
+        for h in self._handlers:
+            h.testFailed(test)
+
+    def testSkipped(self, test):
+        for h in self._handlers:
+            h.testSkipped(test)
+
+    def replayOutput(self, test):
+        for h in self._handlers:
+            h.replayOutput(test)
+
+class Standard(OutputHandler):
+    def testStart(self, test):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "%s ..." % test.name, nl=False)
+
+    def testCommand(self, test, cmdline):
+        pass
+
+    def testSucceeded(self, test):
+        self.output(test, "ok")
+
+    def testFailed(self, test):
+        self.output(test, "failed")
+
+    def testSkipped(self, test):
+        self.output(test, "not available, skipped")
+
+
+class Brief(OutputHandler):
+    """Output handler for producing the brief output format."""
+    def testStart(self, test):
+        pass
+
+    def testCommand(self, test, cmdline):
+        pass
+
+    def testSucceeded(self, test):
+        pass
+
+    def testFailed(self, test):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "%s ... failed" % test.name)
+
+    def testSkipped(self, test):
+        pass
+
+class Verbose(OutputHandler):
+    """Output handler for producing the verbose output format."""
+
+    def testStart(self, test):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "%s ..." % test.name)
+
+    def testCommand(self, test, cmdline):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "  > %s" % cmdline)
+
+    def testSucceeded(self, test):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "... %s ok" % test.name)
+
+    def testFailed(self, test):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "... %s failed" % test.name)
+
+    def testSkipped(self, test):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "... %s not available, skipped" % test.name)
+
+class Diag(OutputHandler):
+    def __init__(self, options, all=False, file=None):
+        """Output handler for producing the diagnostic output format.
+
+        options: An optparser with the global options.
+
+        all: Print diagnostics also for succeeding tests.
+
+        file: Output into given file rather than console.
+        """
+        OutputHandler.__init__(self, options)
+        self._all = all
+        self._file = file
+
+    def showDiag(self, test):
+        """Generates diagnostics for a test."""
+        for line in test.diagmsgs:
+            self.output(test, "  % " + line, True, self._file)
+
+        for f in (test.diag, ".stderr"):
             if not f:
                 continue
 
             if os.path.isfile(f):
-                output("  % cat " + os.path.basename(f), file=file)
+                self.output(test, "  % cat " + os.path.basename(f), True, self._file)
                 for line in open(f):
-                    output("  " + line.strip(), file=file)
-                output("", file=file)
+                    self.output(test, "  " + line.strip(), True, self._file)
+                self.output(test, "", True, self._file)
 
-        if Options.wait and not file:
-            output("<Enter> ...")
+        if self.options().wait and not file:
+            self.output(test, "<Enter> ...")
             try:
                 sys.stdin.readline()
             except KeyboardInterrupt:
                 sys.exit(1)
 
+    def testCommand(self, test, cmdline):
+        pass
+
+    def testSucceeded(self, test):
+        self.output(test, "%s ... ok" % test.name, True, self._file)
+        if self._all:
+            self.showDiag(test)
+
+    def testFailed(self, test):
+        self.output(test, "%s ... failed" % test.name, True, self._file)
+        self.showDiag(test)
+
+    def testSkipped(self, test):
+        self.output(test, "%s ... not available, skipped" % test.name, True, self._file)
+
 # Walk the given directory and return all test files.
-def findTests(paths):
+def findTests(paths, output_handler):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
@@ -433,7 +749,7 @@ def findTests(paths):
 
     for path in paths:
         if os.path.isfile(path):
-            tests += readTestFile(path)
+            tests += readTestFile(path, output_handler)
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
@@ -442,7 +758,7 @@ def findTests(paths):
                         if fnmatch.fnmatch(file, glob):
                             break
                     else:
-                        tests += readTestFile(os.path.join(dirpath, file))
+                        tests += readTestFile(os.path.join(dirpath, file), output_handler)
 
                 # Don't recurse into these.
                 for skip in ignore_dirs:
@@ -462,11 +778,11 @@ def findTests(paths):
     return tests
 
 # Read the given test file and instantiate one or more tests from it.
-def readTestFile(filename):
+def readTestFile(filename, output_handler):
 
     def newTest(content, previous):
         if not previous:
-            t = Test(filename)
+            t = Test(filename, output_handler)
             if t.parse(content):
                 return t
             else:
@@ -568,6 +884,12 @@ optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", defau
                      help="do not delete tmp files created for running tests")
 optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
                      help="active substitution in given config file section")
+optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
+                     help="number of threads to run tests in simultaniously; 0 disables threading")
+optparser.add_option("-g", "--group", action="store", type="string", dest="group", default=None,
+                     help="execute only test of given group, or '-' for those without any group")
+optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
+                     help="Execute commands for tests that failed last time")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -588,11 +910,36 @@ defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(Options.config)
 
+# Determine output handlers to use.
+
+output_handlers = []
+
+if Options.diagall:
+    output_handlers += [Diag(Options, True, None)]
+
+elif Options.diag:
+    output_handlers += [Diag(Options, False, None)]
+
 if Options.diagfile:
     try:
-        Options.diagfile = open(Options.diagfile, "a")
+        diagfile = open(Options.diagfile, "a")
+        output_handlers += [Diag(Options, False, diagfile)]
+
     except IOError, e:
         print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
+
+if Options.verbose:
+    output_handlers += [Verbose(Options, )]
+
+elif Options.brief:
+    output_handlers += [Brief(Options, )]
+
+elif not output_handlers:
+    output_handlers += [Standard(Options, )]
+
+output_handler = Forwarder(Options, output_handlers)
+
+# Evaluate other command line options.
 
 if Config.has_section("environment"):
     for (name, value) in Config.items("environment"):
@@ -617,49 +964,70 @@ if Options.subst:
         Substitutions[name] = value
 
 Config.configured_tests = []
-testdirs = getOption("TestDirs", None)
+
+testdirs = getOption("TestDirs", "").split()
 if testdirs:
-    Config.configured_tests = findTests(testdirs.split())
+    Config.configured_tests = findTests(testdirs, output_handler)
 
-if args:
-    tests = findTests(args)
-else:
-    tests = Config.configured_tests
-
-if not tests:
-    output("no tests given")
-    sys.exit(0)
-
+StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+
+if args:
+    if Options.rerun:
+        error("With --rerun, no further tests can be given on command line")
+
+    tests = findTests(args, output_handler)
+
+else:
+    if Options.rerun:
+        (success, tests) = readStateFile()
+
+        if success:
+            if not tests:
+                output("no tests failed last time")
+                sys.exit(0)
+
+        else:
+            warning("cannot read state file, executing all tests")
+            tests = Config.configured_tests
+
+    else:
+        tests = Config.configured_tests
+
+if Options.group:
+    def rightGroup(t):
+        if Options.group == t.group:
+            return True
+
+        if Options.group == "-" and not t.group:
+            return True
+
+        return False
+
+    tests = [t for t in tests if rightGroup(t)]
+
+if not tests:
+    output("no tests to execute")
+    sys.exit(0)
+
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
-Failed = 0
-Skipped = 0
+groups = set([t.group for t in tests if t.group])
+(succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups), output_handler)
+total = succeeded + failed + skipped
 
-for test in tests:
+if total != len(tests):
+    output("internal btest error: not all tests processed (%d vs %d)" % (total, len(tests)))
+    sys.exit(1)
 
-    if not test:
-        continue
-
-    if Filters:
-        test2 = copy.deepcopy(test)
-        test.run()
-        test2.run(filter=Options.filter)
-    else:
-        test.run()
-
-if Failed > 0:
-    if Skipped > 0:
-        skipped = (", %d skipped" % Skipped)
-    else:
-        skipped = ""
-
-    output("%d test%s failed%s" % (Failed, ("","s")[Failed > 1], skipped))
+if failed > 0:
+    skipped = (", %d skipped" % skipped) if skipped > 0 else ""
+    output("%d of %d test%s failed%s" % (failed, total, "s" if total > 1 else "", skipped))
     sys.exit(1)
 
 else:
-    output("all tests successful")
+    output("all %d tests successful" % total)
     sys.exit(0)
 
