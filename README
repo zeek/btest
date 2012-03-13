@@ -176,17 +176,14 @@ and 1 otherwise.
 
 ``btest`` accepts the following options:
 
-    -U, --update-baseline
-        Records a new baseline for all ``btest-diff`` commands found
-        in any of the specified tests. To do this, all tests are run
-        as normal except that when ``btest-diff`` is executed, is
-        does not compute a diff but instead considers the given file
-        to authoritative and records it as the version to compare
-        with in future runs.
+    -b, --brief
+        Does not output *anything* for tests which pass. If all tests
+        pass, there will not be any output at all.
 
-    -u, --update-interactive
-        For failed tests, btest will stop and ask whether the user
-        wants to record a new baseline.
+    -c CONFIG, --config=CONFIG
+        Specifies an alternative `configuration`_ file to use. If not
+        speicfiied, the default is to use a file called ``btest.cfg``
+        if found in the current directory.
 
     -d, --diagnostics
         Reports diagnostics for all failed tests. The diagnostics
@@ -203,24 +200,26 @@ and 1 otherwise.
         Writes diagnostics for all failed tests into the given file.
         If the file already exists, any new output is appended.
 
-    -v, --verbose
-        Shows all test command lines as they are executed.
-
-    -w, --wait
-        Interactively waits for ``<enter>`` after showing diagnostics
-        for a test.
-
-    -b, --brief
-        Does not output *anything* for tests which pass. If all tests
-        pass, there will not be any output at all.
-
-    -c CONFIG, --config=CONFIG
-        Specifies an alternative `configuration`_ file to use. If not
-        speicfiied, the default is to use a file called ``btest.cfg``
-        if found in the current directory.
-
     -F FILTER, --filter=FILTER
         Activates a filter_ defined in the configuration file.
+
+    -g GROUP, --group=GROUP
+        Runs only tests assigned to the given test group, see
+        `@TEST-GROUP`_. Specifying ``-`` as the group name runs all
+        tests that do not belong to any group.
+
+    -j THREADS, --jobs=THREADS
+        Runs up to the given number of tests in parallel. By default,
+        BTest assumes that all tests can be executed concurrently
+        without further constraints. One can however ensure
+        serialization of subsets by assigning them to the same test
+        group, see `@TEST-GROUP`_.
+
+    -r, --rerun
+        Runs only tests that failed last time. After each execution,
+        BTest generates a state file that records the tests that have
+        failed. Using this option on the next run then reads that file
+        back in and limits execution to those tests found in there.
 
     -S SUBST, --subst=SUBST
         Activates a substitution_ defined in the configuration file.
@@ -233,23 +232,25 @@ and 1 otherwise.
         with dots (e.g., the files for ``example/t3.sh`` will be in
         ``.tmp/example.t3.sh``.
 
-    -j THREADS, --jobs=THREADS
-        Runs up to the given number of tests in parallel. By default,
-        BTest assumes that all tests can be executed concurrently
-        without further constraints. One can however ensure
-        serialization of subsets by assigning them to the same test
-        group, see `@TEST-GROUP`_.
+    -U, --update-baseline
+        Records a new baseline for all ``btest-diff`` commands found
+        in any of the specified tests. To do this, all tests are run
+        as normal except that when ``btest-diff`` is executed, is
+        does not compute a diff but instead considers the given file
+        to authoritative and records it as the version to compare
+        with in future runs.
 
-    -g GROUP, --group=GROUP
-        Runs only tests assigned to the given test group, see
-        `@TEST-GROUP`_. Specifying ``-`` as the group name runs all
-        tests that do not belong to any group.
+    -u, --update-interactive
+        For failed tests, btest will stop and ask whether the user
+        wants to record a new baseline.
 
-    -r, --rerun
-        Runs only tests that failed last time. After each execution,
-        BTest generates a state file that records the tests that have
-        failed. Using this option on the next run then reads that file
-        back in and limits execution to those tests found in there.
+    -v, --verbose
+        Shows all test command lines as they are executed.
+
+    -w, --wait
+        Interactively waits for ``<enter>`` after showing diagnostics
+        for a test.
+
 
 
 .. _configuration file:
