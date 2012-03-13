@@ -928,10 +928,10 @@ if Options.diagfile:
 if Options.verbose:
     output_handlers += [Verbose(Options, )]
 
-if Options.brief:
+elif Options.brief:
     output_handlers += [Brief(Options, )]
 
-if not output_handlers:
+elif not output_handlers:
     output_handlers += [Standard(Options, )]
 
 output_handler = Forwarder(Options, output_handlers)
