@@ -233,6 +233,25 @@ and 1 otherwise.
         with dots (e.g., the files for ``example/t3.sh`` will be in
         ``.tmp/example.t3.sh``.
 
+    -j THREADS, --jobs=THREADS
+        Runs up to the given number of tests in parallel. By default,
+        BTest assumes that all tests can be executed concurrently
+        without further constraints. One can however ensure
+        serialization of subsets by assigning them to the same test
+        group, see `@TEST-GROUP`_.
+
+    -g GROUP, --group=GROUP
+        Runs only tests assigned to the given test group, see
+        `@TEST-GROUP`_. Specifying ``-`` as the group name runs all
+        tests that do not belong to any group.
+
+    -r, --rerun
+        Runs only tests that failed last time. After each execution,
+        BTest generates a state file that records the tests that have
+        failed. Using this option on the next run then reads that file
+        back in and limits execution to those tests found in there.
+
+
 .. _configuration file:
 
 Configuration
@@ -288,6 +307,10 @@ configuration file:
     A space-separated lists of filename globs matching files to
     ignore when wscanning given test directories recursively.
     Default is empty.
+
+``StateFile``
+    The name of the state file to record failing tests in. Default is
+    ``.btest.failed.dat``.
 
 .. _environment variables:
 
@@ -513,6 +536,21 @@ supported:
     Another is to store a file in the same directory as the test
     itself, making sure it's ignored via ``IgnoreFiles``, and then
     refer to it via ``%DIR/<name>``.
+
+.. _@TEST-GROUP:
+
+``@TEST-GROUP: <group>``
+
+    Assigns the test to a group of name ``<group>``. Groups have two
+    purposes:
+
+        1. By using option ``-g`` one can limit execution to all tests
+           that belong to certain group.
+
+        2. When using option ``-j`` to parallelize execution, all
+           tests part of the same group are guaranteed to run
+           sequentially.
+
 
 Canonifying Diffs
 =================
