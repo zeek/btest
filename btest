@@ -934,7 +934,7 @@ if Options.verbose:
 elif Options.brief:
     output_handlers += [Brief(Options, )]
 
-elif not output_handlers:
+else:
     output_handlers += [Standard(Options, )]
 
 output_handler = Forwarder(Options, output_handlers)
