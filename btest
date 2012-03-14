@@ -922,7 +922,7 @@ elif Options.diag:
 
 if Options.diagfile:
     try:
-        diagfile = open(Options.diagfile, "a")
+        diagfile = open(Options.diagfile, "a", 1)
         output_handlers += [Diag(Options, False, diagfile)]
 
     except IOError, e:
