@@ -708,7 +708,7 @@ class Diag(OutputHandler):
         for line in test.diagmsgs:
             self.output(test, "  % " + line, True, self._file)
 
-        for f in (test.diag, ".stderr"):
+        for f in (test.diag, os.path.join(test.tmpdir, ".stderr")):
             if not f:
                 continue
 
@@ -729,16 +729,21 @@ class Diag(OutputHandler):
         pass
 
     def testSucceeded(self, test):
-        self.output(test, "%s ... ok" % test.name, True, self._file)
         if self._all:
+            if self._file:
+                self.output(test, "%s ... ok" % test.name, True, self._file)
+
             self.showDiag(test)
 
     def testFailed(self, test):
-        self.output(test, "%s ... failed" % test.name, True, self._file)
+        if self._file:
+            self.output(test, "%s ... failed" % test.name, True, self._file)
+
         self.showDiag(test)
 
     def testSkipped(self, test):
-        self.output(test, "%s ... not available, skipped" % test.name, True, self._file)
+        if self._file:
+            self.output(test, "%s ... not available, skipped" % test.name, True, self._file)
 
 # Walk the given directory and return all test files.
 def findTests(paths, output_handler):
@@ -914,6 +919,15 @@ Config.read(Options.config)
 
 output_handlers = []
 
+if Options.verbose:
+    output_handlers += [Verbose(Options, )]
+
+elif Options.brief:
+    output_handlers += [Brief(Options, )]
+
+else:
+    output_handlers += [Standard(Options, )]
+
 if Options.diagall:
     output_handlers += [Diag(Options, True, None)]
 
@@ -923,19 +937,10 @@ elif Options.diag:
 if Options.diagfile:
     try:
         diagfile = open(Options.diagfile, "w", 1)
-        output_handlers += [Diag(Options, False, diagfile)]
+        output_handlers += [Diag(Options, Options.diagall, diagfile)]
 
     except IOError, e:
         print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
-
-if Options.verbose:
-    output_handlers += [Verbose(Options, )]
-
-elif Options.brief:
-    output_handlers += [Brief(Options, )]
-
-else:
-    output_handlers += [Standard(Options, )]
 
 output_handler = Forwarder(Options, output_handlers)
 
