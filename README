@@ -316,6 +316,13 @@ configuration file:
     The name of the state file to record failing tests in. Default is
     ``.btest.failed.dat``.
 
+``Finalizer``
+    An executable that will be executed each time any test has
+    succesfully run. It runs in the same directory as the test itself
+    and receives the name of the test as its parameter. The return
+    value indicates whether the test should indeed be considered
+    succeeded. By default, there's no finalizer set.
+
 .. _environment variables:
 
 Environment Variables

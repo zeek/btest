@@ -372,7 +372,12 @@ class Test(object):
 
         failures = 0
 
-        for cmd in self.cmdlines:
+        cmds = self.cmdlines
+
+        if Finalizer:
+            cmds = cmds + [("%s %s" % (Finalizer, self.name), True)]
+
+        for cmd in cmds:
 
             (success, rc) = self.execute(cmd, apply_filter=(self.filter != None))
 
@@ -977,6 +982,7 @@ if testdirs:
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+Finalizer = os.path.abspath(getOption("Finalizer", None))
 
 if args:
     if Options.rerun:
