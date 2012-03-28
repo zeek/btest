@@ -1022,11 +1022,11 @@ if not tests:
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
-groups = set([t.group for t in tests if t.group])
+groups = set([t.group for t in tests if t and t.group])
 (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups), output_handler)
 total = succeeded + failed + skipped
 
-if total != len(tests):
+if total != len([t for t in tests if t]):
     output("internal btest error: not all tests processed (%d vs %d)" % (total, len(tests)))
     sys.exit(1)
 
