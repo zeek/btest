@@ -985,9 +985,6 @@ BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["te
 Finalizer = os.path.abspath(getOption("Finalizer", None))
 
 if args:
-    if Options.rerun:
-        error("With --rerun, no further tests can be given on command line")
-
     tests = findTests(args, output_handler)
 
 else:
