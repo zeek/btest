@@ -374,7 +374,7 @@ class Test(object):
 
         cmds = self.cmdlines
 
-        if Finalizer:
+        if Finalizer != "":
             cmds = cmds + [("%s %s" % (Finalizer, self.name), True)]
 
         for cmd in cmds:
@@ -982,7 +982,10 @@ if testdirs:
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
-Finalizer = os.path.abspath(getOption("Finalizer", None))
+Finalizer = getOption("Finalizer", "")
+
+if Finalizer:
+    Finalizer = os.path.abspath(Finalizer)
 
 if args:
     tests = findTests(args, output_handler)
