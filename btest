@@ -180,7 +180,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                     tests = [t]
 
                     if Filters:
-                        filtered_test = copy.deepcopy(test)
+                        filtered_test = copy.deepcopy(t)
                         filtered_test.setFilter(Options.filter)
                         tests += [filtered_test]
                         self._pending.release()
