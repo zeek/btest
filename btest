@@ -225,6 +225,7 @@ class Test(object):
     def __init__(self, file, output_handler):
         self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
+        self.basename = None
         self.name = None
         self.number = 1
         self.group = None
@@ -277,10 +278,11 @@ class Test(object):
 
         (name, ext) = os.path.splitext(self.file)
 
-        self.name = name.replace("/", ".")
-        while self.name.startswith("."):
-            self.name = self.name[1:]
+        self.basename = name.replace("/", ".")
+        while self.basename.startswith("."):
+            self.basename = self.basename[1:]
 
+        self.name = self.basename
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
 
@@ -302,7 +304,8 @@ class Test(object):
         clone = Test("", self.output_handler)
         clone.file = self.file
         clone.number = self.number + 1
-        clone.name = self.name
+        clone.basename = self.basename
+        clone.name = "%s-%d" % (self.basename, clone.number)
         clone.group = self.group
         clone.cmdlines = self.cmdlines
 
@@ -311,9 +314,6 @@ class Test(object):
         return clone
 
     def run(self, mgr):
-        if self.number > 1:
-            self.name = "%s-%d" % (self.name, self.number)
-
         if not self.filter:
             name = self.name
         else:
