@@ -20,7 +20,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
-VERSION = "0.31-13" # Automatically filled in.
+VERSION = "0.31-23" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -183,7 +183,6 @@ class TestManager(multiprocessing.managers.SyncManager):
                         filtered_test = copy.deepcopy(t)
                         filtered_test.setFilter(Options.filter)
                         tests += [filtered_test]
-                        self._pending.release()
 
                     return tests
 

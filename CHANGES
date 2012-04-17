@@ -1,4 +1,28 @@
 
+0.31-23 | 2012-04-16 18:10:02 -0700
+
+  * A number of smaller fixes for bugs, plus polishing, caused by the
+    recent restructuring. (Robin Sommer)
+
+  * Removing the error given when using -r with tests on the command
+    line. It's unnessary and confusing compared to when listing tests
+    in btest.cfg. (Robin Sommer)
+
+  * Adding a new "finalizer" option.
+    
+    ``Finalizer``
+        An executable that will be executed each time any test has
+        succesfully run. It runs in the same directory as the test itself
+        and receives the name of the test as its parameter. The return
+        value indicates whether the test should indeed be considered
+        succeeded. By default, there's no finalizer set. (Robin Sommer)
+
+  * btest is now again overwriting old diag files instead of appending
+    (i.e., back to as it used to be). (Robin Sommer)
+
+  * Diag output is now line-buffered. (Daniel Thayer)
+
+
 0.31-13 | 2012-03-13 15:59:51 -0700
 
   * Adding new option -r that reruns all tests that failed last time.
