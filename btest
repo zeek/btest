@@ -167,8 +167,17 @@ class TestManager(multiprocessing.managers.SyncManager):
                 return
 
             for t in tests:
-                t.run(self)
-                self.testReplayOutput(t)
+                try:
+                    t.run(self)
+                    self.testReplayOutput(t)
+                except KeyboardInterrupt:
+                    if Options.threads:
+                        # Caught by parent thread.
+                        return
+                    else:
+                        # Rethrow
+                        raise
+
 
     def nextTests(self, groups):
         with self._lock:
@@ -177,12 +186,16 @@ class TestManager(multiprocessing.managers.SyncManager):
                 if t and (not t.group or t.group in groups):
                     del self._tests[i]
 
-                    tests = [t]
+                    if Options.filters:
+                        tests = []
 
-                    if Filters:
-                        filtered_test = copy.deepcopy(t)
-                        filtered_test.setFilter(Options.filter)
-                        tests += [filtered_test]
+                        for filter in Options.filters:
+                            filtered_test = copy.deepcopy(t)
+                            filtered_test.setFilter(filter)
+                            tests += [filtered_test]
+
+                    else:
+                        tests = [t]
 
                     return tests
 
@@ -237,6 +250,14 @@ class Test(object):
         self.files = []
         self.requires = []
         self.output_handler = output_handler
+
+    def displayName(self):
+        name = self.name
+
+        if self.filter:
+            name = "%s: %s" % (self.filter, name)
+
+        return name
 
     def setFilter(self, filter):
         self.filter = filter
@@ -314,14 +335,6 @@ class Test(object):
         return clone
 
     def run(self, mgr):
-        if not self.filter:
-            name = self.name
-        else:
-            name = "%s (%s)" % (self.name, self.filter)
-
-        if Options.threads:
-            name = "[%s] %s" % (multiprocessing.current_process().name, name)
-
         self.mgr = mgr
         mgr.testStart(self)
 
@@ -362,7 +375,7 @@ class Test(object):
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-            (success, rc) = self.execute((cmd, True), apply_filter=(self.filter != None))
+            (success, rc) = self.execute((cmd, True), apply_filter=self.filter)
 
             if not success:
                 self.mgr.testSkipped(self)
@@ -378,7 +391,7 @@ class Test(object):
 
         for cmd in cmds:
 
-            (success, rc) = self.execute(cmd, apply_filter=(self.filter != None))
+            (success, rc) = self.execute(cmd, apply_filter=self.filter)
 
             if not success:
                 failures += 1
@@ -412,7 +425,7 @@ class Test(object):
         self.stdout.close()
         self.stderr.close()
 
-    def execute(self, cmd, apply_filter=False):
+    def execute(self, cmd, apply_filter=None):
         (cmdline, expect_success) = cmd
 
         # See if we need to apply a filter.
@@ -421,7 +434,7 @@ class Test(object):
         if apply_filter:
             try:
                 (path, executable) = os.path.split(cmdline.split()[0])
-                filter_cmd = Filters[executable]
+                filter_cmd = Filters[apply_filter][executable]
             except LookupError:
                 pass
 
@@ -432,11 +445,11 @@ class Test(object):
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
             filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(self.localfile))
-            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_filter=False)
+            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_filter=None)
             if not success:
                 return (False, rc)
 
-            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_filter=False)
+            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_filter=None)
             if not success:
                 return (False, rc)
 
@@ -637,7 +650,7 @@ class Forwarder(OutputHandler):
 class Standard(OutputHandler):
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "%s ..." % test.name, nl=False)
+        self.output(test, "%s ..." % test.displayName(), nl=False)
 
     def testCommand(self, test, cmdline):
         pass
@@ -665,7 +678,7 @@ class Brief(OutputHandler):
 
     def testFailed(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "%s ... failed" % test.name)
+        self.output(test, "%s ... failed" % test.displayName())
 
     def testSkipped(self, test):
         pass
@@ -675,7 +688,7 @@ class Verbose(OutputHandler):
 
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "%s ..." % test.name)
+        self.output(test, "%s ..." % test.displayName())
 
     def testCommand(self, test, cmdline):
         self.output(test, self.threadPrefix(), nl=False)
@@ -683,15 +696,15 @@ class Verbose(OutputHandler):
 
     def testSucceeded(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "... %s ok" % test.name)
+        self.output(test, "... %s ok" % test.displayName())
 
     def testFailed(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "... %s failed" % test.name)
+        self.output(test, "... %s failed" % test.displayName())
 
     def testSkipped(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "... %s not available, skipped" % test.name)
+        self.output(test, "... %s not available, skipped" % test.displayName())
 
 class Diag(OutputHandler):
     def __init__(self, options, all=False, file=None):
@@ -735,19 +748,19 @@ class Diag(OutputHandler):
     def testSucceeded(self, test):
         if self._all:
             if self._file:
-                self.output(test, "%s ... ok" % test.name, True, self._file)
+                self.output(test, "%s ... ok" % test.displayName(), True, self._file)
 
             self.showDiag(test)
 
     def testFailed(self, test):
         if self._file:
-            self.output(test, "%s ... failed" % test.name, True, self._file)
+            self.output(test, "%s ... failed" % test.displayName(), True, self._file)
 
         self.showDiag(test)
 
     def testSkipped(self, test):
         if self._file:
-            self.output(test, "%s ... not available, skipped" % test.name, True, self._file)
+            self.output(test, "%s ... not available, skipped" % test.displayName(), True, self._file)
 
 # Walk the given directory and return all test files.
 def findTests(paths, output_handler):
@@ -887,7 +900,7 @@ optparser.add_option("-b", "--brief", action="store_true", dest="brief", default
                      help="outputs only failed tests")
 optparser.add_option("-c", "--config", action="store", type="string", dest="config", default=ConfigDefault,
                      help="configuration file")
-optparser.add_option("-F", "--filter", action="store", type="string", dest="filter", default=None,
+optparser.add_option("-F", "--filter", action="append", dest="filters", default=[],
                      help="active filter in given config file section")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
@@ -955,13 +968,19 @@ if Config.has_section("environment"):
         os.environ[name.upper()] = value
 
 Filters = {}
-if Options.filter:
-    sec = "filters-%s" % Options.filter
+for filter in Options.filters:
+
+    if filter == "-":
+        continue
+
+    Filters[filter] = {}
+    sec = "filters-%s" % filter
+
     if not Config.has_section(sec):
         error("configuration file has no section '%s'" % sec)
 
     for (name, value) in Config.items(sec):
-        Filters[name] = value
+        Filters[filter][name] = value
 
 Substitutions = {}
 if Options.subst:
@@ -1024,12 +1043,18 @@ if not tests:
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
-groups = set([t.group for t in tests if t and t.group])
-(succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups), output_handler)
-total = succeeded + failed + skipped
+try:
+    groups = set([t.group for t in tests if t and t.group])
+    (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups), output_handler)
+    total = succeeded + failed + skipped
+except KeyboardInterrupt:
+    print >>sys.stderr, "Aborted."
+    sys.exit(1)
 
-if total != len([t for t in tests if t]):
-    output("internal btest error: not all tests processed (%d vs %d)" % (total, len(tests)))
+num_tests = len([t for t in tests if t])
+
+if total != num_tests:
+    output("internal btest error: not all tests processed (%d vs %d)" % (total, num_tests))
     sys.exit(1)
 
 if failed > 0:

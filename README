@@ -204,7 +204,11 @@ and 1 otherwise.
         If the file already exists, any new output is appended.
 
     -F FILTER, --filter=FILTER
-        Activates a filter_ defined in the configuration file.
+        Activates a filter_ defined in the configuration file. This
+        option can be given multiple times to run tests with several
+        filters. If ``FILTER`` is ``-`` that refers to running without
+        any filter, which can be used to run tests both with and
+        without a filter by giving both.
 
     -g GROUP, --group=GROUP
         Runs only tests assigned to the given test group, see
