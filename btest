@@ -37,8 +37,9 @@ RE_END_FILE = re.compile("@TEST-END-FILE")
 RE_EXEC     = ("exec",     re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
 RE_REQUIRES = ("requires", re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
 RE_GROUP    = ("group",    re.compile("@TEST-GROUP: *(.*)"), False, True, 1, -1)
+RE_IGNORE_FILTER = ("no-filter",    re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_IGNORE_FILTER)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -190,7 +191,15 @@ class TestManager(multiprocessing.managers.SyncManager):
                         tests = []
 
                         for filter in Options.filters:
+
+                            if filter in t.ignore_filters:
+                                continue
+
                             filtered_test = copy.deepcopy(t)
+
+                            if filter == "-":
+                                filter = ""
+
                             filtered_test.setFilter(filter)
                             tests += [filtered_test]
 
@@ -247,6 +256,7 @@ class Test(object):
         self.diag = None
         self.baseline = None
         self.filter = None
+        self.ignore_filters = []
         self.files = []
         self.requires = []
         self.output_handler = output_handler
@@ -312,6 +322,9 @@ class Test(object):
 
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
+
+        if "no-filter" in cmds:
+            self.ignore_filters = [cmd.strip() for cmd in cmds["no-filter"]]
 
         if Substitutions:
             for (key, val) in Substitutions.items():
@@ -1049,12 +1062,6 @@ try:
     total = succeeded + failed + skipped
 except KeyboardInterrupt:
     print >>sys.stderr, "Aborted."
-    sys.exit(1)
-
-num_tests = len([t for t in tests if t])
-
-if total != num_tests:
-    output("internal btest error: not all tests processed (%d vs %d)" % (total, num_tests))
     sys.exit(1)
 
 if failed > 0:

@@ -481,6 +481,9 @@ supported:
     a particular library is available). Multiple requirements may be
     specified and then all must be met for the test to continue.
 
+``@TEST-NO-FILTER: <filter>``
+    Ignores this test for the given filter (see filters_).
+
 ``@TEST-START-NEXT``
     This is a short-cut for defining multiple test inputs in the
     same file, all executing with the same command lines. When
