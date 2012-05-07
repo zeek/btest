@@ -130,6 +130,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
         self._tests = self.list(tests)
         self._failed_tests = self.list([])
+        self._num_tests = len(self._tests)
 
         num_threads = Options.threads
 
@@ -159,6 +160,13 @@ class TestManager(multiprocessing.managers.SyncManager):
         state.close()
 
         return (self._succeeded.value, self._failed.value, self._skipped.value)
+
+    def percentage(self):
+        if not self._num_tests:
+            return 0
+
+        count = self._succeeded.value + self._failed.value + self._skipped.value
+        return 100.0 * count / self._num_tests
 
     def threadRun(self, groups):
         while True:
@@ -265,7 +273,7 @@ class Test(object):
         name = self.name
 
         if self.filter:
-            name = "%s: %s" % (self.filter, name)
+            name = "%s [%s]" % (name, self.filter)
 
         return name
 
@@ -618,6 +626,9 @@ class OutputHandler:
         """Called when a test is skipped because its dependencies aren't met."""
         pass
 
+    def finished(self):
+        """Called when all tests have been executed."""
+        pass
 
 class Forwarder(OutputHandler):
     """
@@ -660,6 +671,10 @@ class Forwarder(OutputHandler):
         for h in self._handlers:
             h.replayOutput(test)
 
+    def finished(self):
+        for h in self._handlers:
+            h.finished()
+
 class Standard(OutputHandler):
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
@@ -677,6 +692,48 @@ class Standard(OutputHandler):
     def testSkipped(self, test):
         self.output(test, "not available, skipped")
 
+class Console(OutputHandler):
+    """Output handler that writes compact progress report to the console."""
+
+    def __init__(self, options):
+        OutputHandler.__init__(self, options)
+        self.sticky = False
+
+    def testStart(self, test):
+        pass
+        #self.consoleOutput(test, "", False)
+
+    def testCommand(self, test, cmdline):
+        pass
+
+    def testSucceeded(self, test):
+        self.consoleOutput(test, "ok", False)
+
+    def testFailed(self, test):
+        self.consoleOutput(test, "failed", True)
+
+    def testSkipped(self, test):
+        self.consoleOutput(test, "skipped", False)
+
+    def finished(self):
+        sys.stdout.write(chr(27) + '[2K')
+        # sys.stdout.write("\r[100%] ")
+        sys.stdout.write("\r")
+        sys.stdout.flush()
+
+    def consoleOutput(self, test, addl, sticky):
+        line = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
+
+        if addl:
+            line += " " + addl
+
+        sys.stdout.write(chr(27) + '[2K')
+        sys.stdout.write("\r%s" % line.strip())
+
+        if sticky:
+            sys.stdout.write("\n")
+
+        sys.stdout.flush()
 
 class Brief(OutputHandler):
     """Output handler for producing the brief output format."""
@@ -956,7 +1013,10 @@ elif Options.brief:
     output_handlers += [Brief(Options, )]
 
 else:
-    output_handlers += [Standard(Options, )]
+    if sys.stdout.isatty():
+        output_handlers += [Console(Options, )]
+    else:
+        output_handlers += [Standard(Options, )]
 
 if Options.diagall:
     output_handlers += [Diag(Options, True, None)]
@@ -1063,6 +1123,8 @@ try:
 except KeyboardInterrupt:
     print >>sys.stderr, "Aborted."
     sys.exit(1)
+
+output_handler.finished()
 
 if failed > 0:
     skipped = (", %d skipped" % skipped) if skipped > 0 else ""
