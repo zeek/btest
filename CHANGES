@@ -1,4 +1,42 @@
 
+0.31-28 | 2012-05-06 21:27:15 -0700
+
+  * Separating semantics of groups and thread serialization into
+    separate options. -g still specifices @TEST-GROUPs that are to be
+    executed, but these groups don't any longer control which tests
+    get serialized in a parallel execution. For that, there's a new
+    "@TEST-SERIALIZE: <tag>" command that takes a tag and then makes
+    sure all tests with the same tag are run within the same thread.
+    (Robin Sommer)
+
+  * TEST-GROUPS can now be given multiple times now to assign a test
+    to a set of groups. (Robin Sommer)
+
+  * Extended -g to accept a comma-separated list of groups names to
+    run more than one test group. (Robin Sommer)
+
+  * New output handler for console output. This output is now the
+    default when stdout is a terminal. It prints out a compressed
+    output that updates as btest goes through; it also indicates the
+    progress so far. If btest's output is redirected to a
+    non-terminal, is switches back to the old style. (Robin Sommer)
+
+  * New test command @TEST-NO-FILTER: <filter>
+    
+    This allows to ignore a test when running a specific filter. (Robin Sommer)
+
+  * Changing the way filters are activated.
+
+    -F <filter> now activates only the given filter, but doesn't run
+    the standard tests in addition. But one can now give -F a
+    command-separated list of filters to activate them all, and refer
+    to the standard tests without filter as ``-``. (Robin Sommer)
+
+  * Fix to allow numbered test to be given individually on the command
+    line. (E.g., integer.geq-3 for a file that contains three tests).
+    (Robin Sommer)
+
+
 0.31-23 | 2012-04-16 18:10:02 -0700
 
   * A number of smaller fixes for bugs, plus polishing, caused by the

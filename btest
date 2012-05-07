@@ -20,7 +20,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
-VERSION = "0.31-23" # Automatically filled in.
+VERSION = "0.31-28" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -34,12 +34,13 @@ RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
 RE_END_FILE = re.compile("@TEST-END-FILE")
 
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-RE_EXEC     = ("exec",     re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-RE_REQUIRES = ("requires", re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP    = ("group",    re.compile("@TEST-GROUP: *(.*)"), False, True, 1, -1)
-RE_IGNORE_FILTER = ("no-filter",    re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
+RE_EXEC          = ("exec",      re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_REQUIRES      = ("requires",  re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
+RE_GROUP         = ("group",     re.compile("@TEST-GROUP: *(.*)"), False, True, 1, -1)
+RE_SERIALIZE     = ("serialize", re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
+RE_IGNORE_FILTER = ("no-filter", re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_IGNORE_FILTER)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_FILTER)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -120,7 +121,7 @@ class TestManager(multiprocessing.managers.SyncManager):
     def __init__(self):
         super(TestManager, self).__init__()
 
-    def run(self, tests, groups, output_handler):
+    def run(self, tests, output_handler):
         self.start()
 
         self._output_handler = output_handler
@@ -138,7 +139,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             threads = []
 
             for i in range(num_threads):
-                t = multiprocessing.Process(name="#%d" % (i+1), target=lambda : self.threadRun(groups[i::num_threads]))
+                t = multiprocessing.Process(name="#%d" % (i+1), target=lambda : self.threadRun(i))
                 t.start()
                 threads += [t]
 
@@ -147,7 +148,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         else:
             # No threads, just run all directly.
-            self.threadRun(groups)
+            self.threadRun(0)
 
         try:
             state = open(StateFile, "w")
@@ -168,9 +169,9 @@ class TestManager(multiprocessing.managers.SyncManager):
         count = self._succeeded.value + self._failed.value + self._skipped.value
         return 100.0 * count / self._num_tests
 
-    def threadRun(self, groups):
+    def threadRun(self, thread_num):
         while True:
-            tests = self.nextTests(groups)
+            tests = self.nextTests(thread_num)
             if not tests:
                 # No more work for us.
                 return
@@ -188,35 +189,44 @@ class TestManager(multiprocessing.managers.SyncManager):
                         raise
 
 
-    def nextTests(self, groups):
+    def nextTests(self, thread_num):
         with self._lock:
             for i in range(len(self._tests)):
                 t = self._tests[i]
-                if t and (not t.group or t.group in groups):
-                    del self._tests[i]
 
-                    if Options.filters:
-                        tests = []
+                if not t:
+                    continue
 
-                        for filter in Options.filters:
+                if Options.threads and t.serialize:
+                    if hash(t.serialize()) % Options.thread != thread_num:
+                        # Not ours.
+                        continue
 
-                            if filter in t.ignore_filters:
-                                continue
+                # We'll execute it, delete from queue.
+                del self._tests[i]
 
-                            filtered_test = copy.deepcopy(t)
+                if Options.filters:
+                    tests = []
 
-                            if filter == "-":
-                                filter = ""
+                    for filter in Options.filters:
 
-                            filtered_test.setFilter(filter)
-                            tests += [filtered_test]
+                        if filter in t.ignore_filters:
+                            continue
 
-                    else:
-                        tests = [t]
+                        filtered_test = copy.deepcopy(t)
 
-                    return tests
+                        if filter == "-":
+                            filter = ""
 
-        # No more tests for this group.
+                        filtered_test.setFilter(filter)
+                        tests += [filtered_test]
+
+                else:
+                    tests = [t]
+
+                return tests
+
+        # No more tests for us.
         return None
 
     def lock(self):
@@ -258,7 +268,8 @@ class Test(object):
         self.basename = None
         self.name = None
         self.number = 1
-        self.group = None
+        self.serialize = None
+        self.groups = ()
         self.cmdlines = []
         self.tmpdir = None
         self.diag = None
@@ -325,8 +336,11 @@ class Test(object):
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
 
+        if "serialize" in cmds:
+            self.serialize = cmds["serialze"]
+
         if "group" in cmds:
-            self.group = cmds["group"]
+            self.groups = set(cmds["groups"])
 
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
@@ -348,7 +362,8 @@ class Test(object):
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
-        clone.group = self.group
+        clone.serialize = clone.serialize
+        clone.groups = self.groups
         clone.cmdlines = self.cmdlines
 
         clone.content = content
@@ -978,8 +993,8 @@ optparser.add_option("-S", "--subst", action="store", type="string", dest="subst
                      help="active substitution in given config file section")
 optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
                      help="number of threads to run tests in simultaniously; 0 disables threading")
-optparser.add_option("-g", "--group", action="store", type="string", dest="group", default=None,
-                     help="execute only test of given group, or '-' for those without any group")
+optparser.add_option("-g", "--group", action="store", type="string", dest="groups", default=None,
+                     help="execute only test of given command-separated list of groups")
 optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
                      help="Execute commands for tests that failed last time")
 
@@ -1097,12 +1112,15 @@ else:
     else:
         tests = Config.configured_tests
 
-if Options.group:
+if Options.groups:
+
+    Options.groups = set(Options.groups.split(","))
+
     def rightGroup(t):
-        if Options.group == t.group:
+        if t.groups & Options.groups:
             return True
 
-        if Options.group == "-" and not t.group:
+        if "-" in Options.groups and not t.groups:
             return True
 
         return False
@@ -1117,8 +1135,7 @@ mkdir(BaselineDir)
 mkdir(TmpDir)
 
 try:
-    groups = set([t.group for t in tests if t and t.group])
-    (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), list(groups), output_handler)
+    (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
 except KeyboardInterrupt:
     print >>sys.stderr, "Aborted."

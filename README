@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.31-23
+.. |version| replace:: 0.31-28
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -210,17 +210,18 @@ and 1 otherwise.
         any filter, which can be used to run tests both with and
         without a filter by giving both.
 
-    -g GROUP, --group=GROUP
-        Runs only tests assigned to the given test group, see
-        `@TEST-GROUP`_. Specifying ``-`` as the group name runs all
-        tests that do not belong to any group.
+    -g GROUPS, --group=GROUPS
+        Runs only tests assigned to the given test groups, see
+        `@TEST-GROUP`_. Multiple groups can be given as
+        comma-separated list. Specifying ``-`` as a group name select
+        all tests that do not belong to any group.
 
     -j THREADS, --jobs=THREADS
         Runs up to the given number of tests in parallel. By default,
         BTest assumes that all tests can be executed concurrently
         without further constraints. One can however ensure
-        serialization of subsets by assigning them to the same test
-        group, see `@TEST-GROUP`_.
+        serialization of subsets by assigning them to the same
+        serialization set, see `@TEST-SERIALIZE`_.
 
     -r, --rerun
         Runs only tests that failed last time. After each execution,
@@ -286,7 +287,7 @@ due to Python`'s ``ConfigParser`` module ...).
 Furthermore, all values can use standard "backtick-syntax" to
 include the output of external commands (e.g., xyz=`\echo test\`).
 Note that the backtick expansion is performed after any ``%(..)``
-have already been replaced (including within the backticks). 
+have already been replaced (including within the backticks).
 
 Options
 ~~~~~~~
@@ -405,7 +406,7 @@ Once the substitution is activated by running ``btest`` with
 is replaced with ``gcc -O2``. The replacement is simple string
 substitution so it works in fact not only with commands but anything
 found in the command line; it however only replaces full words, not subparts
-of words. 
+of words.
 
 Writing Tests
 -------------
@@ -559,15 +560,17 @@ supported:
 
 ``@TEST-GROUP: <group>``
 
-    Assigns the test to a group of name ``<group>``. Groups have two
-    purposes:
+    Assigns the test to a group of name ``<group>``. By using option
+    ``-g`` one can limit execution to all tests that belong to given
+    group (or a set of groups).
 
-        1. By using option ``-g`` one can limit execution to all tests
-           that belong to certain group.
+.. _@TEST-SERIALIZE:
 
-        2. When using option ``-j`` to parallelize execution, all
-           tests part of the same group are guaranteed to run
-           sequentially.
+``@TEST-SERIALIZE: <set>``
+
+   When using option ``-j`` to parallelize execution, all tests that
+   specify the same serialization set are guaranteed to run
+   sequentially. ``<set>`` is an arbitrary user-chosen string.
 
 
 Canonifying Diffs
@@ -597,11 +600,11 @@ situation:
     it's like using ``cmdline &`` in a shell script. Test execution
     continues immediately with the next command. Note that the spawned
     command is *not* run in the current directory, but instead in a
-    newly created sub-directory called ``<tag>``. This allows 
+    newly created sub-directory called ``<tag>``. This allows
     spawning multiple instances of the same process without needing to
     wory about conflicting outputs. If you want to access a command's
     output later, like with ``btest-diff``, use ``<tag>/foo.log`` to
-    access it. 
+    access it.
 
 ``btest-bg-wait [-k] <timeout>``
 
