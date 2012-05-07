@@ -36,7 +36,7 @@ RE_END_FILE = re.compile("@TEST-END-FILE")
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
 RE_EXEC          = ("exec",      re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
 RE_REQUIRES      = ("requires",  re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP         = ("group",     re.compile("@TEST-GROUP: *(.*)"), False, True, 1, -1)
+RE_GROUP         = ("group",     re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
 RE_SERIALIZE     = ("serialize", re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
 RE_IGNORE_FILTER = ("no-filter", re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
 
@@ -985,16 +985,16 @@ optparser.add_option("-b", "--brief", action="store_true", dest="brief", default
                      help="outputs only failed tests")
 optparser.add_option("-c", "--config", action="store", type="string", dest="config", default=ConfigDefault,
                      help="configuration file")
-optparser.add_option("-F", "--filter", action="append", dest="filters", default=[],
-                     help="active filter in given config file section")
+optparser.add_option("-F", "--filter", action="store", dest="filters", default="",
+                     help="active filters given as command-separated list of groups")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
 optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
                      help="active substitution in given config file section")
 optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
                      help="number of threads to run tests in simultaniously; 0 disables threading")
-optparser.add_option("-g", "--group", action="store", type="string", dest="groups", default=None,
-                     help="execute only test of given command-separated list of groups")
+optparser.add_option("-g", "--groups", action="store", type="string", dest="groups", default="",
+                     help="execute only tests of given command-separated list of groups")
 optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
                      help="Execute commands for tests that failed last time")
 
@@ -1056,19 +1056,23 @@ if Config.has_section("environment"):
         os.environ[name.upper()] = value
 
 Filters = {}
-for filter in Options.filters:
 
-    if filter == "-":
-        continue
+if Options.filters:
+    Options.filters = Options.filters.split(",")
 
-    Filters[filter] = {}
-    sec = "filters-%s" % filter
+    for filter in Options.filters:
 
-    if not Config.has_section(sec):
-        error("configuration file has no section '%s'" % sec)
+        if filter == "-":
+            continue
 
-    for (name, value) in Config.items(sec):
-        Filters[filter][name] = value
+        Filters[filter] = {}
+        sec = "filters-%s" % filter
+
+        if not Config.has_section(sec):
+            error("configuration file has no section '%s'" % sec)
+
+        for (name, value) in Config.items(sec):
+            Filters[filter][name] = value
 
 Substitutions = {}
 if Options.subst:
