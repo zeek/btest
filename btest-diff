@@ -28,14 +28,14 @@ fi
 
 tmpfiles=""
 function delete_tmps {
-     rm -f $tmpfiles
+     rm -f $tmpfiles 2>/dev/null
 }
 
 trap delete_tmps 0
 
 result=2
 
-rm -f $TEST_DIAGNOSTICS
+rm -f $TEST_DIAGNOSTICS  2>/dev/null
 
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 
