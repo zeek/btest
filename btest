@@ -997,6 +997,8 @@ optparser.add_option("-g", "--groups", action="store", type="string", dest="grou
                      help="execute only tests of given command-separated list of groups")
 optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
                      help="Execute commands for tests that failed last time")
+optparser.add_option("-q", "--quiet", action="store_true", dest="quiet", default=False,
+                     help="Suppress information output other than about failed tests")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1153,6 +1155,7 @@ if failed > 0:
     sys.exit(1)
 
 else:
-    output("all %d tests successful" % total)
+    if not Options.quiet:
+        output("all %d tests successful" % total)
     sys.exit(0)
 
