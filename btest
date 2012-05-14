@@ -209,7 +209,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                     continue
 
                 if Options.threads and t.serialize:
-                    if hash(t.serialize()) % Options.thread != thread_num:
+                    if hash(t.serialize) % Options.threads != thread_num:
                         # Not ours.
                         continue
 
@@ -280,7 +280,7 @@ class Test(object):
         self.name = None
         self.number = 1
         self.serialize = None
-        self.groups = ()
+        self.groups = set()
         self.cmdlines = []
         self.tmpdir = None
         self.diag = None
@@ -349,10 +349,10 @@ class Test(object):
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
 
         if "serialize" in cmds:
-            self.serialize = cmds["serialze"]
+            self.serialize = cmds["serialize"]
 
         if "group" in cmds:
-            self.groups = set(cmds["groups"])
+            self.groups = set(cmd.strip() for cmd in cmds["group"])
 
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
@@ -729,8 +729,7 @@ class Console(OutputHandler):
         self.sticky = False
 
     def testStart(self, test):
-        pass
-        #self.consoleOutput(test, "", False)
+        self.consoleOutput(test, "", False)
 
     def testCommand(self, test, cmdline):
         pass
