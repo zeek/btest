@@ -1,4 +1,25 @@
 
+0.31-33 | 2012-05-13 17:08:15 -0700
+
+  * New command to copy a file into a test's directory.
+
+    ``@TEST-COPY-FILE: <file>``
+        Copy the given file into the test's directory before the test is
+        run. If ``<file>`` is a relative path, it's interpreted relative
+        to the BTest's base directory. Environment variables in ``<file>``
+        will be replaced if enclosed in ``${..}``. This command can be
+        given multiple times. (Robin Sommer)
+
+  * Suppressing error messages when btest-diff can't remove diag file.
+    (Robin Sommer)
+
+  * Adding option -q/--quiet to suppress informational non-error
+    output. (Robin Sommer)
+
+  * Option -F also takes a comma-separated list to specify multiple
+    filters , rather than having to give -F multiple times. (Robin
+    Sommer)
+
 0.31-28 | 2012-05-06 21:27:15 -0700
 
   * Separating semantics of groups and thread serialization into
