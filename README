@@ -635,9 +635,6 @@ To-Do List
 
 The following features would be nice to have:
 
-* Parallelize execution of tests for faster execution on multi-core
-  systems (prototype exists).
-
 * Output test results in a machine-readable format that can then be
   parsed and pretty-printed by some frontend tool (potentially
   assembling and aggregating output from different systems).
