@@ -1033,6 +1033,9 @@ defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(Options.config)
 
+if Options.quiet:
+    Options.brief = True
+
 # Determine output handlers to use.
 
 output_handlers = []
