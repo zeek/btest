@@ -433,6 +433,9 @@ supported:
     the test file is located. The latter can be used to reference
     further files also located there.
 
+    Environment variables in ``<cmdline>`` will be replaced if
+    enclosed in ``${...}``.
+
     In addition to environment variables defined in the
     configuration files, there are further ones that are passed into
     the commands:
@@ -484,6 +487,13 @@ supported:
 
 ``@TEST-NO-FILTER: <filter>``
     Ignores this test for the given filter (see filters_).
+
+``@TEST-COPY-FILE: <file>``
+    Copy the given file into the test's directory before the test is
+    run. If ``<file>`` is a relative path, it's interpreted relative
+    to the BTest's base directory. Environment variables in ``<file>``
+    will be replaced if enclosed in ``${..}``. This command can be
+    given multiple times.
 
 ``@TEST-START-NEXT``
     This is a short-cut for defining multiple test inputs in the

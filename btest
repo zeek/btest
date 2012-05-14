@@ -39,8 +39,9 @@ RE_REQUIRES      = ("requires",  re.compile("@TEST-REQUIRES: *(.*)"), True, True
 RE_GROUP         = ("group",     re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
 RE_SERIALIZE     = ("serialize", re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
 RE_IGNORE_FILTER = ("no-filter", re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
+RE_COPY_FILE     = ("copy-file", re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_FILTER)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_FILTER, RE_COPY_FILE)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -112,6 +113,16 @@ def cpExpandBackticks(self, section, option, rawval, vars):
     value = reBackticks.sub(_exec, value)
 
     return value
+
+# Replace environment variables in string.
+def replaceEnvs(s):
+    def replace_with_env(m):
+        try:
+            return os.environ[m.group(1)]
+        except KeyError:
+            return ""
+
+    return RE_ENV.sub(replace_with_env, s)
 
 cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
 ConfigParser.ConfigParser._interpolate = cpExpandBackticks
@@ -278,6 +289,7 @@ class Test(object):
         self.ignore_filters = []
         self.files = []
         self.requires = []
+        self.copy_files = []
         self.output_handler = output_handler
 
     def displayName(self):
@@ -345,6 +357,9 @@ class Test(object):
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
 
+        if "copy-file" in cmds:
+            self.copy_files = [cmd.strip() for cmd in cmds["copy-file"]]
+
         if "no-filter" in cmds:
             self.ignore_filters = [cmd.strip() for cmd in cmds["no-filter"]]
 
@@ -398,6 +413,13 @@ class Test(object):
                 print >>ffile, line,
 
             ffile.close()
+
+        for file in self.copy_files:
+            src = replaceEnvs(file)
+            try:
+                shutil.copy2(src, self.tmpdir)
+            except IOError, e:
+                error("cannot copy %s: %s" % (src, e))
 
         self.localfile = os.path.join(self.tmpdir, os.path.basename(self.file))
 
@@ -496,15 +518,7 @@ class Test(object):
         # Replace special names.
         cmdline = RE_INPUT.sub(localfile, cmdline)
         cmdline = RE_DIR.sub(self.dir, cmdline)
-
-        # Replace environment variables.
-        def replace_with_env(m):
-            try:
-                return os.environ[m.group(1)]
-            except KeyError:
-                return ""
-
-        cmdline = RE_ENV.sub(replace_with_env, cmdline)
+        cmdline = replaceEnvs(cmdline)
 
         print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[expect_success])
 
