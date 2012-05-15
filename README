@@ -630,6 +630,152 @@ situation:
     not considered a failure in this case. This script also collect
     the processes' stdout and stderr outputs for diagnostics output.
 
+Integration with Sphinx
+=======================
+
+``btest`` comes with a new directive for the documentation framework
+``Sphinx <http://sphinx.pocoo.org>`_. The directive allows to write a
+test directly inside a Sphinx document, and then to include output
+from the test's command into the generated documentation. The same
+tests can also run externally and will catch if any changes to the
+included content occur. The following walks through setting this up.
+
+Configuration
+-------------
+
+First, you need to tell Sphinx a base directory for the ``btest``
+configuration as well as a directory in there where to store tests
+it extracts from the Sphinx documentation. Typically, you'd just
+create a new subdirectory ``tests`` in the Sphinx project for the
+``btest`` setup and then store the tests in there in, e.g.,
+``doc/``::
+
+    cd <sphinx-root>
+    mkdir tests
+    mkdir tests/doc
+
+Then add the following to your Sphinx ``conf.py``::
+
+    extensions += ["btest.sphinx"]
+    btest_base="tests"         # Relative to Sphinx-root.
+    btest_tests="doc"          # Relative to btest_base.
+
+Finally, create a ``btest.cfg`` in ``tests/`` as usual and add
+``doc/`` to the ``TestDirs`` option.
+
+Including a Test into a Sphinx Document
+---------------------------------------
+
+The ``btest`` extension provides a new directive to include a test
+inside a Sphinx document::
+
+
+    .. btest:: <test-name>
+
+        <test content>
+
+Here, ``<test-name>`` is an custom name for the test; it will be
+stored in ``btest_tests`` under that name. ``<test content>`` is just
+a standard test as you would normally put into one of the
+``TestDirs``. Example::
+
+
+    .. btest:: just-a-test
+
+        @TEST-EXEC: expr 2 + 2
+
+When you now run Sphinx, it will (1) store the test content into
+``tests/doc/just-a-test`` (assuming the above path layout), and (2)
+execute the test by running ``btest`` on it. You can then run
+``btest`` manually in ``tests/`` as well and it will execute the test
+just as it would in a standard setup. If a test fails when Sphinx runs
+it, it will be a corresponding error and include the diagnostic output
+into the document.
+
+By default, nothing else will be included into the generated
+documentation, i.e., the above test will just turn into an empty text
+block. However, ``btest`` comes with a set of scripts that you can use
+to specify content to be included. As a simple example,
+``btest-rst-cmd <cmdline>`` will execute a command and (if it
+succeeds) include both the command line and the standard output into
+the documentation. In addition, it also runs `btest-diff`` on all of
+the included content to catch if it changes. Example::
+
+    .. btest:: another-test
+
+        @TEST-EXEC: btest-rst-cmd echo Hello, world!
+
+When running Sphinx, this will render as:
+
+.. code::
+
+    # echo Hello, world!
+    Hello world!
+
+Note that it doesn't create the ``btest-diff`` baseline automatically.
+To do that, run ``btest -b`` manually in ``tests/`` (and check it's
+correct!).
+
+Scripts
+-------
+
+The following Sphinx support scripts come with ``btest``:
+
+``btest-rst-cmd [options] <cmdline>``
+
+    By default, this executes ``<cmdline>`` and includes both the
+    command line itself and its standard output into the generated
+    documentation. It also runs ``btest-diff`` on the included
+    content. See above for an example.
+
+    This script provides the following options:
+
+        -c ALTERNATIVE_CMDLINE
+            Show ``ALTERNATIVE_CMDLINE`` in the generated
+            documentation instead of the one actually executed. (It
+            still runs the ``<cmdline>`` given outside the option.)
+
+        -d
+            Do not actually execute ``<cmdline>``; just format it for
+            the generated documentation and include no further output.
+
+        -f FILTER_CMD
+            Pipe the command line's output through ``FILTER_CMD``
+            before including.". If ``-r`` is given, it filter's the
+            file's content instead of stdout.
+
+        -o
+            Do not include the executed command into the generated
+            documentation, just its output.
+
+        -r FILE
+            Insert ``FILE`` into output instead of stdout.
+
+
+``btest-rst-include <file>``
+
+    Includes ``<file>`` inside a code block and runs ``btest-diff`` on
+    its content.
+
+``btest-rst-pipe <cmdline>``
+
+    Executes ``<cmdline>``, includes its standard output inside a code
+    block, and runs ``btest-diff`` on it. Note that this script does
+    not include the command line itself into the code block, just the
+    output.
+
+.. note::
+
+    All these scripts can be run directly from the command line to show
+    the reST code they generate.
+
+.. note::
+
+    ``btest-rst-cmd`` can do everything the other scripts provide if
+    you give it the right options. In fact, the other scripts are
+    provided just for convenience and leverage ``btest-rst-cmd``
+    internally.
+
 To-Do List
 ==========
 
