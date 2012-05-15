@@ -1,0 +1,92 @@
+#! /usr/bin/env bash
+#
+# Executes a command and formats its stdout in reST. Then runs btest-diff on it.
+#
+
+trap "rm -f $tmps; exit" INT TERM EXIT
+
+function usage()
+{
+    echo
+    echo "`basename $0` [options] <command line>"
+    echo
+    echo "    -d          Do not actually execute command; just format the command line."
+    echo "    -h          Show this help."
+    echo "    -r <file>   Insert <file> into output, rather than stdout."
+    echo "    -o          Do not include command into output."
+    echo "    -c <cmd>    Show <cmd> in output instead of the one actually executed."
+    echo "    -f <filter> Run <filter> command on command output (or file) before including."
+    echo
+    exit 1
+}
+
+stdout=`mktemp -t $(basename $0).XXX`
+cmd_out=`mktemp -t $(basename $0).XXX`
+tmps="$tmps $stdout $cmd_out"
+
+include=$cmd_out
+show_command=1
+cmd_display=""
+dry=0
+
+while getopts "odhr:f:c:" opt; do
+    case $opt in
+        h) usage;;
+        o) show_command=0;;
+        r) include=$OPTARG;;
+        d) dry=1; include="";;
+        c) cmd_display=$OPTARG;;
+        f) filter=$OPTARG;;
+        *) exit 1;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
+cmd=$@
+test "$cmd_display" == "" && cmd_display=$cmd
+test "$filter" == "" && filter=cat
+
+test "$cmd" == "" && usage;
+
+if [ "$dry" != "1" ]; then
+    if ! eval $cmd >$cmd_out; then
+        exit 1
+    fi
+fi
+
+# Generate reST output.
+
+if [ "$show_command" == "1" ]; then
+    echo ".. code-block:: none" >>$stdout
+    echo >>$stdout
+    echo "  # $cmd_display" >>$stdout;
+else
+    echo ".. code-block:: guess" >>$stdout
+    echo >>$stdout
+fi
+
+for i in $include; do
+    cat $i | eval $filter | sed 's/^/  /g' >>$stdout
+done
+
+echo >>$stdout
+
+# Branch depending on where this script was started from.
+
+if [ "$BTEST_RST_OUTPUT" != "" ]; then
+    # Running from inside Sphinx, just outout to where it tells us.
+    cat $stdout >>$BTEST_RST_OUTPUT
+    exit 0
+fi
+
+if [ "$TEST_MODE" != "" ]; then
+    # Running from btest, don't output anything but diff.
+    btest-diff $stdout
+    exit 0
+fi
+
+# Running from command line, just print out.
+cat $stdout
+
+
