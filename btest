@@ -20,7 +20,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
-VERSION = "0.31-28" # Automatically filled in.
+VERSION = "0.31-33" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -161,15 +161,17 @@ class TestManager(multiprocessing.managers.SyncManager):
             # No threads, just run all directly.
             self.threadRun(0)
 
-        try:
-            state = open(StateFile, "w")
-        except IOError, e:
-            error("cannot open state file %s" % StateFile)
+        # Record failed tests if not updating.
+        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
+            try:
+                state = open(StateFile, "w")
+            except IOError, e:
+                error("cannot open state file %s" % StateFile)
 
-        for t in self._failed_tests:
-            print >>state, t
+            for t in self._failed_tests:
+                print >>state, t
 
-        state.close()
+            state.close()
 
         return (self._succeeded.value, self._failed.value, self._skipped.value)
 
@@ -209,7 +211,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                     continue
 
                 if Options.threads and t.serialize:
-                    if hash(t.serialize()) % Options.thread != thread_num:
+                    if hash(t.serialize) % Options.threads != thread_num:
                         # Not ours.
                         continue
 
@@ -280,7 +282,7 @@ class Test(object):
         self.name = None
         self.number = 1
         self.serialize = None
-        self.groups = ()
+        self.groups = set()
         self.cmdlines = []
         self.tmpdir = None
         self.diag = None
@@ -349,10 +351,10 @@ class Test(object):
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
 
         if "serialize" in cmds:
-            self.serialize = cmds["serialze"]
+            self.serialize = cmds["serialize"]
 
         if "group" in cmds:
-            self.groups = set(cmds["groups"])
+            self.groups = set(cmd.strip() for cmd in cmds["group"])
 
         if "requires" in cmds:
             self.requires = [cmd.strip() for cmd in cmds["requires"]]
@@ -729,8 +731,7 @@ class Console(OutputHandler):
         self.sticky = False
 
     def testStart(self, test):
-        pass
-        #self.consoleOutput(test, "", False)
+        self.consoleOutput(test, "", False)
 
     def testCommand(self, test, cmdline):
         pass
@@ -1032,6 +1033,9 @@ defaults["testbase"] = os.path.abspath(basedir)
 defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(Options.config)
+
+if Options.quiet:
+    Options.brief = True
 
 # Determine output handlers to use.
 
