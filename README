@@ -9,9 +9,9 @@ BTest - A Simple Driver for Basic Unit Tests
 
 .. rst-class:: opening
 
-    The ``btest`` is simple framework for writing unit tests. Freely
-    borrowing some ideas from other packages, it's main objective to
-    provide am easy-to-use, straight-forward driver for a suite of
+    The ``btest`` is a simple framework for writing unit tests. Freely
+    borrowing some ideas from other packages, it's main objective is to
+    provide an easy-to-use, straightforward driver for a suite of
     shell-based tests. Each test consists of a set of command lines that
     will be executed, and success is determined based on their exit
     codes. ``btest`` comes with some additional tools that can be used
@@ -44,7 +44,7 @@ Installation is simple and standard::
     python setup.py install
 
 This will install a few scripts: ``btest`` is the main driver program,
-and there are number of further helper scripts that we discuss below
+and there are a number of further helper scripts that we discuss below
 (including ``btest-diff``, which is a tool for comparing output to a
 previously established baseline).
 
@@ -52,7 +52,8 @@ Writing a Simple Test
 =====================
 
 In the most simple case, ``btest`` simply executes a set of command
-lines, each of which must be prefixed with ``@TEST-EXEC:``::
+lines, each of which must be prefixed with ``@TEST-EXEC:``
+::
 
     > cat examples/t1
     @TEST-EXEC: echo "Foo" | grep -q Foo
@@ -77,7 +78,7 @@ Usually you will run just all tests found in a directory::
     1 test failed
 
 Why do we need the ``@TEST-EXEC:`` prefixes? Because the file
-containing the test can simultaneously acts as *its input*. Let's
+containing the test can simultaneously act as *its input*. Let's
 say we want to verify a shell script::
 
     > cat examples/t3.sh
@@ -98,7 +99,7 @@ line to the test that produces the output we want to check, and then
 run ``btest-diff`` to make sure it matches a previously recorded
 baseline. ``btest-diff`` is itself just a script that returns
 success if the output is as expected, and failure otherwise. In the
-follwing example, we use an awk script as a fancy way to print all
+following example, we use an awk script as a fancy way to print all
 file names starting with a dot in the user's home directory. We
 write that list into a file called ``dots`` and then check whether
 its content matches what we know from last time::
@@ -174,7 +175,7 @@ recursively scan the directories and assume all files found to be
 tests to perform. It is however possible to exclude certain files by
 specifying a suitable `configuration file`_.
 
-``btest`` returns exit code 0 if all tests have succesfully passed,
+``btest`` returns exit code 0 if all tests have successfully passed,
 and 1 otherwise.
 
 ``btest`` accepts the following options:
@@ -184,8 +185,8 @@ and 1 otherwise.
         pass, there will not be any output at all.
 
     -c CONFIG, --config=CONFIG
-        Specifies an alternative `configuration`_ file to use. If not
-        speicfiied, the default is to use a file called ``btest.cfg``
+        Specifies an alternative `configuration file`_ to use. If not
+        specified, the default is to use a file called ``btest.cfg``
         if found in the current directory.
 
     -d, --diagnostics
@@ -212,8 +213,8 @@ and 1 otherwise.
 
     -g GROUPS, --group=GROUPS
         Runs only tests assigned to the given test groups, see
-        `@TEST-GROUP`_. Multiple groups can be given as
-        comma-separated list. Specifying ``-`` as a group name select
+        `@TEST-GROUP`_. Multiple groups can be given as a
+        comma-separated list. Specifying ``-`` as a group name selects
         all tests that do not belong to any group.
 
     -j THREADS, --jobs=THREADS
@@ -237,16 +238,16 @@ and 1 otherwise.
         Does not delete any temporary files created for running the
         tests (including their outputs). By default, the temporary
         files for a test will be located in ``.tmp/<test>/``, where
-        ``<test>`` the path to the test file with all slashes replaced
+        ``<test>`` is the path to the test file with all slashes replaced
         with dots (e.g., the files for ``example/t3.sh`` will be in
         ``.tmp/example.t3.sh``.
 
     -U, --update-baseline
         Records a new baseline for all ``btest-diff`` commands found
         in any of the specified tests. To do this, all tests are run
-        as normal except that when ``btest-diff`` is executed, is
+        as normal except that when ``btest-diff`` is executed, it
         does not compute a diff but instead considers the given file
-        to authoritative and records it as the version to compare
+        to be authoritative and records it as the version to compare
         with in future runs.
 
     -u, --update-interactive
@@ -269,7 +270,7 @@ Configuration
 
 Specifics of ``btest``'s execution can be tuned with a configuration
 file, which by default is ``btest.cfg`` if that's found in the
-current directory. It can alternatively be specificied with the
+current directory. It can alternatively be specified with the
 ``--config`` command line option. The configuration file is
 "INI-style", and an example comes with the distribution, see
 ``btest.cfg.example``. A configuration file has one main section,
@@ -283,7 +284,7 @@ one where the configuration file is located if such is given/found,
 or the current working directory if not. When setting values for
 configuration options, the absolute path to the base directory is
 available by using the macro ``%(testbase)s`` (the weird syntax is
-due to Python`'s ``ConfigParser`` module ...).
+due to Python's ``ConfigParser`` module).
 
 Furthermore, all values can use standard "backtick-syntax" to
 include the output of external commands (e.g., xyz=`\echo test\`).
@@ -314,8 +315,8 @@ configuration file:
     when scanning test directories recursively. Default is empty.
 
 ``IgnoreFiles``
-    A space-separated lists of filename globs matching files to
-    ignore when wscanning given test directories recursively.
+    A space-separated list of filename globs matching files to
+    ignore when scanning given test directories recursively.
     Default is empty.
 
 ``StateFile``
@@ -324,10 +325,10 @@ configuration file:
 
 ``Finalizer``
     An executable that will be executed each time any test has
-    succesfully run. It runs in the same directory as the test itself
+    successfully run. It runs in the same directory as the test itself
     and receives the name of the test as its parameter. The return
     value indicates whether the test should indeed be considered
-    succeeded. By default, there's no finalizer set.
+    successful. By default, there's no finalizer set.
 
 .. _environment variables:
 
@@ -335,14 +336,14 @@ Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
 
 A special section ``environment`` defines environment variables that
-will be propapated to all tests::
+will be propagated to all tests::
 
      [environment]
      CFLAGS=-O3
      PATH=%(testbase)s/bin:%(default_path)s
 
 Note how ``PATH`` can be adjusted to include local scripts: the
-example above prefixes it with a local ``bin/`` directory inside
+example above prefixes it with a local ``bin/`` directory inside the
 base directory, using the predefined ``default_path`` macro to refer
 to the ``PATH`` as it is set by default.
 
@@ -361,7 +362,7 @@ section ``[filter-<name>]`` to the configuration file. This section
 must have exactly one entry, and the name of that entry is
 interpreted as the name of a command which's input is to be
 filtered.  The value of that entry is the name of a filter script
-that will be with two arguments representing input and output files,
+that will be run with two arguments representing input and output files,
 respectively. Example::
 
     [filter-cat]
@@ -375,7 +376,7 @@ original command but with the filtered output).  In the simplest
 case, the filter could be a no-op in the form ``cp $1 $2``.
 
 .. note::
-    There are few limitations to the filter concept currently:
+    There are a few limitations to the filter concept currently:
 
     * Filters are *always* fed with ``%INPUT`` as their first
       argument. We should add a way to filter other files as well.
@@ -392,9 +393,9 @@ case, the filter could be a no-op in the form ``cp $1 $2``.
 Substitutions
 ~~~~~~~~~~~~~
 
-Substitutions are similar to filters, yet they do net adapt the
-input but the command line being exectued. A substitutions is defined by adding a
-section ``[subst-<name>]`` to the configuration file. This section
+Substitutions are similar to filters, yet they do not adapt the
+input but the command line being exectued. A substitution is defined by adding
+a section ``[subst-<name>]`` to the configuration file. This section
 must have exactly one entry, and the name of that entry is
 interpreted as the name of a command that is to be replaced with
 something else. Example::
@@ -405,8 +406,8 @@ something else. Example::
 Once the substitution is activated by running ``btest`` with
 ``--subst=opt``, every time a ``@TEST-EXEC`` executes ``gcc``, that
 is replaced with ``gcc -O2``. The replacement is simple string
-substitution so it works in fact not only with commands but anything
-found in the command line; it however only replaces full words, not subparts
+substitution so it works not only with commands but anything
+found on the command line; it however only replaces full words, not subparts
 of words.
 
 Writing Tests
@@ -449,8 +450,8 @@ supported:
 
         ``TEST_MODE``
             This is normally set to ``TEST``, but will be ``UPDATE``
-            if ``btest`` is run with ``--update-baseline`` and
-            ``UPDATE_INTERACTIVE`` with ``--update-interactive``.
+            if ``btest`` is run with ``--update-baseline``, or
+            ``UPDATE_INTERACTIVE`` if run with ``--update-interactive``.
 
         ``TEST_BASELINE``
             A filename where the command can save permanent
@@ -572,7 +573,7 @@ supported:
 ``@TEST-GROUP: <group>``
 
     Assigns the test to a group of name ``<group>``. By using option
-    ``-g`` one can limit execution to all tests that belong to given
+    ``-g`` one can limit execution to all tests that belong to a given
     group (or a set of groups).
 
 .. _@TEST-SERIALIZE:
@@ -613,29 +614,29 @@ situation:
     command is *not* run in the current directory, but instead in a
     newly created sub-directory called ``<tag>``. This allows
     spawning multiple instances of the same process without needing to
-    wory about conflicting outputs. If you want to access a command's
+    worry about conflicting outputs. If you want to access a command's
     output later, like with ``btest-diff``, use ``<tag>/foo.log`` to
     access it.
 
 ``btest-bg-wait [-k] <timeout>``
 
-    This scripts waits for all processes previousluy spawned via
+    This script waits for all processes previously spawned via
     ``btest-bg-run`` to finish. If any of them exits with a non-zero
     return code, ``btest-bg-wait`` does so as well, indicating a
-    failed test. ``<timeout>>`` is mandatory and gives the maximum
+    failed test. ``<timeout>`` is mandatory and gives the maximum
     number of seconds to wait for any of the processes to terminate.
     If any process hasn't done so when the timeout expires, it will be
     killed and the test is considered to be failed as long as ``-k``
     is not given. If ``-k`` is given, pending processes are still
     killed but the test continues normally, i.e., non-termination is
-    not considered a failure in this case. This script also collect
+    not considered a failure in this case. This script also collects
     the processes' stdout and stderr outputs for diagnostics output.
 
 Integration with Sphinx
 =======================
 
 ``btest`` comes with a new directive for the documentation framework
-``Sphinx <http://sphinx.pocoo.org>`_. The directive allows to write a
+`Sphinx <http://sphinx.pocoo.org>`_. The directive allows to write a
 test directly inside a Sphinx document, and then to include output
 from the test's command into the generated documentation. The same
 tests can also run externally and will catch if any changes to the
@@ -675,7 +676,7 @@ inside a Sphinx document::
 
         <test content>
 
-Here, ``<test-name>`` is an custom name for the test; it will be
+Here, ``<test-name>`` is a custom name for the test; it will be
 stored in ``btest_tests`` under that name. ``<test content>`` is just
 a standard test as you would normally put into one of the
 ``TestDirs``. Example::
@@ -699,7 +700,7 @@ block. However, ``btest`` comes with a set of scripts that you can use
 to specify content to be included. As a simple example,
 ``btest-rst-cmd <cmdline>`` will execute a command and (if it
 succeeds) include both the command line and the standard output into
-the documentation. In addition, it also runs `btest-diff`` on all of
+the documentation. In addition, it also runs ``btest-diff`` on all of
 the included content to catch if it changes. Example::
 
     .. btest:: another-test
@@ -714,7 +715,7 @@ When running Sphinx, this will render as:
     Hello world!
 
 Note that it doesn't create the ``btest-diff`` baseline automatically.
-To do that, run ``btest -b`` manually in ``tests/`` (and check it's
+To do that, run ``btest -b`` manually in ``tests/`` (and check if it's
 correct!).
 
 Scripts
@@ -742,7 +743,7 @@ The following Sphinx support scripts come with ``btest``:
 
         -f FILTER_CMD
             Pipe the command line's output through ``FILTER_CMD``
-            before including.". If ``-r`` is given, it filter's the
+            before including. If ``-r`` is given, it filters the
             file's content instead of stdout.
 
         -o
