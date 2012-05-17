@@ -224,10 +224,11 @@ and 1 otherwise.
         serialization set, see `@TEST-SERIALIZE`_.
 
     -r, --rerun
-        Runs only tests that failed last time. After each execution,
-        BTest generates a state file that records the tests that have
-        failed. Using this option on the next run then reads that file
-        back in and limits execution to those tests found in there.
+        Runs only tests that failed last time. After each execution
+        (except when updating baselines), BTest generates a state file
+        that records the tests that have failed. Using this option on
+        the next run then reads that file back in and limits execution
+        to those tests found in there.
 
     -S SUBST, --subst=SUBST
         Activates a substitution_ defined in the configuration file.

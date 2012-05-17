@@ -161,15 +161,17 @@ class TestManager(multiprocessing.managers.SyncManager):
             # No threads, just run all directly.
             self.threadRun(0)
 
-        try:
-            state = open(StateFile, "w")
-        except IOError, e:
-            error("cannot open state file %s" % StateFile)
+        # Record failed tests if not updating.
+        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
+            try:
+                state = open(StateFile, "w")
+            except IOError, e:
+                error("cannot open state file %s" % StateFile)
 
-        for t in self._failed_tests:
-            print >>state, t
+            for t in self._failed_tests:
+                print >>state, t
 
-        state.close()
+            state.close()
 
         return (self._succeeded.value, self._failed.value, self._skipped.value)
 
