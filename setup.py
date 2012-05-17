@@ -16,5 +16,5 @@ setup(name='btest',
       scripts=scripts,
       include_dirs=["examples", "Baseline"],
       package_dir={"": "sphinx"},
-      py_modules=["btest.sphinx"]
+      py_modules=["btest-sphinx"]
      )
