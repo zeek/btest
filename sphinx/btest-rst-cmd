@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 #
-# Executes a command and formats its stdout in reST. Then runs btest-diff on it.
+# Executes a command and formats its stdout in reST.
 #
 
 trap "rm -f $tmps; exit" INT TERM EXIT
@@ -77,16 +77,14 @@ echo >>$stdout
 if [ "$BTEST_RST_OUTPUT" != "" ]; then
     # Running from inside Sphinx, just outout to where it tells us.
     cat $stdout >>$BTEST_RST_OUTPUT
-    exit 0
-fi
 
-if [ "$TEST_MODE" != "" ]; then
-    # Running from btest, don't output anything but diff.
-    btest-diff $stdout
-    exit 0
-fi
+elif [ "$TEST_NAME" ]; then
+    # Running from inside BTest, output into file that btest-diff-rst will pickup.
+    cat $stdout >>"btest-${TEST_NAME}.rst"
 
-# Running from command line, just print out.
-cat $stdout
+else
+    # Running from command line, just print out.
+    cat $stdout
+fi
 
 

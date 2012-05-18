@@ -51,7 +51,7 @@ class BTest(Directive):
         tmp = tempfile.mktemp(prefix="rst-btest")
         file = os.path.join(btest_tests, tag + ".btest")
 
-        self.message("Running test %s ..." % darkgreen(file))
+        self.message("running test %s ..." % darkgreen(file))
 
         # Save the test.
         out = open(file, "w")

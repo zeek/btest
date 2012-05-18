@@ -184,7 +184,7 @@ and 1 otherwise.
         pass, there will not be any output at all.
 
     -c CONFIG, --config=CONFIG
-        Specifies an alternative `configuration`_ file to use. If not
+        Specifies an alternative `configuration file`_ to use. If not
         speicfiied, the default is to use a file called ``btest.cfg``
         if found in the current directory.
 
@@ -635,7 +635,7 @@ Integration with Sphinx
 =======================
 
 ``btest`` comes with a new directive for the documentation framework
-``Sphinx <http://sphinx.pocoo.org>`_. The directive allows to write a
+`Sphinx <http://sphinx.pocoo.org>`_. The directive allows to write a
 test directly inside a Sphinx document, and then to include output
 from the test's command into the generated documentation. The same
 tests can also run externally and will catch if any changes to the
@@ -657,9 +657,15 @@ create a new subdirectory ``tests`` in the Sphinx project for the
 
 Then add the following to your Sphinx ``conf.py``::
 
-    extensions += ["btest.sphinx"]
+    extensions += ["btest-sphinx"]
     btest_base="tests"         # Relative to Sphinx-root.
     btest_tests="doc"          # Relative to btest_base.
+
+Next, a finalizer to ``btest.cfg``::
+
+    [btest]
+    ...
+    Finalizer=btest-diff-rst
 
 Finally, create a ``btest.cfg`` in ``tests/`` as usual and add
 ``doc/`` to the ``TestDirs`` option.
@@ -699,8 +705,7 @@ block. However, ``btest`` comes with a set of scripts that you can use
 to specify content to be included. As a simple example,
 ``btest-rst-cmd <cmdline>`` will execute a command and (if it
 succeeds) include both the command line and the standard output into
-the documentation. In addition, it also runs `btest-diff`` on all of
-the included content to catch if it changes. Example::
+the documentation. Example::
 
     .. btest:: another-test
 
@@ -713,9 +718,10 @@ When running Sphinx, this will render as:
     # echo Hello, world!
     Hello world!
 
-Note that it doesn't create the ``btest-diff`` baseline automatically.
-To do that, run ``btest -b`` manually in ``tests/`` (and check it's
-correct!).
+In addition, Sphinx will add an implicit ``btest-diff`` run on the
+generated output to catch any changes. Note however that it doesn't
+create the ``btest-diff`` baseline automatically. To do that, run
+``btest -b`` manually in ``tests/`` (and check it's correct!).
 
 Scripts
 -------
@@ -726,8 +732,7 @@ The following Sphinx support scripts come with ``btest``:
 
     By default, this executes ``<cmdline>`` and includes both the
     command line itself and its standard output into the generated
-    documentation. It also runs ``btest-diff`` on the included
-    content. See above for an example.
+    documentation. See above for an example.
 
     This script provides the following options:
 
@@ -755,15 +760,13 @@ The following Sphinx support scripts come with ``btest``:
 
 ``btest-rst-include <file>``
 
-    Includes ``<file>`` inside a code block and runs ``btest-diff`` on
-    its content.
+    Includes ``<file>`` inside a code block.
 
 ``btest-rst-pipe <cmdline>``
 
     Executes ``<cmdline>``, includes its standard output inside a code
-    block, and runs ``btest-diff`` on it. Note that this script does
-    not include the command line itself into the code block, just the
-    output.
+    block. Note that this script does not include the command line
+    itself into the code block, just the output.
 
 .. note::
 
