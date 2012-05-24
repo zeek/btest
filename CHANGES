@@ -1,4 +1,19 @@
 
+0.31-45 | 2012-05-24 16:43:14 -0700
+
+  * Correct typos in documentation. (Daniel Thayer)
+
+  * Failed tests are now only recorded into the state file when we're
+    not updating. That allows to run "btest -r" repeatedly while
+    updating baselines in between. (Robin Sommer)
+
+  * Experimentation Sphinx directive to write a btest with a Sphinx
+    document. See README for more information.
+
+  * Fixing typos, plus an console output tweak. (Robin Sommer)
+    
+  * Option -q now implies -b as well. (Robin Sommer)
+
 0.31-33 | 2012-05-13 17:08:15 -0700
 
   * New command to copy a file into a test's directory.

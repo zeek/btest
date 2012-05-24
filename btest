@@ -20,7 +20,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
-VERSION = "0.31-33" # Automatically filled in.
+VERSION = "0.31-45" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -1114,8 +1114,8 @@ TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], 
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
 Finalizer = getOption("Finalizer", "")
 
-if Finalizer:
-    Finalizer = os.path.abspath(Finalizer)
+# if Finalizer:
+#    Finalizer = os.path.abspath(Finalizer)
 
 if args:
     tests = findTests(args, output_handler)

@@ -8,7 +8,7 @@ scripts = ["btest", "btest-diff", "btest-bg-run",
            ]
 
 setup(name='btest',
-      version="0.31-33", # Filled in automatically.
+      version="0.31-45", # Filled in automatically.
       description='A simple unit testing framework',
       author='Robin Sommer',
       author_email='robin@icir.org',
@@ -16,5 +16,5 @@ setup(name='btest',
       scripts=scripts,
       include_dirs=["examples", "Baseline"],
       package_dir={"": "sphinx"},
-      py_modules=["btest.sphinx"]
+      py_modules=["btest-sphinx"]
      )
