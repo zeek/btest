@@ -719,9 +719,12 @@ When running Sphinx, this will render as:
     # echo Hello, world!
     Hello world!
 
-Note that it doesn't create the ``btest-diff`` baseline automatically.
-To do that, run ``btest -b`` manually in ``tests/`` (and check if it's
-correct!).
+
+When running ``btest`` manually in ``tests/``, the ``Finalizer`` we
+added to ``btest.cfg`` (see above) compares the generated reST code
+with a previously established baseline, just like ``btest-diff`` does
+with files. To establish the initial baseline, run ``btest -u``, like
+you would with ``btest-diff``.
 
 Scripts
 -------
