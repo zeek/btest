@@ -981,7 +981,7 @@ def readTestFile(filename, output_handler):
 
 ### Main
 
-optparser = optparse.OptionParser(usage="%prog [options] <directorys>", version=VERSION)
+optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
 optparser.add_option("-U", "--update-baseline", action="store_const", dest="mode", const="UPDATE",
                      help="create a new baseline from the tests' output")
 optparser.add_option("-u", "--update-interactive", action="store_const", dest="mode", const="UPDATE_INTERACTIVE",
@@ -991,7 +991,7 @@ optparser.add_option("-d", "--diagnostics", action="store_true", dest="diag", de
 optparser.add_option("-D", "--diagnostics-all", action="store_true", dest="diagall", default=False,
                      help="show diagnostic output for ALL tests")
 optparser.add_option("-f", "--file-diagnostics", action="store", type="string", dest="diagfile", default="",
-                     help="write diagnostic output for failed tests into file; if files exists, output is appended")
+                     help="write diagnostic output for failed tests into file; if file exists, it is overwritten")
 optparser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                      help="show commands as they are executed")
 optparser.add_option("-w", "--wait", action="store_true", dest="wait", default=False,
@@ -1001,19 +1001,19 @@ optparser.add_option("-b", "--brief", action="store_true", dest="brief", default
 optparser.add_option("-c", "--config", action="store", type="string", dest="config", default=ConfigDefault,
                      help="configuration file")
 optparser.add_option("-F", "--filter", action="store", dest="filters", default="",
-                     help="active filters given as command-separated list of groups")
+                     help="activate filter in given config file section")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
 optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
-                     help="active substitution in given config file section")
+                     help="activate substitution in given config file section")
 optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
-                     help="number of threads to run tests in simultaniously; 0 disables threading")
+                     help="number of threads to run tests in simultaneously; 0 disables threading")
 optparser.add_option("-g", "--groups", action="store", type="string", dest="groups", default="",
-                     help="execute only tests of given command-separated list of groups")
+                     help="execute only tests of given comma-separated list of groups")
 optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
-                     help="Execute commands for tests that failed last time")
+                     help="execute commands for tests that failed last time")
 optparser.add_option("-q", "--quiet", action="store_true", dest="quiet", default=False,
-                     help="Suppress information output other than about failed tests")
+                     help="suppress information output other than about failed tests")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1086,7 +1086,7 @@ if Options.filters:
             continue
 
         Filters[filter] = {}
-        sec = "filters-%s" % filter
+        sec = "filter-%s" % filter
 
         if not Config.has_section(sec):
             error("configuration file has no section '%s'" % sec)

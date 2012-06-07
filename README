@@ -70,7 +70,7 @@ didn't, that would be reported::
     > btest examples/t2
     examples.t2 ... failed
 
-Usually you will run just all tests found in a directory::
+Usually you will just run all tests found in a directory::
 
     > btest examples
     examples.t1 ... ok
@@ -107,9 +107,9 @@ its content matches what we know from last time::
     > cat examples/t4.awk
     # @TEST-EXEC: ls -a $HOME | awk -f %INPUT >dots
     # @TEST-EXEC: btest-diff dots
-    /\.*/ { print $1 }
+    /^\.+/ { print $1 }
 
-Note that each test gets its own litte sandbox directory when run,
+Note that each test gets its own little sandbox directory when run,
 so by creating a file like ``dots``, you aren't cluttering up
 anything.
 
@@ -147,7 +147,7 @@ introduced to ``dots``, there's a *diff* mode for that::
     +.NEWDOTFILE
     .Rhistory
     .Trash
-    . Xauthority
+    .Xauthority
     =======================================
 
     % cat .stderr
@@ -170,7 +170,7 @@ Command Line Usage
 ------------------
 
 ``btest`` must be started with a list of tests and/or directories
-given on the command line. In the latter case, the default is
+given on the command line. In the latter case, the default is to
 recursively scan the directories and assume all files found to be
 tests to perform. It is however possible to exclude certain files by
 specifying a suitable `configuration file`_.
@@ -202,7 +202,7 @@ and 1 otherwise.
 
     -f DIAGFILE, --file-diagnostics=DIAGFILE
         Writes diagnostics for all failed tests into the given file.
-        If the file already exists, any new output is appended.
+        If the file already exists, it will be overwritten.
 
     -F FILTER, --filter=FILTER
         Activates a filter_ defined in the configuration file. This
@@ -224,6 +224,10 @@ and 1 otherwise.
         serialization of subsets by assigning them to the same
         serialization set, see `@TEST-SERIALIZE`_.
 
+    -q, --quiet
+        Suppress information output other than about failed tests.
+        If all tests pass, there will not be any output at all.
+
     -r, --rerun
         Runs only tests that failed last time. After each execution
         (except when updating baselines), BTest generates a state file
@@ -240,7 +244,7 @@ and 1 otherwise.
         files for a test will be located in ``.tmp/<test>/``, where
         ``<test>`` is the path to the test file with all slashes replaced
         with dots (e.g., the files for ``example/t3.sh`` will be in
-        ``.tmp/example.t3.sh``.
+        ``.tmp/example.t3.sh``).
 
     -U, --update-baseline
         Records a new baseline for all ``btest-diff`` commands found
@@ -276,7 +280,7 @@ current directory. It can alternatively be specified with the
 ``btest.cfg.example``. A configuration file has one main section,
 ``btest``, that defines most options; as well as an optional section
 for defining `environment variables`_ and further optional sections
-for defining custom filters_.
+for defining custom filters_ and substitutions_.
 
 Note that all paths specified in the configuration file are relative
 to ``btest``'s *base directory*. The base directory is either the
@@ -320,7 +324,7 @@ configuration file:
     Default is empty.
 
 ``StateFile``
-    The name of the state file to record failing tests in. Default is
+    The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
 
 ``Finalizer``
@@ -360,13 +364,13 @@ Filters are a transparent way to adapt the input to a specific test
 command before it is executed. A filter is defined by adding a
 section ``[filter-<name>]`` to the configuration file. This section
 must have exactly one entry, and the name of that entry is
-interpreted as the name of a command which's input is to be
+interpreted as the name of a command whose input is to be
 filtered.  The value of that entry is the name of a filter script
 that will be run with two arguments representing input and output files,
 respectively. Example::
 
     [filter-cat]
-    cat=%(testbase)/bin/filter-cat
+    cat=%(testbase)s/bin/filter-cat
 
 Once the filter is activated by running ``btest`` with
 ``--filter=cat``, every time a ``@TEST-EXEC: cat %INPUT`` is found,
@@ -382,7 +386,7 @@ case, the filter could be a no-op in the form ``cp $1 $2``.
       argument. We should add a way to filter other files as well.
 
     * Filtered commands are only recognized if they are directly
-      starting the command line. For example, ``@TEST-EXEC ls | cat
+      starting the command line. For example, ``@TEST-EXEC: ls | cat
       >outout`` would not trigger the example filter above.
 
     * Filters are only executed for ``@TEST-EXEC``, not for
@@ -394,7 +398,7 @@ Substitutions
 ~~~~~~~~~~~~~
 
 Substitutions are similar to filters, yet they do not adapt the
-input but the command line being exectued. A substitution is defined by adding
+input but the command line being executed. A substitution is defined by adding
 a section ``[subst-<name>]`` to the configuration file. This section
 must have exactly one entry, and the name of that entry is
 interpreted as the name of a command that is to be replaced with
@@ -426,20 +430,17 @@ supported:
     etc.
 
     When running a test, the current working directory for all
-    command lines will be set to a temporary sandbox (and later be
-    deleted).
+    command lines will be set to a temporary sandbox (and will be
+    deleted later).
 
     There are two macros that can be used in ``<cmdline>``:
-    ``%INPUT`` will be replaced with the name of the file defining
+    ``%INPUT`` will be replaced with the full pathname of the file defining
     the test; and ``%DIR`` will be replaced with the directory where
     the test file is located. The latter can be used to reference
     further files also located there.
 
-    Environment variables in ``<cmdline>`` will be replaced if
-    enclosed in ``${...}``.
-
     In addition to environment variables defined in the
-    configuration files, there are further ones that are passed into
+    configuration file, there are further ones that are passed into
     the commands:
 
         ``TEST_DIAGNOSTICS``
@@ -454,7 +455,7 @@ supported:
             ``UPDATE_INTERACTIVE`` if run with ``--update-interactive``.
 
         ``TEST_BASELINE``
-            A filename where the command can save permanent
+            The name of a directory where the command can save permanent
             information across ``btest`` runs. (This is where
             ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
 
@@ -697,7 +698,7 @@ When you now run Sphinx, it will (1) store the test content into
 execute the test by running ``btest`` on it. You can then run
 ``btest`` manually in ``tests/`` as well and it will execute the test
 just as it would in a standard setup. If a test fails when Sphinx runs
-it, it will be a corresponding error and include the diagnostic output
+it, there will be a corresponding error and include the diagnostic output
 into the document.
 
 By default, nothing else will be included into the generated
