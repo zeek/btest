@@ -520,7 +520,6 @@ class Test(object):
         # Replace special names.
         cmdline = RE_INPUT.sub(localfile, cmdline)
         cmdline = RE_DIR.sub(self.dir, cmdline)
-        cmdline = replaceEnvs(cmdline)
 
         print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[expect_success])
 
