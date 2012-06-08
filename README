@@ -427,7 +427,8 @@ supported:
     Executes the given command line and aborts the test if it
     returns an error code other than zero. The ``<cmdline>`` is
     passed to the shell and thus can be a pipeline, use redirection,
-    etc.
+    and any environment variables specified in ``<cmdline>`` will be
+    expanded, etc.
 
     When running a test, the current working directory for all
     command lines will be set to a temporary sandbox (and will be
