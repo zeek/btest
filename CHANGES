@@ -1,4 +1,23 @@
 
+0.31-50 | 2012-06-15 15:13:47 -0700
+
+  * Remove code to expand env. vars. on cmdline
+
+    We don't need to manually expand environment variables specified
+    on the "@TEST-EXEC:" command line, because the command line is
+    just passed to the shell.
+
+    Note that the replaceEnvs() function is still needed by
+    the "@TEST-COPY-FILE:" keyword. (Daniel Thayer)
+
+  * Add more explanation about expansion of env. vars. (Daniel Thayer)
+    
+  * Fix errors in README and btest help output; added documentation
+    for the -q option. (Daniel Thayer)
+    
+  * Fixed a bug in btest where it was looking for "filters-" (instead
+    of "filter-") in the btest config file. (Daniel Thayer)
+
 0.31-45 | 2012-05-24 16:43:14 -0700
 
   * Correct typos in documentation. (Daniel Thayer)
