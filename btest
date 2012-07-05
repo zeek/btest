@@ -20,7 +20,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
 
-VERSION = "0.31-50" # Automatically filled in.
+VERSION = "0.4" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
