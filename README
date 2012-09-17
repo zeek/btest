@@ -573,7 +573,6 @@ supported:
 .. _@TEST-GROUP:
 
 ``@TEST-GROUP: <group>``
-
     Assigns the test to a group of name ``<group>``. By using option
     ``-g`` one can limit execution to all tests that belong to a given
     group (or a set of groups).
@@ -581,7 +580,6 @@ supported:
 .. _@TEST-SERIALIZE:
 
 ``@TEST-SERIALIZE: <set>``
-
    When using option ``-j`` to parallelize execution, all tests that
    specify the same serialization set are guaranteed to run
    sequentially. ``<set>`` is an arbitrary user-chosen string.
@@ -621,7 +619,6 @@ situation:
     access it.
 
 ``btest-bg-wait [-k] <timeout>``
-
     This script waits for all processes previously spawned via
     ``btest-bg-run`` to finish. If any of them exits with a non-zero
     return code, ``btest-bg-wait`` does so as well, indicating a
