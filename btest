@@ -19,6 +19,9 @@ import time
 import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
+import xml.dom.minidom
+from datetime import datetime
+import socket
 
 VERSION = "0.4" # Automatically filled in.
 
@@ -293,6 +296,7 @@ class Test(object):
         self.requires = []
         self.copy_files = []
         self.output_handler = output_handler
+        self.start = None
 
     def displayName(self):
         name = self.name
@@ -388,6 +392,7 @@ class Test(object):
         return clone
 
     def run(self, mgr):
+        self.start = time.time()
         self.mgr = mgr
         mgr.testStart(self)
 
@@ -861,6 +866,97 @@ class Diag(OutputHandler):
         if self._file:
             self.output(test, "%s ... not available, skipped" % test.displayName(), True, self._file)
 
+class XMLReport(OutputHandler):
+    def __init__(self, options, file=None):
+        """Output handler for producing an XML report of test results.
+
+        options: An optparser with the global options.
+
+        file: Output into given file
+        """
+        OutputHandler.__init__(self, options)
+        self.file = file
+        self.doc = xml.dom.minidom.Document()
+        self.testsuite = self.doc.createElement("testsuite")
+        self.doc.appendChild(self.testsuite)
+
+        self.testsuite.setAttribute("timestamp", datetime.now().isoformat())
+        self.testsuite.setAttribute("hostname", socket.gethostname())
+
+        self.start = time.time()
+        self.num_tests = 0
+        self.num_failures = 0
+
+    def testStart(self, test):
+        self.num_tests += 1;
+        pass
+
+    def testCommand(self, test, cmdline):
+        pass
+
+    def makeTestCaseElement(self, test):
+        parts = test.displayName().split('.')
+        if len(parts) > 1:
+            classname = ".".join(parts[:-1])
+            name = parts[-1]
+        else:
+            classname = parts[0]
+            name = parts[0]
+
+        e = self.doc.createElement("testcase")
+        e.setAttribute("classname", classname)
+        e.setAttribute("name", name)
+        dur = time.time() - test.start
+        e.setAttribute("time", str(dur))
+        self.testsuite.appendChild(e)
+
+        return e
+
+    def getContext(self, test, context_file):
+        context = ""
+        for line in test.diagmsgs:
+            context += "  % " + line + "\n"
+
+        for f in (test.diag, os.path.join(test.tmpdir, context_file)):
+            if not f:
+                continue
+
+            if os.path.isfile(f):
+                context += "  % cat " + os.path.basename(f) + "\n"
+                for line in open(f):
+                    context += "  " + line.strip() + "\n"
+
+        return context
+
+    def testSucceeded(self, test):
+        self.makeTestCaseElement(test)
+
+    def testFailed(self, test):
+        self.num_failures += 1;
+        test_case = self.makeTestCaseElement(test)
+        e = self.doc.createElement("failure")
+        e.setAttribute("type", "fail")
+        text_node = self.doc.createTextNode(self.getContext(test, ".stderr"))
+        e.appendChild(text_node)
+        test_case.appendChild(e)
+
+    def testSkipped(self, test):
+        test_case = self.makeTestCaseElement(test)
+        e = self.doc.createElement("skipped")
+        e.setAttribute("type", "skip")
+        text_node = self.doc.createTextNode(self.getContext(test, ".stderr"))
+        e.appendChild(text_node)
+        test_case.appendChild(e)
+        pass
+
+    def finished(self):
+        self.testsuite.setAttribute("time", str(time.time() - self.start))
+        self.testsuite.setAttribute("tests", str(self.num_tests))
+        self.testsuite.setAttribute("failures", str(self.num_failures))
+        self.testsuite.setAttribute("errors", str(0))
+
+        print >>self.file, self.doc.toprettyxml(indent="    ")
+
 # Walk the given directory and return all test files.
 def findTests(paths, output_handler):
     tests = []
@@ -1013,6 +1109,8 @@ optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default
                      help="execute commands for tests that failed last time")
 optparser.add_option("-q", "--quiet", action="store_true", dest="quiet", default=False,
                      help="suppress information output other than about failed tests")
+optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile", default="",
+                     help="write a report of test results in JUnit XML format to file; if file exists, it is overwritten")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1065,6 +1163,14 @@ if Options.diagfile:
 
     except IOError, e:
         print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
+
+if Options.xmlfile:
+    try:
+        xmlfile = open(Options.xmlfile, "w", 1)
+        output_handlers += [XMLReport(Options, xmlfile)]
+
+    except IOError, e:
+        print >>sys.stderr, "cannot open %s: %s" (Options.xmlfile, e)
 
 output_handler = Forwarder(Options, output_handlers)
 
