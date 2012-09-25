@@ -1,4 +1,8 @@
 
+0.4-4 | 2012-09-25 06:24:59 -0700
+
+  * Fix a couple of reST formatting problems. (Daniel Thayer)
+
 0.4-2 | 2012-09-24 11:41:06 -0700
 
   * Add option -x to output test results in an XML (JUnit-like)
