@@ -1,4 +1,9 @@
 
+0.4-5 | 2012-11-01 16:14:29 -0700
+
+  * Making Sphinx module tolerant against docutils version change.
+    (Robin Sommer)
+
 0.4-4 | 2012-09-25 06:24:59 -0700
 
   * Fix a couple of reST formatting problems. (Daniel Thayer)

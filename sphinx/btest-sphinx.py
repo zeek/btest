@@ -6,8 +6,12 @@ import subprocess
 
 from docutils import nodes, statemachine
 from docutils.parsers.rst import directives, Directive
-from docutils.error_reporting import ErrorString
 from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
+
+try: # This has changed in more recent docutils versions.
+    from docutils.error_reporting import ErrorString
+except ImportError:
+    from docutils.utils.error_reporting import ErrorString
 
 App = None
 
