@@ -8,6 +8,9 @@
 # TEST_DIFF_CANONIFIER
 # TEST_DIFF_BRIEF
 
+# Maximum number of lines to show from mismatching input file.
+MAX_LINES=5000
+
 if [ "$TEST_DIAGNOSTICS" = "" ]; then
     TEST_DIAGNOSTICS=/dev/stdout
 fi
@@ -40,7 +43,12 @@ rm -f $TEST_DIAGNOSTICS  2>/dev/null
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 
 if [ "$TEST_DIFF_BRIEF" == "" -o ! -e $TEST_BASELINE/$canon ]; then
-    cat $input >>$TEST_DIAGNOSTICS
+    if [ `wc -l $input | awk '{print $1}'` -le $MAX_LINES ]; then
+        cat $input >>$TEST_DIAGNOSTICS
+    else
+        head -$MAX_LINES $input >>$TEST_DIAGNOSTICS
+        echo "[... File too long, truncated ...]" >>$TEST_DIAGNOSTICS
+    fi
 else
     echo "<Content not shown>" >>$TEST_DIAGNOSTICS
 fi

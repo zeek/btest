@@ -1,4 +1,9 @@
 
+0.4-6 | 2012-11-08 16:33:51 -0800
+
+  * Putting a limit on how many input line btest-diff shows. (Robin
+    Sommer)
+
 0.4-5 | 2012-11-01 16:14:29 -0700
 
   * Making Sphinx module tolerant against docutils version change.
