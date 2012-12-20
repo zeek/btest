@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-6" # Automatically filled in.
+VERSION = "0.4-9" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -1113,21 +1113,19 @@ optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
 
-(basedir, fname) = os.path.split(Options.config)
-
-if not basedir:
-    basedir = "."
-
-os.chdir(basedir)
-
 if not os.path.exists(Options.config):
     error("configuration file '%s' not found" % Options.config)
 
+(basedir, fname) = os.path.split(Options.config)
+
+if basedir:
+    os.chdir(basedir)
+
 defaults=os.environ
-defaults["testbase"] = os.path.abspath(basedir)
+defaults["testbase"] = os.getcwd()
 defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
-Config.read(Options.config)
+Config.read(fname)
 
 if Options.quiet:
     Options.brief = True

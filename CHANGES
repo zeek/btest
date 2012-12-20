@@ -1,4 +1,12 @@
 
+0.4-9 | 2012-12-20 12:20:44 -0800
+
+  * Documentation fixes/clarifications. (Daniel Thayer)
+
+  * Fix the btest "-c" option, which didn't work when the specified
+    config file was not in the current working directory. (Daniel
+    Thayer)
+
 0.4-6 | 2012-11-08 16:33:51 -0800
 
   * Putting a limit on how many input line btest-diff shows. (Robin

@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.4-6
+.. |version| replace:: 0.4-9
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -242,9 +242,9 @@ and 1 otherwise.
         Does not delete any temporary files created for running the
         tests (including their outputs). By default, the temporary
         files for a test will be located in ``.tmp/<test>/``, where
-        ``<test>`` is the path to the test file with all slashes replaced
-        with dots (e.g., the files for ``example/t3.sh`` will be in
-        ``.tmp/example.t3.sh``).
+        ``<test>`` is the relative path of the test file with all slashes
+        replaced with dots and the file extension removed (e.g., the files
+        for ``example/t3.sh`` will be in ``.tmp/example.t3``).
 
     -U, --update-baseline
         Records a new baseline for all ``btest-diff`` commands found
@@ -255,8 +255,9 @@ and 1 otherwise.
         with in future runs.
 
     -u, --update-interactive
-        For failed tests, btest will stop and ask whether the user
-        wants to record a new baseline.
+        Each time a ``btest-diff`` command fails in any tests that are
+        run, btest will stop and ask whether or not the user wants to
+        record a new baseline.
 
     -v, --verbose
         Shows all test command lines as they are executed.
@@ -266,7 +267,7 @@ and 1 otherwise.
         for a test.
 
     -x FILE, --xml=FILE
-        Records tests results in JUnit XML format to the given file.
+        Records test results in JUnit XML format to the given file.
         If the file exists already, it is overwritten.
 
 .. _configuration file:
@@ -469,8 +470,8 @@ supported:
 
         If a command returns the special exit code 100, the test is
         considered failed, however subsequent test commands are still
-        run. ``btest-diff`` uses this to continue in the case that no
-        baseline has yet been established.
+        run. ``btest-diff`` uses this special exit code to indicate that
+        no baseline has yet been established.
 
         If a command returns the special exit code 200, the test is
         considered failed and all further test executions are aborted.
@@ -485,8 +486,8 @@ supported:
     The given command line will be run before any of the actual test
     commands, and it must return success for the test to continue. If
     it does not return success, the rest of the test will be skipped
-    but doing so will not be considered an error. This allows to write
-    conditional tests that may not always make sense to run, depending
+    but doing so will not be considered a failure of the test. This allows to
+    write conditional tests that may not always make sense to run, depending
     on whether external constraints are satisfied or not (say, whether
     a particular library is available). Multiple requirements may be
     specified and then all must be met for the test to continue.
