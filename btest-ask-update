@@ -1,12 +1,12 @@
 #! /usr/bin/env bash
 #
-# Helper script that asks whether the user want to update a baseline.
+# Helper script that asks whether the user wants to update a baseline.
 #
 # Return code:
 #
 # 0: Yes, update and continue.
 # 1: No, don't update but continue.
-# 2: No, don't update and abort.
+# 200: No, don't update and abort.
 
 while true; do
     echo " failed" >>/dev/tty
