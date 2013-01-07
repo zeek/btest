@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-9" # Automatically filled in.
+VERSION = "0.4-10" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -289,6 +289,7 @@ class Test(object):
         self.cmdlines = []
         self.tmpdir = None
         self.diag = None
+        self.verbose = None
         self.baseline = None
         self.filter = None
         self.ignore_filters = []
@@ -398,6 +399,7 @@ class Test(object):
 
         self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
         self.diag = os.path.join(self.tmpdir, ".diag")
+        self.verbose = os.path.join(self.tmpdir, ".verbose")
         self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
         self.diagmsgs = []
 
@@ -564,6 +566,7 @@ class Test(object):
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
+        env["TEST_VERBOSE"] = self.verbose
         return env
 
     def addFiles(self, files):
@@ -800,15 +803,25 @@ class Verbose(OutputHandler):
 
     def testSucceeded(self, test):
         self.output(test, self.threadPrefix(), nl=False)
+        self.showTestVerbose(test)
         self.output(test, "... %s ok" % test.displayName())
 
     def testFailed(self, test):
         self.output(test, self.threadPrefix(), nl=False)
+        self.showTestVerbose(test)
         self.output(test, "... %s failed" % test.displayName())
 
     def testSkipped(self, test):
         self.output(test, self.threadPrefix(), nl=False)
+        self.showTestVerbose(test)
         self.output(test, "... %s not available, skipped" % test.displayName())
+
+    def showTestVerbose(self, test):
+        if not os.path.exists(test.verbose):
+            return
+
+        for line in open(test.verbose):
+            self.output(test, "  > [test-verbose] %s" % line.strip())
 
 class Diag(OutputHandler):
     def __init__(self, options, all=False, file=None):

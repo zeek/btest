@@ -1,4 +1,11 @@
 
+0.4-10 | 2013-01-07 09:45:35 -0800
+
+  * btest now sets a new environment variable TEST_VERBOSE, giving the
+    path of a file where a test can record further information about
+    its execution that will be included with btest's ``--verbose``
+    output. (Robin Sommer)
+
 0.4-9 | 2012-12-20 12:20:44 -0800
 
   * Documentation fixes/clarifications. (Daniel Thayer)
