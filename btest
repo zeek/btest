@@ -37,14 +37,14 @@ RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
 RE_END_FILE = re.compile("@TEST-END-FILE")
 
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-RE_EXEC          = ("exec",      re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-RE_REQUIRES      = ("requires",  re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP         = ("group",     re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
-RE_SERIALIZE     = ("serialize", re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
-RE_IGNORE_FILTER = ("no-filter", re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
-RE_COPY_FILE     = ("copy-file", re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
+RE_EXEC               = ("exec",           re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_REQUIRES           = ("requires",       re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
+RE_GROUP              = ("group",          re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
+RE_SERIALIZE          = ("serialize",      re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
+RE_IGNORE_ALTERNATIVE = ("no-alternative", re.compile("@TEST-NO-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_COPY_FILE          = ("copy-file",      re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_FILTER, RE_COPY_FILE)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -117,6 +117,24 @@ def cpExpandBackticks(self, section, option, rawval, vars):
 
     return value
 
+# We monkey-patch the OptionParser to provide an alternative method that does not include
+# defaults in returns section items.
+def cpItemsNoDefaults(self, section):
+    try:
+        items = self._sections[section].items()
+    except KeyError:
+        raise ConfigParser.NoSectionError(section)
+
+
+    d = self._defaults.copy()
+
+    result = {}
+
+    for (key, value) in items:
+        result[key] = cpExpandBackticks(self, section, key, value, d)
+
+    return result.items()
+
 # Replace environment variables in string.
 def replaceEnvs(s):
     def replace_with_env(m):
@@ -129,6 +147,15 @@ def replaceEnvs(s):
 
 cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
 ConfigParser.ConfigParser._interpolate = cpExpandBackticks
+ConfigParser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+
+# Description of an alternative configuration.
+class Alternative:
+    def __init__(self, name):
+        self.name = name
+        self.filters = {}
+        self.substitutions = {}
+        self.envs = {}
 
 # Main class distributing the work across threads.
 class TestManager(multiprocessing.managers.SyncManager):
@@ -221,21 +248,21 @@ class TestManager(multiprocessing.managers.SyncManager):
                 # We'll execute it, delete from queue.
                 del self._tests[i]
 
-                if Options.filters:
+                if Options.alternatives:
                     tests = []
 
-                    for filter in Options.filters:
+                    for alternative in Options.alternatives:
 
-                        if filter in t.ignore_filters:
+                        if alternative in t.ignore_alternatives:
                             continue
 
-                        filtered_test = copy.deepcopy(t)
+                        alternative_test = copy.deepcopy(t)
 
-                        if filter == "-":
-                            filter = ""
+                        if alternative == "-":
+                            alternative = ""
 
-                        filtered_test.setFilter(filter)
-                        tests += [filtered_test]
+                        alternative_test.setAlternative(alternative)
+                        tests += [alternative_test]
 
                 else:
                     tests = [t]
@@ -291,8 +318,8 @@ class Test(object):
         self.diag = None
         self.verbose = None
         self.baseline = None
-        self.filter = None
-        self.ignore_filters = []
+        self.alternative = None
+        self.ignore_alternatives = []
         self.files = []
         self.requires = []
         self.copy_files = []
@@ -302,13 +329,13 @@ class Test(object):
     def displayName(self):
         name = self.name
 
-        if self.filter:
-            name = "%s [%s]" % (name, self.filter)
+        if self.alternative:
+            name = "%s [%s]" % (name, self.alternative)
 
         return name
 
-    def setFilter(self, filter):
-        self.filter = filter
+    def setAlternative(self, alternative):
+        self.alternative = alternative
 
         # Parse the test's content.
     def parse(self, content):
@@ -367,12 +394,8 @@ class Test(object):
         if "copy-file" in cmds:
             self.copy_files = [cmd.strip() for cmd in cmds["copy-file"]]
 
-        if "no-filter" in cmds:
-            self.ignore_filters = [cmd.strip() for cmd in cmds["no-filter"]]
-
-        if Substitutions:
-            for (key, val) in Substitutions.items():
-                self.cmdlines = [(re.sub("\\b" + re.escape(key) + "\\b", val, cmd[0]), cmd[1]) for cmd in self.cmdlines]
+        if "no-alternative" in cmds:
+            self.ignore_alternatives = [cmd.strip() for cmd in cmds["no-alternative"]]
 
         return True
 
@@ -442,7 +465,7 @@ class Test(object):
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-            (success, rc) = self.execute((cmd, True), apply_filter=self.filter)
+            (success, rc) = self.execute((cmd, True), apply_alternative=self.alternative)
 
             if not success:
                 self.mgr.testSkipped(self)
@@ -458,7 +481,7 @@ class Test(object):
 
         for cmd in cmds:
 
-            (success, rc) = self.execute(cmd, apply_filter=self.filter)
+            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
                 failures += 1
@@ -492,18 +515,27 @@ class Test(object):
         self.stdout.close()
         self.stderr.close()
 
-    def execute(self, cmd, apply_filter=None):
+    def execute(self, cmd, apply_alternative=None):
         (cmdline, expect_success) = cmd
 
-        # See if we need to apply a filter.
         filter_cmd = None
+        addl_envs = {}
 
-        if apply_filter:
+        # Apply alternative if requested.
+        if apply_alternative:
+
+            alt = Alternatives[apply_alternative]
+
             try:
                 (path, executable) = os.path.split(cmdline.split()[0])
-                filter_cmd = Filters[apply_filter][executable]
+                filter_cmd = alt.filters[executable]
             except LookupError:
                 pass
+
+            for (key, val) in alt.substitutions.items():
+                cmdline = re.sub("\\b" + re.escape(key) + "\\b", val, cmdline)
+
+            addl_envs = alt.envs
 
         if not filter_cmd or not expect_success: # Do not apply filter if we expect failure.
             localfile = self.localfile
@@ -512,11 +544,11 @@ class Test(object):
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
             filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(self.localfile))
-            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_filter=None)
+            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_alternative=None)
             if not success:
                 return (False, rc)
 
-            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_filter=None)
+            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_alternative=None)
             if not success:
                 return (False, rc)
 
@@ -530,7 +562,7 @@ class Test(object):
 
         print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[expect_success])
 
-        env = self.prepareEnv()
+        env = self.prepareEnv(addl_envs)
 
         try:
             subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
@@ -560,13 +592,17 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self):
+    def prepareEnv(self, addl = {}):
         env = copy.deepcopy(os.environ)
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
+
+        for (key, val) in addl.items():
+            env[key.upper()] = val
+
         return env
 
     def addFiles(self, files):
@@ -1106,12 +1142,8 @@ optparser.add_option("-b", "--brief", action="store_true", dest="brief", default
                      help="outputs only failed tests")
 optparser.add_option("-c", "--config", action="store", type="string", dest="config", default=ConfigDefault,
                      help="configuration file")
-optparser.add_option("-F", "--filter", action="store", dest="filters", default="",
-                     help="activate filter in given config file section")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
-optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
-                     help="activate substitution in given config file section")
 optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
                      help="number of threads to run tests in simultaneously; 0 disables threading")
 optparser.add_option("-g", "--groups", action="store", type="string", dest="groups", default="",
@@ -1122,6 +1154,8 @@ optparser.add_option("-q", "--quiet", action="store_true", dest="quiet", default
                      help="suppress information output other than about failed tests")
 optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile", default="",
                      help="write a report of test results in JUnit XML format to file; if file exists, it is overwritten")
+optparser.add_option("-a", "--alternative", action="store", type="string", dest="alternatives", default=None,
+                     help="activate given alternative")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1134,7 +1168,7 @@ if not os.path.exists(Options.config):
 if basedir:
     os.chdir(basedir)
 
-defaults=os.environ
+defaults = os.environ
 defaults["testbase"] = os.getcwd()
 defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
@@ -1189,33 +1223,43 @@ if Config.has_section("environment"):
     for (name, value) in Config.items("environment"):
         os.environ[name.upper()] = value
 
-Filters = {}
+Alternatives = {}
 
-if Options.filters:
-    Options.filters = Options.filters.split(",")
+if Options.alternatives:
+    Options.alternatives = Options.alternatives.split(",")
 
-    for filter in Options.filters:
+    for tag in Options.alternatives:
 
-        if filter == "-":
+        if tag == "-":
             continue
 
-        Filters[filter] = {}
-        sec = "filter-%s" % filter
+        a = Alternative(tag)
 
-        if not Config.has_section(sec):
-            error("configuration file has no section '%s'" % sec)
+        try:
+            for (name, value) in Config.itemsNoDefaults("filter-%s" % tag):
+                if not name.startswith("__"):
+                    a.filters[name] = value
 
-        for (name, value) in Config.items(sec):
-            Filters[filter][name] = value
+        except ConfigParser.NoSectionError:
+            pass
 
-Substitutions = {}
-if Options.subst:
-    sec = "subst-%s" % Options.subst
-    if not Config.has_section(sec):
-        error("configuration file has no section '%s'" % sec)
+        try:
+            for (name, value) in Config.itemsNoDefaults("substitution-%s" % tag):
+                if not name.startswith("__"):
+                    a.substitutions[name] = value
 
-    for (name, value) in Config.items(sec):
-        Substitutions[name] = value
+        except ConfigParser.NoSectionError:
+            pass
+
+        try:
+            for (name, value) in Config.itemsNoDefaults("environment-%s" % tag):
+                if not name.startswith("__"):
+                    a.envs[name] = value
+
+        except ConfigParser.NoSectionError:
+            pass
+
+        Alternatives[tag] = a
 
 Config.configured_tests = []
 
