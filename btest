@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-11" # Automatically filled in.
+VERSION = "0.4-13" # Automatically filled in.
 
 Name ="btest"
 ConfigDefault = "btest.cfg"
@@ -1121,6 +1121,18 @@ def readTestFile(filename, output_handler):
 
     return tests
 
+def jOption(default):
+    def func(option, opt_str, value, parser):
+        if parser.rargs and not parser.rargs[0].startswith('-'):
+            val = int(parser.rargs[0])
+            parser.rargs.pop(0)
+        else:
+            val = default
+
+        setattr(parser.values, option.dest, val)
+
+    return func
+
 ### Main
 
 optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
@@ -1144,7 +1156,7 @@ optparser.add_option("-c", "--config", action="store", type="string", dest="conf
                      help="configuration file")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
-optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
+optparser.add_option("-j", "--jobs", action="callback", callback=jOption(multiprocessing.cpu_count()), dest="threads", default=0,
                      help="number of threads to run tests in simultaneously; 0 disables threading")
 optparser.add_option("-g", "--groups", action="store", type="string", dest="groups", default="",
                      help="execute only tests of given comma-separated list of groups")

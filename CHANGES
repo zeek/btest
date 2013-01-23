@@ -1,4 +1,9 @@
 
+0.4-13 | 2013-01-23 14:33:23 -0800
+
+  * Allowing use of -j without a value. BTest then uses the number of
+    CPU cores as reported by the OS. (Robin Sommer)
+
 0.4-11 | 2013-01-21 17:50:40 -0800
 
   * Adding a new "alternative" concept that combines filters and
