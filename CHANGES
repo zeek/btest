@@ -1,4 +1,8 @@
 
+0.4-14 | 2013-01-23 18:11:22 -0800
+
+  * Fixing links in README and removing TODOs. (Robin Sommer)
+
 0.4-13 | 2013-01-23 14:33:23 -0800
 
   * Allowing use of -j without a value. BTest then uses the number of
