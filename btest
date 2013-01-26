@@ -1238,7 +1238,7 @@ if Config.has_section("environment"):
 Alternatives = {}
 
 if Options.alternatives:
-    Options.alternatives = Options.alternatives.split(",")
+    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
 
     for tag in Options.alternatives:
 
