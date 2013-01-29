@@ -37,14 +37,15 @@ RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
 RE_END_FILE = re.compile("@TEST-END-FILE")
 
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-RE_EXEC               = ("exec",           re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-RE_REQUIRES           = ("requires",       re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP              = ("group",          re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
-RE_SERIALIZE          = ("serialize",      re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
-RE_IGNORE_ALTERNATIVE = ("no-alternative", re.compile("@TEST-NO-ALTERNATIVE: *(.*)"), True, True, 1, -1)
-RE_COPY_FILE          = ("copy-file",      re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
+RE_EXEC                = ("exec",            re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_REQUIRES            = ("requires",        re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
+RE_GROUP               = ("group",           re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
+RE_SERIALIZE           = ("serialize",       re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
+RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile("@TEST-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile("@TEST-NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_COPY_FILE           = ("copy-file",       re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -256,6 +257,9 @@ class TestManager(multiprocessing.managers.SyncManager):
                         if alternative in t.ignore_alternatives:
                             continue
 
+                        if t.include_alternatives and not alternative in t.include_alternatives:
+                            continue
+
                         alternative_test = copy.deepcopy(t)
 
                         if alternative == "-":
@@ -265,7 +269,14 @@ class TestManager(multiprocessing.managers.SyncManager):
                         tests += [alternative_test]
 
                 else:
-                    tests = [t]
+                    if t.include_alternatives and not "default" in t.include_alternatives:
+                        tests = []
+
+                    elif "default" in t.ignore_alternatives:
+                        tests = []
+
+                    else:
+                        tests = [t]
 
                 return tests
 
@@ -320,6 +331,7 @@ class Test(object):
         self.baseline = None
         self.alternative = None
         self.ignore_alternatives = []
+        self.include_alternatives = []
         self.files = []
         self.requires = []
         self.copy_files = []
@@ -394,8 +406,11 @@ class Test(object):
         if "copy-file" in cmds:
             self.copy_files = [cmd.strip() for cmd in cmds["copy-file"]]
 
-        if "no-alternative" in cmds:
-            self.ignore_alternatives = [cmd.strip() for cmd in cmds["no-alternative"]]
+        if "alternative" in cmds:
+            self.include_alternatives = [cmd.strip() for cmd in cmds["alternative"]]
+
+        if "not-alternative" in cmds:
+            self.ignore_alternatives = [cmd.strip() for cmd in cmds["not-alternative"]]
 
         return True
 

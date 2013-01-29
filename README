@@ -440,7 +440,7 @@ Substitutions
 Substitutions are similar to filters, yet they do not adapt the input
 but the command line being executed. A substitution is defined by
 adding a section ``[substitution-<name>]`` to the configuration file.
-For each entry in this section, the entry's name specifies the 
+For each entry in this section, the entry's name specifies the
 command that is to be replaced with something else given as its value.
 Example::
 
@@ -536,8 +536,15 @@ supported:
     a particular library is available). Multiple requirements may be
     specified and then all must be met for the test to continue.
 
-``@TEST-NO-ALTERNATIVE: <filter>``
-    Ignores this test for the given alternative (see alternative_).
+``@TEST-ALTERNATIVE: <alternative>`` Runs this test only for the given
+   alternative (see alternative_). If ``<alternatives>`` is
+   ``default``, the test executes when BTest runs with no alternative
+   given (which however is the default anyways).
+
+``@TEST-NOT-ALTERNATIVE: <alternative>`` Ignores this test for the
+   given alternative (see alternative_).  If ``<alternative>`` is
+   ``default``, the test is ignored if BTest runs with no alternative
+   given.
 
 ``@TEST-COPY-FILE: <file>``
     Copy the given file into the test's directory before the test is
