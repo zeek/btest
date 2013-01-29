@@ -1139,8 +1139,11 @@ def readTestFile(filename, output_handler):
 def jOption(default):
     def func(option, opt_str, value, parser):
         if parser.rargs and not parser.rargs[0].startswith('-'):
-            val = int(parser.rargs[0])
-            parser.rargs.pop(0)
+            try:
+                val = int(parser.rargs[0])
+                parser.rargs.pop(0)
+            except ValueError:
+                val = default
         else:
             val = default
 
