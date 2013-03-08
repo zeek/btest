@@ -24,11 +24,11 @@ Download
 ========
 
 You can find the latest BTest release for download at
-http://www.bro-ids.org/download.
+http://www.bro.org/download.
 
-BTest's git repository is located at `git://git.bro-ids.org/btest.git
-<git://git.bro-ids.org/btest.git>`__. You can browse the repository
-`here <http://git.bro-ids.org/btest.git>`__.
+BTest's git repository is located at `git://git.bro.org/btest.git
+<git://git.bro.org/btest.git>`__. You can browse the repository
+`here <http://git.bro.org/btest.git>`__.
 
 This document describes BTest |version|. See the ``CHANGES``
 file for version history.
