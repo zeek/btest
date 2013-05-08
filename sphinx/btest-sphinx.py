@@ -73,7 +73,11 @@ class BTest(Directive):
             return self.error("btest: %s" % e)
 
         # Read output and turn into docutils.
-        rawtext = open(tmp).read()
+        try:
+            rawtext = open(tmp).read()
+        except IOError:
+            rawtext = ""
+
 
             # From docutils/parsers/rst/directives/misc.py
         include_lines = statemachine.string2lines(rawtext, convert_whitespace=1)
