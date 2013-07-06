@@ -339,6 +339,12 @@ configuration file:
     value indicates whether the test should indeed be considered
     successful. By default, there's no finalizer set.
 
+``CommandPrefix``
+    Changes the naming of all ``btest`` commands by replacing the
+    ``@TEST-`` prefix with a custom string. For example, with
+    ``CommandPrefix=$TEST-``, the ``@TEST-EXEC`` command becomes
+    ``$TEST-EXEC``.
+
 .. _environment variables:
 
 Environment Variables

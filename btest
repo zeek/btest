@@ -33,24 +33,6 @@ try:
 except KeyError:
     ConfigDefault = "btest.cfg"
 
-RE_INPUT = re.compile("%INPUT")
-RE_DIR = re.compile("%DIR")
-RE_ENV = re.compile("\$\{(\w+)\}")
-RE_START_NEXT_TEST = re.compile("@TEST-START-NEXT")
-RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
-RE_END_FILE = re.compile("@TEST-END-FILE")
-
-# Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-RE_EXEC                = ("exec",            re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-RE_REQUIRES            = ("requires",        re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP               = ("group",           re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
-RE_SERIALIZE           = ("serialize",       re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
-RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile("@TEST-ALTERNATIVE: *(.*)"), True, True, 1, -1)
-RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile("@TEST-NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
-RE_COPY_FILE           = ("copy-file",       re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
-
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
-
 def output(msg, nl=True, file=None):
     if not file:
         file = sys.stderr
@@ -358,7 +340,8 @@ class Test(object):
         cmds = {}
         for line in content:
 
-            if line.find("@TEST-IGNORE") >= 0:
+            m = RE_IGNORE.search(line)
+            if m:
                 # Ignore this file.
                 return False
 
@@ -1098,7 +1081,7 @@ def readTestFile(filename, output_handler):
 
             m = RE_END_FILE.search(line)
             if m:
-                error("unexpected @test-end-file")
+                error("unexpected %sEND-FILE" % CommandPrefix)
 
             m = RE_START_NEXT_TEST.search(line)
             if not m:
@@ -1294,6 +1277,27 @@ if Options.alternatives:
             pass
 
         Alternatives[tag] = a
+
+CommandPrefix = getOption("CommandPrefix", "@TEST-")
+
+RE_INPUT = re.compile("%INPUT")
+RE_DIR = re.compile("%DIR")
+RE_ENV = re.compile("\$\{(\w+)\}")
+RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
+RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
+RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\n ]*)")
+RE_END_FILE = re.compile(CommandPrefix + "END-FILE")
+
+# Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
+RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
+RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
+RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
+RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
+
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
 
 Config.configured_tests = []
 
