@@ -26,8 +26,12 @@ from datetime import datetime
 VERSION = "0.4-14" # Automatically filled in.
 
 Name ="btest"
-ConfigDefault = "btest.cfg"
 Config = None
+
+try:
+    ConfigDefault = os.environ["BTEST_CFG"]
+except KeyError:
+    ConfigDefault = "btest.cfg"
 
 RE_INPUT = re.compile("%INPUT")
 RE_DIR = re.compile("%DIR")

@@ -194,7 +194,8 @@ and 1 otherwise.
     -c CONFIG, --config=CONFIG
         Specifies an alternative `configuration file`_ to use. If not
         specified, the default is to use a file called ``btest.cfg``
-        if found in the current directory.
+        if found in the current directory. That default can be
+        overridden with ``BTEST_CFG`` environment variable.
 
     -d, --diagnostics
         Reports diagnostics for all failed tests. The diagnostics
@@ -278,7 +279,8 @@ Configuration
 Specifics of ``btest``'s execution can be tuned with a configuration
 file, which by default is ``btest.cfg`` if that's found in the
 current directory. It can alternatively be specified with the
-``--config`` command line option. The configuration file is
+``--config`` command line option, or a ``BTEST_CFG`` environment
+variable. The configuration file is
 "INI-style", and an example comes with the distribution, see
 ``btest.cfg.example``. A configuration file has one main section,
 ``btest``, that defines most options; as well as an optional section
