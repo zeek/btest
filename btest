@@ -32,6 +32,7 @@ Config = None
 RE_INPUT = re.compile("%INPUT")
 RE_DIR = re.compile("%DIR")
 RE_ENV = re.compile("\$\{(\w+)\}")
+RE_PART = re.compile("^(.*)#([0-9]+)$")
 RE_START_NEXT_TEST = re.compile("@TEST-START-NEXT")
 RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
 RE_END_FILE = re.compile("@TEST-END-FILE")
@@ -276,12 +277,19 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.replayOutput(test)
 
+# One @TEST-{EXEC,REQUIRES} command line.
+class CmdLine:
+    def __init__(self, cmdline, expect_success, part, file, localfile):
+        self.cmdline = cmdline
+        self.expect_success = expect_success
+        self.part = part
+        self.file = file
+        self.localfile = localfile
+
 # One test.
 class Test(object):
     def __init__(self, file, output_handler):
-        self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
-        self.basename = None
         self.name = None
         self.number = 1
         self.serialize = None
@@ -298,6 +306,7 @@ class Test(object):
         self.copy_files = []
         self.output_handler = output_handler
         self.start = None
+        self.contents = []
 
     def displayName(self):
         name = self.name
@@ -311,7 +320,7 @@ class Test(object):
         self.filter = filter
 
         # Parse the test's content.
-    def parse(self, content):
+    def parse(self, content, file):
         cmds = {}
         for line in content:
 
@@ -343,53 +352,71 @@ class Test(object):
         # Make sure all non-optional commands are there.
         for (tag, regexp, multiple, optional, group1, group2) in Commands:
             if not optional and not tag in cmds:
-                error("%s: mandatory %s command not found." % (self.file, tag))
+                error("%s: mandatory %s command not found." % (file, tag))
 
-        (name, ext) = os.path.splitext(self.file)
+        basename = file
 
-        self.basename = name.replace("/", ".")
-        while self.basename.startswith("."):
-            self.basename = self.basename[1:]
+        part = 1
+        m = RE_PART.match(file)
 
-        self.name = self.basename
-        self.content = content
-        self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
+        if m:
+            basename = m.group(1)
+            part = int(m.group(2))
+
+        (name, ext) = os.path.splitext(basename)
+
+        basename = name.replace("/", ".")
+        while basename.startswith("."):
+            basename = basename[1:]
+
+        self.name = basename
+        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
+
+        localfile = os.path.join(self.tmpdir, os.path.basename(file))
+        self.contents += [(localfile, content)]
+
+        for (cmd, success) in cmds["exec"]:
+            cmdline = CmdLine(cmd.strip(), success != "-FAIL", part, file, localfile)
+            self.cmdlines += [cmdline]
 
         if "serialize" in cmds:
             self.serialize = cmds["serialize"]
 
         if "group" in cmds:
-            self.groups = set(cmd.strip() for cmd in cmds["group"])
+            self.groups += set(cmd.strip() for cmd in cmds["group"])
 
         if "requires" in cmds:
-            self.requires = [cmd.strip() for cmd in cmds["requires"]]
+            for cmd in cmds["requires"]:
+                cmdline = CmdLine(cmd.strip(), True, part, file, localfile)
+                self.requires += [cmdline]
 
         if "copy-file" in cmds:
-            self.copy_files = [cmd.strip() for cmd in cmds["copy-file"]]
+            self.copy_files += [cmd.strip() for cmd in cmds["copy-file"]]
 
         if "no-filter" in cmds:
-            self.ignore_filters = [cmd.strip() for cmd in cmds["no-filter"]]
+            self.ignore_filters += [cmd.strip() for cmd in cmds["no-filter"]]
 
         if Substitutions:
             for (key, val) in Substitutions.items():
-                self.cmdlines = [(re.sub("\\b" + re.escape(key) + "\\b", val, cmd[0]), cmd[1]) for cmd in self.cmdlines]
+                self.cmdlines += [(re.sub("\\b" + re.escape(key) + "\\b", val, cmd[0]), cmd[1]) for cmd in self.cmdlines]
 
         return True
 
-    # Copies all control information over to a new Test but replaces test
+    # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
     def clone(self, content):
         clone = Test("", self.output_handler)
-        clone.file = self.file
         clone.number = self.number + 1
-        clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
         clone.serialize = clone.serialize
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
 
-        clone.content = content
+        if len(self.contents) > 1:
+            error("cannot combine multiple test parts with @TEST-START-NEXT")
 
+        assert(len(self.contents) == 1)
+        clone.contents = [(self.contents[0][0], content)]
         return clone
 
     def run(self, mgr):
@@ -430,19 +457,18 @@ class Test(object):
             except IOError, e:
                 error("cannot copy %s: %s" % (src, e))
 
-        self.localfile = os.path.join(self.tmpdir, os.path.basename(self.file))
-
-        content = open(self.localfile, "w")
-        for line in self.content:
-            print >>content, line,
-        content.close()
+        for (localfile, content) in self.contents:
+            out = open(localfile, "w")
+            for line in content:
+                print >>out, line,
+            out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w")
         self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "w")
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-            (success, rc) = self.execute((cmd, True), apply_filter=self.filter)
+            (success, rc) = self.execute(cmd, apply_filter=self.filter)
 
             if not success:
                 self.mgr.testSkipped(self)
@@ -454,10 +480,10 @@ class Test(object):
         cmds = self.cmdlines
 
         if Finalizer != "":
-            cmds = cmds + [("%s %s" % (Finalizer, self.name), True)]
+            finalizer = CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>", None)
+            cmds += [finalizer]
 
         for cmd in cmds:
-
             (success, rc) = self.execute(cmd, apply_filter=self.filter)
 
             if not success:
@@ -493,56 +519,58 @@ class Test(object):
         self.stderr.close()
 
     def execute(self, cmd, apply_filter=None):
-        (cmdline, expect_success) = cmd
-
         # See if we need to apply a filter.
         filter_cmd = None
 
         if apply_filter:
             try:
-                (path, executable) = os.path.split(cmdline.split()[0])
+                (path, executable) = os.path.split(cmd.cmdline.split()[0])
                 filter_cmd = Filters[apply_filter][executable]
             except LookupError:
                 pass
 
-        if not filter_cmd or not expect_success: # Do not apply filter if we expect failure.
-            localfile = self.localfile
+        if not filter_cmd or not cmd.expect_success: # Do not apply filter if we expect failure.
+            localfile = cmd.localfile
 
         else:
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
-            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(self.localfile))
-            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_filter=None)
+            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(cmd.localfile))
+            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, cmd.localfile, filtered), True), apply_filter=None)
             if not success:
                 return (False, rc)
 
-            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_filter=None)
+            (success, rc) = self.execute(("mv %s %s" % (filtered, cmd.localfile), True), apply_filter=None)
             if not success:
                 return (False, rc)
 
-            localfile = self.localfile
+            localfile = filtered
 
-        self.mgr.testCommand(self, cmdline)
+        self.mgr.testCommand(self, cmd)
 
         # Replace special names.
-        cmdline = RE_INPUT.sub(localfile, cmdline)
+        cmdline = cmd.cmdline
+
+        if localfile:
+            cmdline = RE_INPUT.sub(localfile, cmd.cmdline)
+
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
-        print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[expect_success])
+        print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
 
         env = self.prepareEnv()
 
         try:
             subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
         except subprocess.CalledProcessError, e:
-            if expect_success:
+            if cmd.expect_success:
                 self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, e.returncode)]
                 return (False, e.returncode)
 
             else:
                 return (True, e.returncode)
 
-        if not expect_success:
+        if not cmd.expect_success:
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
             return (False, 0)
 
@@ -798,8 +826,13 @@ class Verbose(OutputHandler):
         self.output(test, "%s ..." % test.displayName())
 
     def testCommand(self, test, cmdline):
+        part = ""
+
+        if cmdline.part > 1:
+            part = " [part #%d]" % cmdline.part
+
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "  > %s" % cmdline)
+        self.output(test, "  > %s%s" % (cmdline.cmdline, part))
 
     def testSucceeded(self, test):
         self.output(test, self.threadPrefix(), nl=False)
@@ -1006,12 +1039,14 @@ def findTests(paths, output_handler):
     return tests
 
 # Read the given test file and instantiate one or more tests from it.
-def readTestFile(filename, output_handler):
 
+AllTests = {}
+
+def readTestFile(filename, output_handler):
     def newTest(content, previous):
         if not previous:
             t = Test(filename, output_handler)
-            if t.parse(content):
+            if t.parse(content, filename):
                 return t
             else:
                 return None
@@ -1075,13 +1110,32 @@ def readTestFile(filename, output_handler):
     if state == "file":
         files += [file]
 
-    tests += [newTest(content, previous)]
+    global AllTests
+
+    m = RE_PART.match(filename)
+
+    if m:
+        basepath = m.group(1)
+        part = int(m.group(2))
+    else:
+        basepath = filename
+        part = 1
+
+    if basepath in AllTests:
+        t = AllTests[basepath]
+        t.parse(content, filename)
+        t.addFiles(files)
+
+    else:
+        t = newTest(content, previous)
+        tests += [t]
+        AllTests[basepath] = t
+
+        for t in tests:
+            if t:
+                t.addFiles(files)
 
     input.close()
-
-    for t in tests:
-        if t:
-            t.addFiles(files)
 
     return tests
 
@@ -1219,14 +1273,14 @@ if Options.subst:
 
 Config.configured_tests = []
 
-testdirs = getOption("TestDirs", "").split()
-if testdirs:
-    Config.configured_tests = findTests(testdirs, output_handler)
-
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
 Finalizer = getOption("Finalizer", "")
+
+testdirs = getOption("TestDirs", "").split()
+if testdirs:
+    Config.configured_tests = findTests(testdirs, output_handler)
 
 # if Finalizer:
 #    Finalizer = os.path.abspath(Finalizer)
@@ -1289,5 +1343,6 @@ if failed > 0:
 else:
     if not Options.quiet:
         output("all %d tests successful" % total)
+
     sys.exit(0)
 
