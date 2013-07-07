@@ -8,6 +8,5 @@ dist:
 	python setup.py sdist -d build
 	@printf "Package: "; echo build/*.tar.gz
 
-www: dist
-	cp dist/* $(WWW)
-	# cp CHANGES $(WWW)
+test:
+	@(cd testing && make)

@@ -1,0 +1,5 @@
+diag-file ... failed
+  % 'exit 1' failed unexpectedly (exit code 1)
+  % cat .stderr
+  Stderr output
+

@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<testsuite errors="0" failures="1" hostname="empire.icsi.berkeley.edu" tests="3" XXX XXX>
+    <testcase classname="t1" name="t1" XXX/>
+    <testcase classname="t2" name="t2" XXX>
+        <failure type="fail">  % 'exit 1' failed unexpectedly (exit code 1)
+  % cat .stderr
+</failure>
+    </testcase>
+    <testcase classname="t3" name="t3" XXX/>
+</testsuite>
+

@@ -1,0 +1,5 @@
+# %TEST-EXEC: btest -D %INPUT >output 2>&1
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: echo Hello, World!
+@TEST-EXEC: echo Stderr output >&2

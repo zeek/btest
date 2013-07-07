@@ -1,0 +1,16 @@
+Foo
+testbase is correct
+42
+<...>/.tmp/tests.environment/.tmp/environment/.diag
+TEST
+<...>/.tmp/tests.environment/Baseline/environment
+environment
+<...>/.tmp/tests.environment/.tmp/environment/.verbose
+Foo
+testbase is correct
+42
+<...>/.tmp/tests.environment/.tmp/environment/.diag
+UPDATE
+<...>/.tmp/tests.environment/Baseline/environment
+environment
+<...>/.tmp/tests.environment/.tmp/environment/.verbose
