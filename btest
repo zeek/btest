@@ -305,7 +305,6 @@ class Test(object):
     def __init__(self, file, output_handler):
         self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
-        self.basename = None
         self.name = None
         self.number = 1
         self.serialize = None
@@ -373,11 +372,13 @@ class Test(object):
 
         (name, ext) = os.path.splitext(self.file)
 
-        self.basename = name.replace("/", ".")
-        while self.basename.startswith("."):
-            self.basename = self.basename[1:]
+        name = os.path.relpath(name, TestBase)
 
-        self.name = self.basename
+        name = name.replace("/", ".")
+        while name.startswith("."):
+            name = name[1:]
+
+        self.name = name
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
 
@@ -407,8 +408,7 @@ class Test(object):
         clone = Test("", self.output_handler)
         clone.file = self.file
         clone.number = self.number + 1
-        clone.basename = self.basename
-        clone.name = "%s-%d" % (self.basename, clone.number)
+        clone.name = "%s-%d" % (self.name, clone.number)
         clone.serialize = clone.serialize
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
@@ -476,7 +476,12 @@ class Test(object):
 
         failures = 0
 
-        cmds = self.cmdlines
+        cmds = []
+
+        if Initializer != "":
+            cmds += [("%s %s" % (Initializer, self.name), True)]
+
+        cmds += self.cmdlines
 
         if Finalizer != "":
             cmds = cmds + [("%s %s" % (Finalizer, self.name), True)]
@@ -1185,8 +1190,10 @@ if not os.path.exists(Options.config):
 if basedir:
     os.chdir(basedir)
 
+TestBase = os.getcwd()
+
 defaults = os.environ
-defaults["testbase"] = os.getcwd()
+defaults["testbase"] = TestBase
 defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(fname)
@@ -1299,16 +1306,17 @@ RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FI
 
 Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
 
+StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
+TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
+BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+Initializer = getOption("Initializer", "")
+Finalizer = getOption("Finalizer", "")
+
 Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
     Config.configured_tests = findTests(testdirs, output_handler)
-
-StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
-TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
-BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
-Finalizer = getOption("Finalizer", "")
 
 # if Finalizer:
 #    Finalizer = os.path.abspath(Finalizer)
