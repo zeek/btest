@@ -189,7 +189,8 @@ and 1 otherwise.
 
     -b, --brief
         Does not output *anything* for tests which pass. If all tests
-        pass, there will not be any output at all.
+        pass, there will not be any output at all except final summary
+        information.
 
     -c CONFIG, --config=CONFIG
         Specifies an alternative `configuration file`_ to use. If not
@@ -218,7 +219,7 @@ and 1 otherwise.
         comma-separated list. Specifying ``-`` as a group name selects
         all tests that do not belong to any group.
 
-    -j [THREADS], --jobs[=THREADS]
+    -j THREADS, --jobs=THREADS
         Runs up to the given number of tests in parallel. If no number
         is given, BTest substitutes the number of available CPU cores
         as reported by the OS.
@@ -331,6 +332,13 @@ configuration file:
 ``StateFile``
     The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
+
+``Initializer``
+    An executable that will be executed before each test. It runs in
+    the same directory as the test itself will and receives the name
+    of the test as its parameter. The return value indicates whether
+    the test should continue; if false, the test will be considered
+    failed. By default, there's no initializer set.
 
 ``Finalizer``
     An executable that will be executed each time any test has
