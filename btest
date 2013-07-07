@@ -52,7 +52,7 @@ def error(msg):
 def mkdir(dir):
     if not os.path.exists(dir):
         try:
-            os.mkdir(dir)
+            os.makedirs(dir)
         except OSError, e:
             error("cannot create directory %s: %s" % (dir, e))
 
@@ -355,7 +355,7 @@ class Test(object):
 
                     if not multiple:
                         if tag in cmds:
-                            error("%s: %d defined multiple times." % (test, tag))
+                            error("%s: %d defined multiple times." % (self.name, tag))
 
                         cmds[tag] = value
 
@@ -436,6 +436,7 @@ class Test(object):
             fname = os.path.join(self.tmpdir, fname)
 
             subdir = os.path.dirname(fname)
+
             if subdir != "":
                 mkdir(subdir)
             try:
@@ -1019,6 +1020,9 @@ def findTests(paths, output_handler):
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
     for path in paths:
+
+        ignores = [os.path.join(path, dir) for dir in ignore_dirs]
+
         if os.path.isfile(path):
             tests += readTestFile(path, output_handler)
 
@@ -1032,9 +1036,10 @@ def findTests(paths, output_handler):
                         tests += readTestFile(os.path.join(dirpath, file), output_handler)
 
                 # Don't recurse into these.
-                for skip in ignore_dirs:
-                    if skip in dirnames:
-                        dirnames.remove(skip)
+                for (dir, path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
+                    for skip in ignores:
+                        if path == skip:
+                            dirnames.remove(dir)
 
         else:
             # See if we have a test named like this in our configured set.
