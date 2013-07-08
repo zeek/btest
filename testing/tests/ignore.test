@@ -1,4 +1,4 @@
-# %TEST-EXEC: btest -t >output 2>&1 
+# %TEST-EXEC: btest -t 2>&1 | sort >output
 # %TEST-EXEC: btest-diff output
 
 @TEST-EXEC: test -f ../../initialized

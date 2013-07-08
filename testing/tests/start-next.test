@@ -1,7 +1,7 @@
 # %TEST-EXEC: btest %INPUT
 # %TEST-EXEC: btest-diff output
 
-@TEST-EXEC: cat %INPUT | wc -c >>../../output
+@TEST-EXEC: cat %INPUT | wc -c | awk '{print $1}' >>../../output
 This is the first test input in this file.
 # @TEST-START-NEXT
 ... and the second.

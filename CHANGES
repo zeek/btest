@@ -1,4 +1,41 @@
 
+0.4-25 | 2013-07-08 13:25:50 -0700
+
+  * A test-suite for btest. Using, of course, btest. "make test" will
+    test most of btest's features. The main missing piece is testing
+    the Sphinx support, we will add that next. (Robin Sommer)
+
+  * When creating directories, we know also create intermediaries.
+    That in particular means that "@TEST-START-FILE a/b/c" now creates
+    a directory "a/b" automatically and puts the file in there. (Robin
+    Sommer)
+
+  * IgnoreDirs now also works for sub directories. (Robin Sommer)
+    
+  * Documentation updates. (Robin Sommer)
+    
+  * Adding "Initializer" option, which runs a command before each
+    test. (Robin Sommer)
+
+  * Adding "CommandPrefix" option that changes the naming of all btest
+    commands by replacing the "@TEST-" prefix with a custom string.
+    (Robin Sommer)
+
+  * Default configuration file can be overriden via BTEST_CFG
+    environment variable. (Robin Sommer)
+
+  * s/bro-ids.org/bro.org/g (Robin Sommer)
+
+  * Bugfix for -j without number. (Robin Sommer)
+
+  * New @TEST-ALTERNATIVE that activates tests only for the given
+    alternative. Renamed @TEST-NO-ALTERNATIVE to
+    @TEST-NOT-ALTERNATIVE, and allowing "default" for both
+    @TEST-ALTERNATIVE and @TEST-NOTALTERNATIVE to specify the case
+    that BTest runs without any alternative given. (Robin Sommer)
+
+  * Fix for alternative names containing white spaces. (Robin Sommer)
+    
 0.4-14 | 2013-01-23 18:11:22 -0800
 
   * Fixing links in README and removing TODOs. (Robin Sommer)
