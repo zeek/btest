@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-25" # Automatically filled in.
+VERSION = "0.4-26" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -305,6 +305,7 @@ class Test(object):
     def __init__(self, file, output_handler):
         self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
+        self.basename = None
         self.name = None
         self.number = 1
         self.serialize = None
@@ -379,6 +380,7 @@ class Test(object):
             name = name[1:]
 
         self.name = name
+        self.basename = name
         self.content = content
         self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
 
@@ -408,7 +410,8 @@ class Test(object):
         clone = Test("", self.output_handler)
         clone.file = self.file
         clone.number = self.number + 1
-        clone.name = "%s-%d" % (self.name, clone.number)
+        clone.basename = self.basename
+        clone.name = "%s-%d" % (self.basename, clone.number)
         clone.serialize = clone.serialize
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines

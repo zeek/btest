@@ -1,4 +1,8 @@
 
+0.4-26 | 2013-07-08 20:46:22 -0700
+
+  * Fixing bug with @TEST-START-NEXT naming. (Robin Sommer)
+
 0.4-25 | 2013-07-08 13:25:50 -0700
 
   * A test-suite for btest. Using, of course, btest. "make test" will
