@@ -620,7 +620,7 @@ class Test(object):
 
         print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
 
-        env = self.prepareEnv(addl_envs)
+        env = self.prepareEnv(cmd, addl_envs)
 
         try:
             subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
@@ -650,13 +650,14 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self, addl = {}):
+    def prepareEnv(self, cmd, addl = {}):
         env = copy.deepcopy(os.environ)
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
+        env["TEST_PART"] = str(cmd.part)
 
         for (key, val) in addl.items():
             env[key.upper()] = val
