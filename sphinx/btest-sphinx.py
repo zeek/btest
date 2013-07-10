@@ -100,14 +100,11 @@ class BTestTransform(Transform):
         try:
             rawtext = open("%s#%d" % (test.rst_output, part)).read()
         except IOError, e:
-            rawtext = "BTest input error: %s" % e
+            rawtext = ""
 
-        if len(rawtext):
-            settings = self.document.settings
-            content = parsePartial(rawtext, settings)
-            pending.replace_self(content)
-        else:
-            pending.parent.parent.remove(pending.parent)
+        settings = self.document.settings
+        content = parsePartial(rawtext, settings)
+        pending.replace_self(content)
 
     _run = set()
 
