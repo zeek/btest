@@ -75,12 +75,12 @@ echo >>$stdout
 # Branch depending on where this script was started from.
 
 if [ "$BTEST_RST_OUTPUT" != "" ]; then
-    # Running from inside Sphinx, just outout to where it tells us.
-    cat $stdout >>$BTEST_RST_OUTPUT
+    # Running from inside Sphinx, just output to where it tells us.
+    cat $stdout >>"${BTEST_RST_OUTPUT}#${TEST_PART}"
 
 elif [ "$TEST_NAME" ]; then
     # Running from inside BTest, output into file that btest-diff-rst will pickup.
-    cat $stdout >>"btest-${TEST_NAME}.rst"
+    cat $stdout >>"btest-${TEST_NAME}#${TEST_PART}"
 
 else
     # Running from command line, just print out.

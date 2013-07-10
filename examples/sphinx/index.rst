@@ -22,6 +22,9 @@ Testing
 
     @TEST-EXEC: btest-rst-cmd echo "Hello, world! Again."
 
+.. btest:: hello-world
+
+    @TEST-EXEC: btest-rst-cmd echo "Hello, world! Again. Again."
 
 Indices and tables
 ==================

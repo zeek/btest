@@ -8,35 +8,47 @@ from docutils import nodes, statemachine, utils
 from docutils.parsers.rst import directives, Directive, DirectiveError, Parser
 from docutils.transforms import TransformError, Transform
 from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
+from sphinx.errors import SphinxError
 
 Initialized = False
+App = None
 Reporter = None
 BTestBase = None
 BTestTests = None
+BTestTmp = None
 
 Tests = {}
 
 def init(settings, reporter):
-    global Intialized, Reporter, BTestBase, BTestTests
+    global Intialized, App, Reporter, BTestBase, BTestTests, BTestTmp
 
     Initialized = True
     Reporter = reporter
     BTestBase = settings.env.config.btest_base
     BTestTests = settings.env.config.btest_tests
+    BTestTmp = settings.env.config.btest_tmp
 
     if not BTestBase:
-        return self.error("error: btest_base not set in config")
+        raise SphinxError("error: btest_base not set in config")
 
     if not BTestTests:
-        return self.error("error: btest_tests not set in config")
+        raise SphinxError("error: btest_tests not set in config")
 
     if not os.path.exists(BTestBase):
-        return self.error("error: btest_base directory '%s' does not exists" % BTestBase)
+        raise SphinxError("error: btest_base directory '%s' does not exists" % BTestBase)
 
     joined = os.path.join(BTestBase, BTestTests)
 
     if not os.path.exists(joined):
-        return self.error("error: btest_tests directory '%s' does not exists" % joined)
+        raise SphinxError("error: btest_tests directory '%s' does not exists" % joined)
+
+    if not BTestTmp:
+        BTestTmp = os.path.join(App.outdir, ".tmp/rst_output")
+
+    BTestTmp = os.path.abspath(BTestTmp)
+
+    if not os.path.exists(BTestTmp):
+        os.makedirs(BTestTmp)
 
 def parsePartial(rawtext, settings):
     parser = Parser()
@@ -53,11 +65,12 @@ class Test(object):
         if self.has_run:
             return
 
-        Reporter.info("running test %s ..." % "X")
-        self.has_run = True
+        App.builder.info("running test %s ..." % darkgreen(self.path))
 
-        self.rst_output = tempfile.mktemp(prefix="rst-btest")
+        self.rst_output = os.path.join(BTestTmp, "%s" % self.tag)
         os.environ["BTEST_RST_OUTPUT"] = self.rst_output
+
+        self.cleanTmps()
 
         try:
             subprocess.check_call("btest -qd %s" % self.path, shell=True)
@@ -65,7 +78,10 @@ class Test(object):
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
             # it doesn't pickle.
-            return Reporter.error("btest error: %s" % e)
+            App.builder.warn(red("BTest error: %s" % e))
+
+    def cleanTmps(self):
+        subprocess.call("rm %s#* 2>/dev/null" % self.rst_output, shell=True)
 
 class BTestTransform(Transform):
 
@@ -73,13 +89,16 @@ class BTestTransform(Transform):
 
     def apply(self):
         pending = self.startnode
-        test = pending.details
+        (test, part) = pending.details
 
         os.chdir(BTestBase)
-        test.run()
+
+        if not test.tag in BTestTransform._run:
+            test.run()
+            BTestTransform._run.add(test.tag)
 
         try:
-            rawtext = open(test.rst_output).read()
+            rawtext = open("%s#%d" % (test.rst_output, part)).read()
         except IOError, e:
             rawtext = "BTest input error: %s" % e
 
@@ -89,6 +108,8 @@ class BTestTransform(Transform):
             pending.replace_self(content)
         else:
             pending.parent.parent.remove(pending.parent)
+
+    _run = set()
 
 class BTest(Directive):
     required_arguments = 1
@@ -117,6 +138,7 @@ class BTest(Directive):
         tag = self.arguments[0]
 
         if not tag in Tests:
+            import sys
             test = Test()
             test.tag = tag
             test.path = os.path.join(BTestTests, tag + ".btest")
@@ -140,7 +162,7 @@ class BTest(Directive):
 
         out.close()
 
-        details = test
+        details = (test, part)
         pending = nodes.pending(BTestTransform, details, rawsource=self.block_text)
         document.note_pending(pending)
 
@@ -149,5 +171,9 @@ class BTest(Directive):
 directives.register_directive('btest', BTest)
 
 def setup(app):
+    global App
+    App = app
+
     app.add_config_value('btest_base', None, 'env')
     app.add_config_value('btest_tests', None, 'env')
+    app.add_config_value('btest_tmp', None, 'env')
