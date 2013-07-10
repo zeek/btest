@@ -1,0 +1,29 @@
+.. code-block:: none
+
+  # echo Hello
+  Hello
+
+.. code-block:: guess
+
+  Hello 2, no command
+
+.. code-block:: none
+
+  # Different command
+  Hello 3, no command
+
+.. code-block:: none
+
+  # echo Hello 4, no output
+
+.. code-block:: none
+
+  # echo Hello 5, filter
+  HXllo 5, filtXr
+
+.. code-block:: none
+
+  # echo Hello 6, file
+  Example file.
+  Line 2
+

@@ -14,6 +14,7 @@
 import sys, os
 
 sys.path.append("../../sphinx")
+sys.path.append("../../../sphinx")
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
