@@ -823,6 +823,11 @@ with a previously established baseline, just like ``btest-diff`` does
 with files. To establish the initial baseline, run ``btest -u``, like
 you would with ``btest-diff``.
 
+The same ``<test-name>`` can be used multiple times, in which case
+each entry will become one part of a joint test. ``btest`` will
+execute all parts subsequently within a single sandbox, and earlier
+results will thus be available to later parts.
+
 Scripts
 -------
 
