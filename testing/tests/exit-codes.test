@@ -1,0 +1,19 @@
+# %TEST-EXEC-FAIL: btest t1 t2 t3 >>out2 2>&1
+# %TEST-EXEC: btest-diff out1
+# %TEST-EXEC: btest-diff out2
+
+%TEST-START-FILE t1
+@TEST-EXEC: echo 1.1 >>../../out1
+@TEST-EXEC: exit 100
+@TEST-EXEC: echo 1.2 >>../../out1
+%TEST-END-FILE
+
+%TEST-START-FILE t2
+@TEST-EXEC: echo 2.1 >>../../out1
+@TEST-EXEC: exit 200
+@TEST-EXEC: echo 2.2 >>../../out1
+%TEST-END-FILE
+
+%TEST-START-FILE t3
+@TEST-EXEC: echo 3.1 >>../../out1
+%TEST-END-FILE

@@ -1,0 +1,4 @@
+# %TEST-EXEC: btest -b %INPUT >output 2>&1
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: exit 0

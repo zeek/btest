@@ -1,11 +1,20 @@
 
 [btest]
-TestDirs    = examples 
+TestDirs    = examples
 TmpDir      = %(testbase)s/.tmp
 BaselineDir = %(testbase)s/Baseline
 IgnoreDirs  = .svn CVS .tmp
 IgnoreFiles = *.tmp *.swp #*
 
 [environment]
-CFLAGS=-O3                                                 
-PATH=%(testbase)s/bin:%(default_path)s  
+CFLAGS=-O3
+PATH=%(testbase)s/bin:%(default_path)s
+
+[filter-myalternative]
+cat=%(testbase)s/examples/my-filter
+
+[substitution-myalternative]
+original=filtered
+
+[environment-myalternative]
+MYALT=1

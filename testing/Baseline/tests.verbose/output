@@ -1,0 +1,4 @@
+verbose ...
+  > echo "Hello, World!"
+... verbose ok
+all 1 tests successful

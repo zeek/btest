@@ -1,0 +1,5 @@
+diag-all ... ok
+  % cat .stderr
+  Stderr output
+
+all 1 tests successful

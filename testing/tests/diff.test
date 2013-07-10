@@ -1,0 +1,7 @@
+# %TEST-EXEC-FAIL: btest %INPUT
+# %TEST-EXEC: btest -U %INPUT
+# %TEST-EXEC: test -f Baseline/diff/output
+# %TEST-EXEC: btest %INPUT
+
+@TEST-EXEC: echo Hello, World! >output
+@TEST-EXEC: btest-diff output

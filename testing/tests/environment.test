@@ -1,0 +1,13 @@
+# %TEST-EXEC: btest %INPUT
+# %TEST-EXEC: btest -U %INPUT
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: echo ${ENV1} >>../../output
+@TEST-EXEC: test "${ENV2}" == `cd ../../../.. && pwd` && echo "testbase is correct" >>../../output
+@TEST-EXEC: echo ${ENV3} >>../../output
+
+@TEST-EXEC: echo ${TEST_DIAGNOSTICS} | strip-test-base >>../../output
+@TEST-EXEC: echo ${TEST_MODE} >>../../output
+@TEST-EXEC: echo ${TEST_BASELINE} | strip-test-base >>../../output
+@TEST-EXEC: echo ${TEST_NAME} >>../../output
+@TEST-EXEC: echo ${TEST_VERBOSE} | strip-test-base >>../../output

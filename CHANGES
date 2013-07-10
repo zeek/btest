@@ -1,4 +1,70 @@
 
+0.4-26 | 2013-07-08 20:46:22 -0700
+
+  * Fixing bug with @TEST-START-NEXT naming. (Robin Sommer)
+
+0.4-25 | 2013-07-08 13:25:50 -0700
+
+  * A test-suite for btest. Using, of course, btest. "make test" will
+    test most of btest's features. The main missing piece is testing
+    the Sphinx support, we will add that next. (Robin Sommer)
+
+  * When creating directories, we know also create intermediaries.
+    That in particular means that "@TEST-START-FILE a/b/c" now creates
+    a directory "a/b" automatically and puts the file in there. (Robin
+    Sommer)
+
+  * IgnoreDirs now also works for sub directories. (Robin Sommer)
+    
+  * Documentation updates. (Robin Sommer)
+    
+  * Adding "Initializer" option, which runs a command before each
+    test. (Robin Sommer)
+
+  * Adding "CommandPrefix" option that changes the naming of all btest
+    commands by replacing the "@TEST-" prefix with a custom string.
+    (Robin Sommer)
+
+  * Default configuration file can be overriden via BTEST_CFG
+    environment variable. (Robin Sommer)
+
+  * s/bro-ids.org/bro.org/g (Robin Sommer)
+
+  * Bugfix for -j without number. (Robin Sommer)
+
+  * New @TEST-ALTERNATIVE that activates tests only for the given
+    alternative. Renamed @TEST-NO-ALTERNATIVE to
+    @TEST-NOT-ALTERNATIVE, and allowing "default" for both
+    @TEST-ALTERNATIVE and @TEST-NOTALTERNATIVE to specify the case
+    that BTest runs without any alternative given. (Robin Sommer)
+
+  * Fix for alternative names containing white spaces. (Robin Sommer)
+    
+0.4-14 | 2013-01-23 18:11:22 -0800
+
+  * Fixing links in README and removing TODOs. (Robin Sommer)
+
+0.4-13 | 2013-01-23 14:33:23 -0800
+
+  * Allowing use of -j without a value. BTest then uses the number of
+    CPU cores as reported by the OS. (Robin Sommer)
+
+0.4-11 | 2013-01-21 17:50:40 -0800
+
+  * Adding a new "alternative" concept that combines filters and
+    substitutions, and adds per-alternative environment variables. 
+    (Robin Sommer)
+
+    Instead of defining filters and substitutions separately, one now
+    specifies an alternative configuration to run with "-A <name>" and
+    that then checks for both "[substitutions-<name>]" and
+    "[filter-<name>]" section. In addition, "[environment-<name>]"
+    allows to define alternative-specific environment variables.
+
+    The old filter/substitutions options -F and -s are gone. The
+    sections for substitutions are renamed to "[substitutions-<name>]"
+    from "[subst-<name>]".
+
 0.4-10 | 2013-01-07 09:45:35 -0800
 
   * btest now sets a new environment variable TEST_VERBOSE, giving the

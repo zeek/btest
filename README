@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.4-10
+.. |version| replace:: 0.4-26
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -24,11 +24,11 @@ Download
 ========
 
 You can find the latest BTest release for download at
-http://www.bro-ids.org/download.
+http://www.bro.org/download.
 
-BTest's git repository is located at `git://git.bro-ids.org/btest.git
-<git://git.bro-ids.org/btest.git>`__. You can browse the repository
-`here <http://git.bro-ids.org/btest.git>`__.
+BTest's git repository is located at `git://git.bro.org/btest.git
+<git://git.bro.org/btest.git>`__. You can browse the repository
+`here <http://git.bro.org/btest.git>`__.
 
 This document describes BTest |version|. See the ``CHANGES``
 file for version history.
@@ -180,14 +180,23 @@ and 1 otherwise.
 
 ``btest`` accepts the following options:
 
+    -a ALTERNATIVE, --alternative=ALTERNATIVE
+        Activates an alternative_ configuration defined in the
+        configuration file. This option can be given multiple times to
+        run tests with several alternatives. If ``ALTERNATIVE`` is ``-``
+        that refers to running with the standard setup, which can be used
+        to run tests both with and without alterantives by giving both.
+
     -b, --brief
         Does not output *anything* for tests which pass. If all tests
-        pass, there will not be any output at all.
+        pass, there will not be any output at all except final summary
+        information.
 
     -c CONFIG, --config=CONFIG
         Specifies an alternative `configuration file`_ to use. If not
         specified, the default is to use a file called ``btest.cfg``
-        if found in the current directory.
+        if found in the current directory. That default can be
+        overridden with ``BTEST_CFG`` environment variable.
 
     -d, --diagnostics
         Reports diagnostics for all failed tests. The diagnostics
@@ -204,13 +213,6 @@ and 1 otherwise.
         Writes diagnostics for all failed tests into the given file.
         If the file already exists, it will be overwritten.
 
-    -F FILTER, --filter=FILTER
-        Activates a filter_ defined in the configuration file. This
-        option can be given multiple times to run tests with several
-        filters. If ``FILTER`` is ``-`` that refers to running without
-        any filter, which can be used to run tests both with and
-        without a filter by giving both.
-
     -g GROUPS, --group=GROUPS
         Runs only tests assigned to the given test groups, see
         `@TEST-GROUP`_. Multiple groups can be given as a
@@ -218,10 +220,13 @@ and 1 otherwise.
         all tests that do not belong to any group.
 
     -j THREADS, --jobs=THREADS
-        Runs up to the given number of tests in parallel. By default,
-        BTest assumes that all tests can be executed concurrently
-        without further constraints. One can however ensure
-        serialization of subsets by assigning them to the same
+        Runs up to the given number of tests in parallel. If no number
+        is given, BTest substitutes the number of available CPU cores
+        as reported by the OS.
+
+        By default, BTest assumes that all tests can be executed
+        concurrently without further constraints. One can however
+        ensure serialization of subsets by assigning them to the same
         serialization set, see `@TEST-SERIALIZE`_.
 
     -q, --quiet
@@ -234,9 +239,6 @@ and 1 otherwise.
         that records the tests that have failed. Using this option on
         the next run then reads that file back in and limits execution
         to those tests found in there.
-
-    -S SUBST, --subst=SUBST
-        Activates a substitution_ defined in the configuration file.
 
     -t, --tmp-keep
         Does not delete any temporary files created for running the
@@ -278,12 +280,13 @@ Configuration
 Specifics of ``btest``'s execution can be tuned with a configuration
 file, which by default is ``btest.cfg`` if that's found in the
 current directory. It can alternatively be specified with the
-``--config`` command line option. The configuration file is
+``--config`` command line option, or a ``BTEST_CFG`` environment
+variable. The configuration file is
 "INI-style", and an example comes with the distribution, see
 ``btest.cfg.example``. A configuration file has one main section,
 ``btest``, that defines most options; as well as an optional section
 for defining `environment variables`_ and further optional sections
-for defining custom filters_ and substitutions_.
+for defining alternatives_.
 
 Note that all paths specified in the configuration file are relative
 to ``btest``'s *base directory*. The base directory is either the
@@ -330,12 +333,25 @@ configuration file:
     The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
 
+``Initializer``
+    An executable that will be executed before each test. It runs in
+    the same directory as the test itself will and receives the name
+    of the test as its parameter. The return value indicates whether
+    the test should continue; if false, the test will be considered
+    failed. By default, there's no initializer set.
+
 ``Finalizer``
     An executable that will be executed each time any test has
     successfully run. It runs in the same directory as the test itself
     and receives the name of the test as its parameter. The return
     value indicates whether the test should indeed be considered
     successful. By default, there's no finalizer set.
+
+``CommandPrefix``
+    Changes the naming of all ``btest`` commands by replacing the
+    ``@TEST-`` prefix with a custom string. For example, with
+    ``CommandPrefix=$TEST-``, the ``@TEST-EXEC`` command becomes
+    ``$TEST-EXEC``.
 
 .. _environment variables:
 
@@ -358,29 +374,66 @@ Furthermore, by setting ``PATH`` to include the ``btest``
 distribution directory, one could skip the installation of the
 ``btest`` package.
 
-.. _filter:
+.. _alternative:
+
+Alternatives
+~~~~~~~~~~~~
+
+BTest can run a set of tests with different settings than it would
+normally use by specifying an *alternative* configuration. Currently,
+three things can be adjusted:
+
+    - Further environment variables can be set that will then be
+      available to all the commands that a test executes.
+
+    - *Filters* can modify an input file before a test uses it.
+
+    - *Substitutions* can modify command lines executed as part of a
+      test.
+
+We discuss the three separately in the following. All of them are
+defined by adding sections ``[<type>-<name>]`` where ``<type>``
+corresponds to the type of adjustment being made and ``<name>`` is the
+name of the alternative. Once at least one section is defined for a
+name, that alternative can be enabled by BTest's ``--alternative``
+flag.
+
+Environment Variables
+^^^^^^^^^^^^^^^^^^^^^
+
+An alternative can add further environment variables by defining an
+``[environment-<name>]`` section:
+
+     [environment-myalternative]
+     CFLAGS=-O3
+
+Running ``btest`` with ``--alternative=myalternative`` will now make
+the ``CFLAGS`` environment variable available to all commands
+executed.
+
+.. _filters:
 
 Filters
-~~~~~~~
+^^^^^^^
 
 Filters are a transparent way to adapt the input to a specific test
-command before it is executed. A filter is defined by adding a
-section ``[filter-<name>]`` to the configuration file. This section
-must have exactly one entry, and the name of that entry is
-interpreted as the name of a command whose input is to be
-filtered.  The value of that entry is the name of a filter script
-that will be run with two arguments representing input and output files,
-respectively. Example::
+command before it is executed. A filter is defined by adding a section
+``[filter-<name>]`` to the configuration file. This section must have
+exactly one entry, and the name of that entry is interpreted as the
+name of a command whose input is to be filtered.  The value of that
+entry is the name of a filter script that will be run with two
+arguments representing input and output files, respectively. Example::
 
-    [filter-cat]
+    [filter-myalternative]
     cat=%(testbase)s/bin/filter-cat
 
 Once the filter is activated by running ``btest`` with
-``--filter=cat``, every time a ``@TEST-EXEC: cat %INPUT`` is found,
-``btest`` will first execute (something similar to) ``filter-cat
-%INPUT out.tmp``, and then subsequently ``cat out.tmp`` (i.e., the
-original command but with the filtered output).  In the simplest
-case, the filter could be a no-op in the form ``cp $1 $2``.
+``--alternative=myalternative``, every time a ``@TEST-EXEC: cat
+%INPUT`` is found, ``btest`` will first execute (something similar to)
+``%(testbase)s/bin/filter-cat %INPUT out.tmp``, and then subsequently
+``cat out.tmp`` (i.e., the original command but with the filtered
+output).  In the simplest case, the filter could be a no-op in the
+form ``cp $1 $2``.
 
 .. note::
     There are a few limitations to the filter concept currently:
@@ -398,24 +451,24 @@ case, the filter could be a no-op in the form ``cp $1 $2``.
 .. _substitution:
 
 Substitutions
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
-Substitutions are similar to filters, yet they do not adapt the
-input but the command line being executed. A substitution is defined by adding
-a section ``[subst-<name>]`` to the configuration file. This section
-must have exactly one entry, and the name of that entry is
-interpreted as the name of a command that is to be replaced with
-something else. Example::
+Substitutions are similar to filters, yet they do not adapt the input
+but the command line being executed. A substitution is defined by
+adding a section ``[substitution-<name>]`` to the configuration file.
+For each entry in this section, the entry's name specifies the
+command that is to be replaced with something else given as its value.
+Example::
 
-    [subst-opt]
+    [substitution-myalternative]
     gcc=gcc -O2
 
 Once the substitution is activated by running ``btest`` with
-``--subst=opt``, every time a ``@TEST-EXEC`` executes ``gcc``, that
-is replaced with ``gcc -O2``. The replacement is simple string
-substitution so it works not only with commands but anything
-found on the command line; it however only replaces full words, not subparts
-of words.
+``--alternative=myalternative``, every time a ``@TEST-EXEC`` executes
+``gcc``, that is replaced with ``gcc -O2``. The replacement is simple
+string substitution so it works not only with commands but anything
+found on the command line; it however only replaces full words, not
+subparts of words.
 
 Writing Tests
 -------------
@@ -499,8 +552,15 @@ supported:
     a particular library is available). Multiple requirements may be
     specified and then all must be met for the test to continue.
 
-``@TEST-NO-FILTER: <filter>``
-    Ignores this test for the given filter (see filters_).
+``@TEST-ALTERNATIVE: <alternative>`` Runs this test only for the given
+   alternative (see alternative_). If ``<alternatives>`` is
+   ``default``, the test executes when BTest runs with no alternative
+   given (which however is the default anyways).
+
+``@TEST-NOT-ALTERNATIVE: <alternative>`` Ignores this test for the
+   given alternative (see alternative_).  If ``<alternative>`` is
+   ``default``, the test is ignored if BTest runs with no alternative
+   given.
 
 ``@TEST-COPY-FILE: <file>``
     Copy the given file into the test's directory before the test is
@@ -791,20 +851,6 @@ The following Sphinx support scripts come with ``btest``:
     you give it the right options. In fact, the other scripts are
     provided just for convenience and leverage ``btest-rst-cmd``
     internally.
-
-To-Do List
-==========
-
-The following features would be nice to have:
-
-* Output test results in a machine-readable format that can then be
-  parsed and pretty-printed by some frontend tool (potentially
-  assembling and aggregating output from different systems).
-
-* Add an auto-tester script that runs a test-suite automatically in
-  regular periods, mailing out reports when tests fail. There is an
-  initial version of such a script, but it's currently
-  project-specific and needs to be generalized.
 
 License
 =======

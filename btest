@@ -23,29 +23,15 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-10" # Automatically filled in.
+VERSION = "0.4-26" # Automatically filled in.
 
 Name ="btest"
-ConfigDefault = "btest.cfg"
 Config = None
 
-RE_INPUT = re.compile("%INPUT")
-RE_DIR = re.compile("%DIR")
-RE_ENV = re.compile("\$\{(\w+)\}")
-RE_PART = re.compile("^(.*)#([0-9]+)$")
-RE_START_NEXT_TEST = re.compile("@TEST-START-NEXT")
-RE_START_FILE = re.compile("@TEST-START-FILE +([^\n ]*)")
-RE_END_FILE = re.compile("@TEST-END-FILE")
-
-# Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-RE_EXEC          = ("exec",      re.compile("@TEST-EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-RE_REQUIRES      = ("requires",  re.compile("@TEST-REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP         = ("group",     re.compile("@TEST-GROUP: *(.*)"), True, True, 1, -1)
-RE_SERIALIZE     = ("serialize", re.compile("@TEST-SERIALIZE: *(.*)"), False, True, 1, -1)
-RE_IGNORE_FILTER = ("no-filter", re.compile("@TEST-NO-FILTER: *(.*)"), True, True, 1, -1)
-RE_COPY_FILE     = ("copy-file", re.compile("@TEST-COPY-FILE: *(.*)"), True, True, 1, -1)
-
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_IGNORE_FILTER, RE_COPY_FILE)
+try:
+    ConfigDefault = os.environ["BTEST_CFG"]
+except KeyError:
+    ConfigDefault = "btest.cfg"
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -66,7 +52,7 @@ def error(msg):
 def mkdir(dir):
     if not os.path.exists(dir):
         try:
-            os.mkdir(dir)
+            os.makedirs(dir)
         except OSError, e:
             error("cannot create directory %s: %s" % (dir, e))
 
@@ -118,6 +104,24 @@ def cpExpandBackticks(self, section, option, rawval, vars):
 
     return value
 
+# We monkey-patch the OptionParser to provide an alternative method that does not include
+# defaults in returns section items.
+def cpItemsNoDefaults(self, section):
+    try:
+        items = self._sections[section].items()
+    except KeyError:
+        raise ConfigParser.NoSectionError(section)
+
+
+    d = self._defaults.copy()
+
+    result = {}
+
+    for (key, value) in items:
+        result[key] = cpExpandBackticks(self, section, key, value, d)
+
+    return result.items()
+
 # Replace environment variables in string.
 def replaceEnvs(s):
     def replace_with_env(m):
@@ -130,6 +134,15 @@ def replaceEnvs(s):
 
 cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
 ConfigParser.ConfigParser._interpolate = cpExpandBackticks
+ConfigParser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+
+# Description of an alternative configuration.
+class Alternative:
+    def __init__(self, name):
+        self.name = name
+        self.filters = {}
+        self.substitutions = {}
+        self.envs = {}
 
 # Main class distributing the work across threads.
 class TestManager(multiprocessing.managers.SyncManager):
@@ -222,24 +235,34 @@ class TestManager(multiprocessing.managers.SyncManager):
                 # We'll execute it, delete from queue.
                 del self._tests[i]
 
-                if Options.filters:
+                if Options.alternatives:
                     tests = []
 
-                    for filter in Options.filters:
+                    for alternative in Options.alternatives:
 
-                        if filter in t.ignore_filters:
+                        if alternative in t.ignore_alternatives:
                             continue
 
-                        filtered_test = copy.deepcopy(t)
+                        if t.include_alternatives and not alternative in t.include_alternatives:
+                            continue
 
-                        if filter == "-":
-                            filter = ""
+                        alternative_test = copy.deepcopy(t)
 
-                        filtered_test.setFilter(filter)
-                        tests += [filtered_test]
+                        if alternative == "-":
+                            alternative = ""
+
+                        alternative_test.setAlternative(alternative)
+                        tests += [alternative_test]
 
                 else:
-                    tests = [t]
+                    if t.include_alternatives and not "default" in t.include_alternatives:
+                        tests = []
+
+                    elif "default" in t.ignore_alternatives:
+                        tests = []
+
+                    else:
+                        tests = [t]
 
                 return tests
 
@@ -279,52 +302,56 @@ class TestManager(multiprocessing.managers.SyncManager):
 
 # One @TEST-{EXEC,REQUIRES} command line.
 class CmdLine:
-    def __init__(self, cmdline, expect_success, part, file, localfile):
+    def __init__(self, cmdline, expect_success, part, file):
         self.cmdline = cmdline
         self.expect_success = expect_success
         self.part = part
         self.file = file
-        self.localfile = localfile
 
 # One test.
 class Test(object):
     def __init__(self, file, output_handler):
         self.dir = os.path.abspath(os.path.dirname(file))
         self.name = None
+        self.basename = None
+        self.part = -1
         self.number = 1
-        self.serialize = None
+        self.serialize = []
         self.groups = set()
         self.cmdlines = []
         self.tmpdir = None
         self.diag = None
         self.verbose = None
         self.baseline = None
-        self.filter = None
-        self.ignore_filters = []
+        self.alternative = None
+        self.ignore_alternatives = []
+        self.include_alternatives = []
         self.files = []
         self.requires = []
         self.copy_files = []
         self.output_handler = output_handler
         self.start = None
         self.contents = []
+        self.cloned = False
 
     def displayName(self):
         name = self.name
 
-        if self.filter:
-            name = "%s [%s]" % (name, self.filter)
+        if self.alternative:
+            name = "%s [%s]" % (name, self.alternative)
 
         return name
 
-    def setFilter(self, filter):
-        self.filter = filter
+    def setAlternative(self, alternative):
+        self.alternative = alternative
 
         # Parse the test's content.
     def parse(self, content, file):
         cmds = {}
         for line in content:
 
-            if line.find("@TEST-IGNORE") >= 0:
+            m = RE_IGNORE.search(line)
+            if m:
                 # Ignore this file.
                 return False
 
@@ -339,7 +366,7 @@ class Test(object):
 
                     if not multiple:
                         if tag in cmds:
-                            error("%s: %d defined multiple times." % (test, tag))
+                            error("%s: %d defined multiple times." % (self.name, tag))
 
                         cmds[tag] = value
 
@@ -363,42 +390,41 @@ class Test(object):
             basename = m.group(1)
             part = int(m.group(2))
 
-        (name, ext) = os.path.splitext(basename)
+        name = os.path.relpath(basename, TestBase)
+        (name, ext) = os.path.splitext(name)
 
-        basename = name.replace("/", ".")
-        while basename.startswith("."):
-            basename = basename[1:]
+        name = name.replace("/", ".")
+        while name.startswith("."):
+            name = name[1:]
 
-        self.name = basename
-        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
-
-        localfile = os.path.join(self.tmpdir, os.path.basename(file))
-        self.contents += [(localfile, content)]
+        self.name = name
+        self.part = part
+        self.basename = name
+        self.contents += [(file, content)]
 
         for (cmd, success) in cmds["exec"]:
-            cmdline = CmdLine(cmd.strip(), success != "-FAIL", part, file, localfile)
+            cmdline = CmdLine(cmd.strip(), success != "-FAIL", part, file)
             self.cmdlines += [cmdline]
 
         if "serialize" in cmds:
             self.serialize = cmds["serialize"]
 
         if "group" in cmds:
-            self.groups += set(cmd.strip() for cmd in cmds["group"])
+            self.groups |= set(cmd.strip() for cmd in cmds["group"])
 
         if "requires" in cmds:
             for cmd in cmds["requires"]:
-                cmdline = CmdLine(cmd.strip(), True, part, file, localfile)
+                cmdline = CmdLine(cmd.strip(), True, part, file)
                 self.requires += [cmdline]
 
         if "copy-file" in cmds:
             self.copy_files += [cmd.strip() for cmd in cmds["copy-file"]]
 
-        if "no-filter" in cmds:
-            self.ignore_filters += [cmd.strip() for cmd in cmds["no-filter"]]
+        if "alternative" in cmds:
+            self.include_alternatives = [cmd.strip() for cmd in cmds["alternative"]]
 
-        if Substitutions:
-            for (key, val) in Substitutions.items():
-                self.cmdlines += [(re.sub("\\b" + re.escape(key) + "\\b", val, cmd[0]), cmd[1]) for cmd in self.cmdlines]
+        if "not-alternative" in cmds:
+            self.ignore_alternatives = [cmd.strip() for cmd in cmds["not-alternative"]]
 
         return True
 
@@ -407,17 +433,33 @@ class Test(object):
     def clone(self, content):
         clone = Test("", self.output_handler)
         clone.number = self.number + 1
+        clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
         clone.serialize = clone.serialize
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
 
-        if len(self.contents) > 1:
-            error("cannot combine multiple test parts with @TEST-START-NEXT")
-
         assert(len(self.contents) == 1)
         clone.contents = [(self.contents[0][0], content)]
+
+        self.cloned = True
+
         return clone
+
+    def mergePart(self, part):
+
+        if self.cloned or part.cloned:
+            error("cannot use @TEST-START-NEXT with tests split across parts (%s)" % self.basename)
+
+        self.serialize += part.serialize
+        self.groups |= part.groups
+        self.cmdlines += part.cmdlines
+        self.ignore_alternatives += part.ignore_alternatives
+        self.include_alternatives += part.include_alternatives
+        self.files += part.files
+        self.requires += part.requires
+        self.copy_files += part.copy_files
+        self.contents += part.contents
 
     def run(self, mgr):
         self.start = time.time()
@@ -438,6 +480,7 @@ class Test(object):
             fname = os.path.join(self.tmpdir, fname)
 
             subdir = os.path.dirname(fname)
+
             if subdir != "":
                 mkdir(subdir)
             try:
@@ -457,7 +500,8 @@ class Test(object):
             except IOError, e:
                 error("cannot copy %s: %s" % (src, e))
 
-        for (localfile, content) in self.contents:
+        for (file, content) in self.contents:
+            localfile = os.path.join(self.tmpdir, os.path.basename(file))
             out = open(localfile, "w")
             for line in content:
                 print >>out, line,
@@ -468,7 +512,7 @@ class Test(object):
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-            (success, rc) = self.execute(cmd, apply_filter=self.filter)
+            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
                 self.mgr.testSkipped(self)
@@ -477,14 +521,20 @@ class Test(object):
 
         failures = 0
 
-        cmds = self.cmdlines
+        cmds = []
+
+        if Initializer != "":
+            initializer = CmdLine("%s %s" % (Initializer, self.name), True, 1, "<Initializer>")
+            cmds += [initializer]
+
+        cmds += self.cmdlines
 
         if Finalizer != "":
-            finalizer = CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>", None)
+            finalizer = CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>")
             cmds += [finalizer]
 
         for cmd in cmds:
-            (success, rc) = self.execute(cmd, apply_filter=self.filter)
+            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
                 failures += 1
@@ -518,47 +568,59 @@ class Test(object):
         self.stdout.close()
         self.stderr.close()
 
-    def execute(self, cmd, apply_filter=None):
-        # See if we need to apply a filter.
+    def execute(self, cmd, apply_alternative=None):
         filter_cmd = None
+        addl_envs = {}
 
-        if apply_filter:
+        cmdline = cmd.cmdline
+
+        # Apply alternative if requested.
+        if apply_alternative:
+
+            alt = Alternatives[apply_alternative]
+
             try:
-                (path, executable) = os.path.split(cmd.cmdline.split()[0])
-                filter_cmd = Filters[apply_filter][executable]
+                (path, executable) = os.path.split(cmdline.split()[0])
+                filter_cmd = alt.filters[executable]
             except LookupError:
                 pass
 
-        if not filter_cmd or not cmd.expect_success: # Do not apply filter if we expect failure.
-            localfile = cmd.localfile
+            for (key, val) in alt.substitutions.items():
+                cmdline = re.sub("\\b" + re.escape(key) + "\\b", val, cmdline)
 
-        else:
+            addl_envs = alt.envs
+
+        localfile = os.path.join(self.tmpdir, os.path.basename(cmd.file))
+
+        if filter_cmd and cmd.expect_success: # Do not apply filter if we expect failure.
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
-            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(cmd.localfile))
-            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, cmd.localfile, filtered), True), apply_filter=None)
+            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(localfile))
+
+            filter = CmdLine("%s %s %s" % (filter_cmd, localfile, filtered), True, 1, "<Filter>")
+
+            (success, rc) = self.execute(filter, apply_alternative=None)
             if not success:
                 return (False, rc)
 
-            (success, rc) = self.execute(("mv %s %s" % (filtered, cmd.localfile), True), apply_filter=None)
+            mv = CmdLine("mv %s %s" % (filtered, localfile), True, 1, "<Filter-Move>")
+            (success, rc) = self.execute(mv, apply_alternative=None)
+
             if not success:
                 return (False, rc)
-
-            localfile = filtered
 
         self.mgr.testCommand(self, cmd)
 
         # Replace special names.
-        cmdline = cmd.cmdline
 
         if localfile:
-            cmdline = RE_INPUT.sub(localfile, cmd.cmdline)
+            cmdline = RE_INPUT.sub(localfile, cmdline)
 
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
         print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
 
-        env = self.prepareEnv()
+        env = self.prepareEnv(addl_envs)
 
         try:
             subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
@@ -588,13 +650,17 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self):
+    def prepareEnv(self, addl = {}):
         env = copy.deepcopy(os.environ)
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
+
+        for (key, val) in addl.items():
+            env[key.upper()] = val
+
         return env
 
     def addFiles(self, files):
@@ -1009,39 +1075,67 @@ def findTests(paths, output_handler):
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
     for path in paths:
+        ignores = [os.path.join(path, dir) for dir in ignore_dirs]
+
+        m = RE_PART.match(path)
+        if m:
+            error("Do not specify files with part numbers directly, use the base test name (%s)" % path)
+
         if os.path.isfile(path):
             tests += readTestFile(path, output_handler)
+
+            # See if there are more parts.
+            for part in glob.glob("%s#*" % path):
+                tests += readTestFile(part, output_handler)
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
                 for file in filenames:
-                    for glob in ignore_files:
-                        if fnmatch.fnmatch(file, glob):
+                    for gl in ignore_files:
+                        if fnmatch.fnmatch(file, gl):
                             break
                     else:
                         tests += readTestFile(os.path.join(dirpath, file), output_handler)
 
                 # Don't recurse into these.
-                for skip in ignore_dirs:
-                    if skip in dirnames:
-                        dirnames.remove(skip)
+                for (dir, path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
+                    for skip in ignores:
+                        if path == skip:
+                            dirnames.remove(dir)
 
         else:
-            # See if we have a test named like this in our configured set.
+            # See if we have a test(a) named like this in our configured set.
+            found = False
             for t in Config.configured_tests:
                 if t and path == t.name:
                     tests += [t]
-                    break
+                    found = True
 
-            else:
+            if not found:
                 error("cannot read %s" % path)
 
     return tests
 
+# Merge parts belonging to the same test into one.
+def mergeTestParts(tests):
+    def key(t):
+        return (t.basename, t.number, t.part)
+
+    out = {}
+
+    for t in sorted(tests, key=key):
+        try:
+            other = out[t.name]
+
+            assert t.part != other.part
+            out[t.name].mergePart(t)
+
+        except KeyError:
+            out[t.name] = t
+
+    return sorted([t for t in out.values()], key=key)
+
 # Read the given test file and instantiate one or more tests from it.
-
-AllTests = {}
-
 def readTestFile(filename, output_handler):
     def newTest(content, previous):
         if not previous:
@@ -1078,7 +1172,7 @@ def readTestFile(filename, output_handler):
 
             m = RE_END_FILE.search(line)
             if m:
-                error("unexpected @test-end-file")
+                error("unexpected %sEND-FILE" % CommandPrefix)
 
             m = RE_START_NEXT_TEST.search(line)
             if not m:
@@ -1110,34 +1204,30 @@ def readTestFile(filename, output_handler):
     if state == "file":
         files += [file]
 
-    global AllTests
-
-    m = RE_PART.match(filename)
-
-    if m:
-        basepath = m.group(1)
-        part = int(m.group(2))
-    else:
-        basepath = filename
-        part = 1
-
-    if basepath in AllTests:
-        t = AllTests[basepath]
-        t.parse(content, filename)
-        t.addFiles(files)
-
-    else:
-        t = newTest(content, previous)
-        tests += [t]
-        AllTests[basepath] = t
-
-        for t in tests:
-            if t:
-                t.addFiles(files)
-
     input.close()
 
+    tests += [newTest(content, previous)]
+
+    for t in tests:
+        if t:
+            t.addFiles(files)
+
     return tests
+
+def jOption(default):
+    def func(option, opt_str, value, parser):
+        if parser.rargs and not parser.rargs[0].startswith('-'):
+            try:
+                val = int(parser.rargs[0])
+                parser.rargs.pop(0)
+            except ValueError:
+                val = default
+        else:
+            val = default
+
+        setattr(parser.values, option.dest, val)
+
+    return func
 
 ### Main
 
@@ -1160,13 +1250,9 @@ optparser.add_option("-b", "--brief", action="store_true", dest="brief", default
                      help="outputs only failed tests")
 optparser.add_option("-c", "--config", action="store", type="string", dest="config", default=ConfigDefault,
                      help="configuration file")
-optparser.add_option("-F", "--filter", action="store", dest="filters", default="",
-                     help="activate filter in given config file section")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
-optparser.add_option("-S", "--subst", action="store", type="string", dest="subst", default=None,
-                     help="activate substitution in given config file section")
-optparser.add_option("-j", "--jobs", action="store", type="int", dest="threads", default=0,
+optparser.add_option("-j", "--jobs", action="callback", callback=jOption(multiprocessing.cpu_count()), dest="threads", default=0,
                      help="number of threads to run tests in simultaneously; 0 disables threading")
 optparser.add_option("-g", "--groups", action="store", type="string", dest="groups", default="",
                      help="execute only tests of given comma-separated list of groups")
@@ -1176,6 +1262,8 @@ optparser.add_option("-q", "--quiet", action="store_true", dest="quiet", default
                      help="suppress information output other than about failed tests")
 optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile", default="",
                      help="write a report of test results in JUnit XML format to file; if file exists, it is overwritten")
+optparser.add_option("-a", "--alternative", action="store", type="string", dest="alternatives", default=None,
+                     help="activate given alternative")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1188,8 +1276,10 @@ if not os.path.exists(Options.config):
 if basedir:
     os.chdir(basedir)
 
-defaults=os.environ
-defaults["testbase"] = os.getcwd()
+TestBase = os.getcwd()
+
+defaults = os.environ
+defaults["testbase"] = TestBase
 defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(fname)
@@ -1243,40 +1333,73 @@ if Config.has_section("environment"):
     for (name, value) in Config.items("environment"):
         os.environ[name.upper()] = value
 
-Filters = {}
+Alternatives = {}
 
-if Options.filters:
-    Options.filters = Options.filters.split(",")
+if Options.alternatives:
+    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
 
-    for filter in Options.filters:
+    for tag in Options.alternatives:
 
-        if filter == "-":
+        if tag == "-":
             continue
 
-        Filters[filter] = {}
-        sec = "filter-%s" % filter
+        a = Alternative(tag)
 
-        if not Config.has_section(sec):
-            error("configuration file has no section '%s'" % sec)
+        try:
+            for (name, value) in Config.itemsNoDefaults("filter-%s" % tag):
+                if not name.startswith("__"):
+                    a.filters[name] = value
 
-        for (name, value) in Config.items(sec):
-            Filters[filter][name] = value
+        except ConfigParser.NoSectionError:
+            pass
 
-Substitutions = {}
-if Options.subst:
-    sec = "subst-%s" % Options.subst
-    if not Config.has_section(sec):
-        error("configuration file has no section '%s'" % sec)
+        try:
+            for (name, value) in Config.itemsNoDefaults("substitution-%s" % tag):
+                if not name.startswith("__"):
+                    a.substitutions[name] = value
 
-    for (name, value) in Config.items(sec):
-        Substitutions[name] = value
+        except ConfigParser.NoSectionError:
+            pass
 
-Config.configured_tests = []
+        try:
+            for (name, value) in Config.itemsNoDefaults("environment-%s" % tag):
+                if not name.startswith("__"):
+                    a.envs[name] = value
+
+        except ConfigParser.NoSectionError:
+            pass
+
+        Alternatives[tag] = a
+
+CommandPrefix = getOption("CommandPrefix", "@TEST-")
+
+RE_INPUT = re.compile("%INPUT")
+RE_DIR = re.compile("%DIR")
+RE_ENV = re.compile("\$\{(\w+)\}")
+RE_PART = re.compile("^(.*)#([0-9]+)$")
+RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
+RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
+RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\n ]*)")
+RE_END_FILE = re.compile(CommandPrefix + "END-FILE")
+
+# Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
+RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
+RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
+RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
+RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
+
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+Initializer = getOption("Initializer", "")
 Finalizer = getOption("Finalizer", "")
+
+Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
@@ -1325,6 +1448,8 @@ if not tests:
 
 mkdir(BaselineDir)
 mkdir(TmpDir)
+
+tests = mergeTestParts(tests)
 
 try:
     (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), output_handler)
