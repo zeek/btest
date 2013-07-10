@@ -1104,7 +1104,7 @@ def findTests(paths, output_handler):
                             dirnames.remove(dir)
 
         else:
-            # See if we have a test(a) named like this in our configured set.
+            # See if we have test(s) named like this in our configured set.
             found = False
             for t in Config.configured_tests:
                 if t and path == t.name:
@@ -1112,7 +1112,13 @@ def findTests(paths, output_handler):
                     found = True
 
             if not found:
-                error("cannot read %s" % path)
+                # See if there are parts.
+                for part in glob.glob("%s#*" % path):
+                    tests += readTestFile(part, output_handler)
+                    found = True
+
+                if not found:
+                    error("cannot read %s" % path)
 
     return tests
 
