@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-26" # Automatically filled in.
+VERSION = "0.4-27" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1023,7 +1023,6 @@ def findTests(paths, output_handler):
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
     for path in paths:
-
         ignores = [os.path.join(path, dir) for dir in ignore_dirs]
 
         if os.path.isfile(path):
@@ -1031,6 +1030,13 @@ def findTests(paths, output_handler):
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
+
+                ign = os.path.join(dirpath, ".btest-ignore")
+
+                if os.path.isfile(os.path.join(ign)):
+                    del dirnames[0:len(dirnames)]
+                    continue
+
                 for file in filenames:
                     for glob in ignore_files:
                         if fnmatch.fnmatch(file, glob):
@@ -1058,7 +1064,6 @@ def findTests(paths, output_handler):
 
 # Read the given test file and instantiate one or more tests from it.
 def readTestFile(filename, output_handler):
-
     def newTest(content, previous):
         if not previous:
             t = Test(filename, output_handler)
@@ -1068,6 +1073,9 @@ def readTestFile(filename, output_handler):
                 return None
         else:
             return previous.clone(content)
+
+    if os.path.basename(filename) == ".btest-ignore":
+        return []
 
     try:
         input = open(filename)

@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.4-26
+.. |version| replace:: 0.4-27
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -172,8 +172,8 @@ Command Line Usage
 ``btest`` must be started with a list of tests and/or directories
 given on the command line. In the latter case, the default is to
 recursively scan the directories and assume all files found to be
-tests to perform. It is however possible to exclude certain files by
-specifying a suitable `configuration file`_.
+tests to perform. It is however possible to exclude specific files and
+directories by specifying a suitable `configuration file`_.
 
 ``btest`` returns exit code 0 if all tests have successfully passed,
 and 1 otherwise.
@@ -323,6 +323,9 @@ configuration file:
 ``IgnoreDirs``
     A space-separated list of relative directory names to ignore
     when scanning test directories recursively. Default is empty.
+
+    An alternative way to ignore a directory is placing a file
+    ``.btest-ignore`` in it.
 
 ``IgnoreFiles``
     A space-separated list of filename globs matching files to
