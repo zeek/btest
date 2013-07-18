@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-27" # Automatically filled in.
+VERSION = "0.4-28" # Automatically filled in.
 
 Name ="btest"
 Config = None

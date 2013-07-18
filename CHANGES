@@ -1,4 +1,9 @@
 
+0.4-28 | 2013-07-17 21:56:18 -0700
+
+  * btest-diff now passes the name of the file under consideration on to
+    canonifiers. (Robin Sommer)
+
 0.4-27 | 2013-07-14 21:19:59 -0700
 
   * When searching for tests, BTest now ignores a directories if it finds

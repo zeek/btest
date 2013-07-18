@@ -60,8 +60,8 @@ if [ -e $TEST_BASELINE/$canon ]; then
        diff2=/tmp/test-diff.$$.$canon.tmp
        tmpfiles="$tmpfiles $diff1 $diff2"
 
-       eval $TEST_DIFF_CANONIFIER <$TEST_BASELINE/$canon >$diff1
-       eval $TEST_DIFF_CANONIFIER <$input >$diff2
+       eval $TEST_DIFF_CANONIFIER $input <$TEST_BASELINE/$canon >$diff1
+       eval $TEST_DIFF_CANONIFIER $input <$input >$diff2
    else
        diff1=$TEST_BASELINE/$canon
        diff2=$input
