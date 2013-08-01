@@ -1,4 +1,33 @@
 
+0.4-42 | 2013-07-31 20:46:30 -0700
+
+  * Adding support for "parts": One can split a single test across
+    multiple files by adding a numerical ``#<n>`` postfix to their
+    names, where each ``<n>`` represents a separate part of the test.
+    ``btests`` will combine all of a test's parts in numerical order
+    and execute them subsequently within the same sandbox. Example in
+    the README. (Robin Sommer)
+
+  * When running a command, TEST_PART contains the current part
+    number. (Robin Sommer)
+
+  * Extending Sphinx support. (Robin Sommer)
+
+        * Adding tests for Sphinx functionality.
+
+        * Support for parts in Sphinx directives. If multiple btest
+          directives reference the same test name, each will turn into
+          a part of a single test.
+
+        * Internal change restructuring the btest Sphinx directive. We
+          now process it in two passes: one to save the test at parse
+          time, and one later to execute once everything has been
+          parsed.
+          
+        * Adding Sphinx sandbox for testing.
+          
+  * Fix for tests returning no output to render at all. (Robin Sommer)
+
 0.4-28 | 2013-07-17 21:56:18 -0700
 
   * btest-diff now passes the name of the file under consideration on to

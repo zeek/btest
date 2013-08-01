@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-28" # Automatically filled in.
+VERSION = "0.4-42" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -652,6 +652,14 @@ class Test(object):
     # Prepares the environment for the child processes.
     def prepareEnv(self, cmd, addl = {}):
         env = copy.deepcopy(os.environ)
+
+        # Make sure these don't propagate from parent processes.
+        for i in ["TESTBASE", "DEFAULT_PATH"]:
+            try:
+                del env[i]
+            except KeyError:
+                pass
+
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
