@@ -1,8 +1,10 @@
-# %TEST-EXEC: btest %INPUT
+# %TEST-EXEC: btest -d %INPUT
 # %TEST-EXEC: btest -U %INPUT
 # %TEST-EXEC: btest-diff output
 
 @TEST-EXEC: echo ${ENV1} >>../../output
+@TEST-EXEC: echo ${ENV2} >1 
+@TEST-EXEC: set >>1
 @TEST-EXEC: test "${ENV2}" == `cd ../.. && pwd` && echo "testbase is correct" >>../../output
 @TEST-EXEC: echo ${ENV3} >>../../output
 

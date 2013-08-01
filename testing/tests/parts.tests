@@ -1,5 +1,5 @@
 # %TEST-EXEC: btest test
-# %TEST-EXEC: btest-diff output
+# %TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
 
 # %TEST-START-FILE test
 @TEST-EXEC: echo "Hello, world! (%INPUT)" >>../../output
