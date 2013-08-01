@@ -1,0 +1,6 @@
+# %TEST-REQUIRES: which sphinx-build
+#
+# %TEST-EXEC: cp -r %DIR/../../../examples/sphinx/* .
+# %TEST-EXEC: make clean && make
+# %TEST-EXEC: sed -n '/id=.testing/,/id=.indices/p' _build/html/index.html >output
+# %TEST-EXEC: btest-diff output

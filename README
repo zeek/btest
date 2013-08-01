@@ -657,6 +657,34 @@ supported:
    specify the same serialization set are guaranteed to run
    sequentially. ``<set>`` is an arbitrary user-chosen string.
 
+Splitting Tests into Parts
+==========================
+
+One can split a single test across multiple files by adding a
+numerical ``#<n>`` postfix to their names, where each ``<n>``
+represents a separate part of the test. ``btests`` will combine all of
+a test's parts in numerical order and execute them subsequently within
+the same sandbox. Example::
+
+        > cat examples/t7.sh#1
+        # @TEST-EXEC: echo Part 1 - %INPUT >>output
+
+        > cat examples/t7.sh#2
+        # @TEST-EXEC: echo Part 2 - %INPUT >>output
+
+        > cat examples/t7.sh#3
+        # @TEST-EXEC: btest-diff output
+
+        > btest -D t7
+        examples.t7 ... ok
+        % cat .diag
+        == File ===============================
+        Part 1 - /Users/robin/bro/docs/aux/btest/.tmp/examples.t7/t7.sh#1
+        Part 2 - /Users/robin/bro/docs/aux/btest/.tmp/examples.t7/t7.sh#2
+
+Note how ``output`` contains the output of both ``t7#1`` and ``t7#2``,
+however in each case ``%INPUT`` refers to the corresponding part. For
+the first part of a test, one can also skip the ``#1`` postfix.
 
 Canonifying Diffs
 =================
@@ -797,6 +825,11 @@ added to ``btest.cfg`` (see above) compares the generated reST code
 with a previously established baseline, just like ``btest-diff`` does
 with files. To establish the initial baseline, run ``btest -u``, like
 you would with ``btest-diff``.
+
+The same ``<test-name>`` can be used multiple times, in which case
+each entry will become one part of a joint test. ``btest`` will
+execute all parts subsequently within a single sandbox, and earlier
+results will thus be available to later parts.
 
 Scripts
 -------

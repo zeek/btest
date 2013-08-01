@@ -300,15 +300,23 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.replayOutput(test)
 
+# One @TEST-{EXEC,REQUIRES} command line.
+class CmdLine:
+    def __init__(self, cmdline, expect_success, part, file):
+        self.cmdline = cmdline
+        self.expect_success = expect_success
+        self.part = part
+        self.file = file
+
 # One test.
 class Test(object):
     def __init__(self, file, output_handler):
-        self.file = file
         self.dir = os.path.abspath(os.path.dirname(file))
-        self.basename = None
         self.name = None
+        self.basename = None
+        self.part = -1
         self.number = 1
-        self.serialize = None
+        self.serialize = []
         self.groups = set()
         self.cmdlines = []
         self.tmpdir = None
@@ -323,6 +331,8 @@ class Test(object):
         self.copy_files = []
         self.output_handler = output_handler
         self.start = None
+        self.contents = []
+        self.cloned = False
 
     def displayName(self):
         name = self.name
@@ -336,7 +346,7 @@ class Test(object):
         self.alternative = alternative
 
         # Parse the test's content.
-    def parse(self, content):
+    def parse(self, content, file):
         cmds = {}
         for line in content:
 
@@ -369,32 +379,46 @@ class Test(object):
         # Make sure all non-optional commands are there.
         for (tag, regexp, multiple, optional, group1, group2) in Commands:
             if not optional and not tag in cmds:
-                error("%s: mandatory %s command not found." % (self.file, tag))
+                error("%s: mandatory %s command not found." % (file, tag))
 
-        (name, ext) = os.path.splitext(self.file)
+        basename = file
 
-        name = os.path.relpath(name, TestBase)
+        part = 1
+        m = RE_PART.match(file)
+
+        if m:
+            basename = m.group(1)
+            part = int(m.group(2))
+
+        name = os.path.relpath(basename, TestBase)
+        (name, ext) = os.path.splitext(name)
 
         name = name.replace("/", ".")
         while name.startswith("."):
             name = name[1:]
 
         self.name = name
+        self.part = part
         self.basename = name
-        self.content = content
-        self.cmdlines = [(cmd.strip(), success!="-FAIL") for (cmd, success) in cmds["exec"]]
+        self.contents += [(file, content)]
+
+        for (cmd, success) in cmds["exec"]:
+            cmdline = CmdLine(cmd.strip(), success != "-FAIL", part, file)
+            self.cmdlines += [cmdline]
 
         if "serialize" in cmds:
             self.serialize = cmds["serialize"]
 
         if "group" in cmds:
-            self.groups = set(cmd.strip() for cmd in cmds["group"])
+            self.groups |= set(cmd.strip() for cmd in cmds["group"])
 
         if "requires" in cmds:
-            self.requires = [cmd.strip() for cmd in cmds["requires"]]
+            for cmd in cmds["requires"]:
+                cmdline = CmdLine(cmd.strip(), True, part, file)
+                self.requires += [cmdline]
 
         if "copy-file" in cmds:
-            self.copy_files = [cmd.strip() for cmd in cmds["copy-file"]]
+            self.copy_files += [cmd.strip() for cmd in cmds["copy-file"]]
 
         if "alternative" in cmds:
             self.include_alternatives = [cmd.strip() for cmd in cmds["alternative"]]
@@ -404,11 +428,10 @@ class Test(object):
 
         return True
 
-    # Copies all control information over to a new Test but replaces test
+    # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
     def clone(self, content):
         clone = Test("", self.output_handler)
-        clone.file = self.file
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
@@ -416,9 +439,27 @@ class Test(object):
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
 
-        clone.content = content
+        assert(len(self.contents) == 1)
+        clone.contents = [(self.contents[0][0], content)]
+
+        self.cloned = True
 
         return clone
+
+    def mergePart(self, part):
+
+        if self.cloned or part.cloned:
+            error("cannot use @TEST-START-NEXT with tests split across parts (%s)" % self.basename)
+
+        self.serialize += part.serialize
+        self.groups |= part.groups
+        self.cmdlines += part.cmdlines
+        self.ignore_alternatives += part.ignore_alternatives
+        self.include_alternatives += part.include_alternatives
+        self.files += part.files
+        self.requires += part.requires
+        self.copy_files += part.copy_files
+        self.contents += part.contents
 
     def run(self, mgr):
         self.start = time.time()
@@ -459,19 +500,19 @@ class Test(object):
             except IOError, e:
                 error("cannot copy %s: %s" % (src, e))
 
-        self.localfile = os.path.join(self.tmpdir, os.path.basename(self.file))
-
-        content = open(self.localfile, "w")
-        for line in self.content:
-            print >>content, line,
-        content.close()
+        for (file, content) in self.contents:
+            localfile = os.path.join(self.tmpdir, os.path.basename(file))
+            out = open(localfile, "w")
+            for line in content:
+                print >>out, line,
+            out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w")
         self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "w")
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
 
         for cmd in self.requires:
-            (success, rc) = self.execute((cmd, True), apply_alternative=self.alternative)
+            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
                 self.mgr.testSkipped(self)
@@ -483,15 +524,16 @@ class Test(object):
         cmds = []
 
         if Initializer != "":
-            cmds += [("%s %s" % (Initializer, self.name), True)]
+            initializer = CmdLine("%s %s" % (Initializer, self.name), True, 1, "<Initializer>")
+            cmds += [initializer]
 
         cmds += self.cmdlines
 
         if Finalizer != "":
-            cmds = cmds + [("%s %s" % (Finalizer, self.name), True)]
+            finalizer = CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>")
+            cmds += [finalizer]
 
         for cmd in cmds:
-
             (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
@@ -527,10 +569,10 @@ class Test(object):
         self.stderr.close()
 
     def execute(self, cmd, apply_alternative=None):
-        (cmdline, expect_success) = cmd
-
         filter_cmd = None
         addl_envs = {}
+
+        cmdline = cmd.cmdline
 
         # Apply alternative if requested.
         if apply_alternative:
@@ -548,44 +590,49 @@ class Test(object):
 
             addl_envs = alt.envs
 
-        if not filter_cmd or not expect_success: # Do not apply filter if we expect failure.
-            localfile = self.localfile
+        localfile = os.path.join(self.tmpdir, os.path.basename(cmd.file))
 
-        else:
+        if filter_cmd and cmd.expect_success: # Do not apply filter if we expect failure.
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
-            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(self.localfile))
-            (success, rc) = self.execute(("%s %s %s" % (filter_cmd, self.localfile, filtered), True), apply_alternative=None)
+            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(localfile))
+
+            filter = CmdLine("%s %s %s" % (filter_cmd, localfile, filtered), True, 1, "<Filter>")
+
+            (success, rc) = self.execute(filter, apply_alternative=None)
             if not success:
                 return (False, rc)
 
-            (success, rc) = self.execute(("mv %s %s" % (filtered, self.localfile), True), apply_alternative=None)
+            mv = CmdLine("mv %s %s" % (filtered, localfile), True, 1, "<Filter-Move>")
+            (success, rc) = self.execute(mv, apply_alternative=None)
+
             if not success:
                 return (False, rc)
 
-            localfile = self.localfile
-
-        self.mgr.testCommand(self, cmdline)
+        self.mgr.testCommand(self, cmd)
 
         # Replace special names.
-        cmdline = RE_INPUT.sub(localfile, cmdline)
+
+        if localfile:
+            cmdline = RE_INPUT.sub(localfile, cmdline)
+
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
-        print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[expect_success])
+        print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
 
-        env = self.prepareEnv(addl_envs)
+        env = self.prepareEnv(cmd, addl_envs)
 
         try:
             subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
         except subprocess.CalledProcessError, e:
-            if expect_success:
+            if cmd.expect_success:
                 self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, e.returncode)]
                 return (False, e.returncode)
 
             else:
                 return (True, e.returncode)
 
-        if not expect_success:
+        if not cmd.expect_success:
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
             return (False, 0)
 
@@ -603,13 +650,14 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self, addl = {}):
+    def prepareEnv(self, cmd, addl = {}):
         env = copy.deepcopy(os.environ)
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
+        env["TEST_PART"] = str(cmd.part)
 
         for (key, val) in addl.items():
             env[key.upper()] = val
@@ -845,8 +893,13 @@ class Verbose(OutputHandler):
         self.output(test, "%s ..." % test.displayName())
 
     def testCommand(self, test, cmdline):
+        part = ""
+
+        if cmdline.part > 1:
+            part = " [part #%d]" % cmdline.part
+
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "  > %s" % cmdline)
+        self.output(test, "  > %s%s" % (cmdline.cmdline, part))
 
     def testSucceeded(self, test):
         self.output(test, self.threadPrefix(), nl=False)
@@ -1025,8 +1078,16 @@ def findTests(paths, output_handler):
     for path in paths:
         ignores = [os.path.join(path, dir) for dir in ignore_dirs]
 
+        m = RE_PART.match(path)
+        if m:
+            error("Do not specify files with part numbers directly, use the base test name (%s)" % path)
+
         if os.path.isfile(path):
             tests += readTestFile(path, output_handler)
+
+            # See if there are more parts.
+            for part in glob.glob("%s#*" % path):
+                tests += readTestFile(part, output_handler)
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
@@ -1038,8 +1099,8 @@ def findTests(paths, output_handler):
                     continue
 
                 for file in filenames:
-                    for glob in ignore_files:
-                        if fnmatch.fnmatch(file, glob):
+                    for gl in ignore_files:
+                        if fnmatch.fnmatch(file, gl):
                             break
                     else:
                         tests += readTestFile(os.path.join(dirpath, file), output_handler)
@@ -1051,23 +1112,49 @@ def findTests(paths, output_handler):
                             dirnames.remove(dir)
 
         else:
-            # See if we have a test named like this in our configured set.
+            # See if we have test(s) named like this in our configured set.
+            found = False
             for t in Config.configured_tests:
                 if t and path == t.name:
                     tests += [t]
-                    break
+                    found = True
 
-            else:
-                error("cannot read %s" % path)
+            if not found:
+                # See if there are parts.
+                for part in glob.glob("%s#*" % path):
+                    tests += readTestFile(part, output_handler)
+                    found = True
+
+                if not found:
+                    error("cannot read %s" % path)
 
     return tests
+
+# Merge parts belonging to the same test into one.
+def mergeTestParts(tests):
+    def key(t):
+        return (t.basename, t.number, t.part)
+
+    out = {}
+
+    for t in sorted(tests, key=key):
+        try:
+            other = out[t.name]
+
+            assert t.part != other.part
+            out[t.name].mergePart(t)
+
+        except KeyError:
+            out[t.name] = t
+
+    return sorted([t for t in out.values()], key=key)
 
 # Read the given test file and instantiate one or more tests from it.
 def readTestFile(filename, output_handler):
     def newTest(content, previous):
         if not previous:
             t = Test(filename, output_handler)
-            if t.parse(content):
+            if t.parse(content, filename):
                 return t
             else:
                 return None
@@ -1134,9 +1221,9 @@ def readTestFile(filename, output_handler):
     if state == "file":
         files += [file]
 
-    tests += [newTest(content, previous)]
-
     input.close()
+
+    tests += [newTest(content, previous)]
 
     for t in tests:
         if t:
@@ -1306,6 +1393,7 @@ CommandPrefix = getOption("CommandPrefix", "@TEST-")
 RE_INPUT = re.compile("%INPUT")
 RE_DIR = re.compile("%DIR")
 RE_ENV = re.compile("\$\{(\w+)\}")
+RE_PART = re.compile("^(.*)#([0-9]+)$")
 RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
 RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
 RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\n ]*)")
@@ -1378,6 +1466,8 @@ if not tests:
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
+tests = mergeTestParts(tests)
+
 try:
     (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
@@ -1395,5 +1485,6 @@ if failed > 0:
 else:
     if not Options.quiet:
         output("all %d tests successful" % total)
+
     sys.exit(0)
 
