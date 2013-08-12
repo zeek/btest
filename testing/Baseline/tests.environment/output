@@ -6,6 +6,7 @@ TEST
 <...>/.tmp/tests.environment/Baseline/environment
 environment
 <...>/.tmp/tests.environment/.tmp/environment/.verbose
+<...>/.tmp/tests.environment
 Foo
 testbase is correct
 42
@@ -14,3 +15,4 @@ UPDATE
 <...>/.tmp/tests.environment/Baseline/environment
 environment
 <...>/.tmp/tests.environment/.tmp/environment/.verbose
+<...>/.tmp/tests.environment

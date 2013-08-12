@@ -529,6 +529,10 @@ supported:
             the execution of commands and should generally generate
             output that follows a line-based structure.
 
+        ``TEST_BASE``
+            The btest base directory, i.e., the directory where
+            ``btest.cf`` is located in.
+
     .. note::
 
         If a command returns the special exit code 100, the test is

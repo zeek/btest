@@ -666,6 +666,7 @@ class Test(object):
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
         env["TEST_PART"] = str(cmd.part)
+        env["TEST_BASE"] = TestBase
 
         for (key, val) in addl.items():
             env[key.upper()] = val
