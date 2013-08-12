@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-42" # Automatically filled in.
+VERSION = "0.4-43" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1141,11 +1141,17 @@ def findTests(paths, output_handler):
 # Merge parts belonging to the same test into one.
 def mergeTestParts(tests):
     def key(t):
-        return (t.basename, t.number, t.part)
+        if t:
+            return (t.basename, t.number, t.part)
+        else:
+            return t
 
     out = {}
 
     for t in sorted(tests, key=key):
+        if not t:
+            continue
+
         try:
             other = out[t.name]
 
