@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.4-42
+.. |version| replace:: 0.4-43
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -528,6 +528,10 @@ supported:
             btest's ``--verbose`` output. This is for further tracking
             the execution of commands and should generally generate
             output that follows a line-based structure.
+
+        ``TEST_BASE``
+            The btest base directory, i.e., the directory where
+            ``btest.cf`` is located in.
 
     .. note::
 

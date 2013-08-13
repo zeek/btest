@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-42" # Automatically filled in.
+VERSION = "0.4-43" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -666,6 +666,7 @@ class Test(object):
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
         env["TEST_PART"] = str(cmd.part)
+        env["TEST_BASE"] = TestBase
 
         for (key, val) in addl.items():
             env[key.upper()] = val
@@ -1141,11 +1142,17 @@ def findTests(paths, output_handler):
 # Merge parts belonging to the same test into one.
 def mergeTestParts(tests):
     def key(t):
-        return (t.basename, t.number, t.part)
+        if t:
+            return (t.basename, t.number, t.part)
+        else:
+            return t
 
     out = {}
 
     for t in sorted(tests, key=key):
+        if not t:
+            continue
+
         try:
             other = out[t.name]
 
