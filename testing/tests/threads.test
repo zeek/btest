@@ -1,5 +1,5 @@
 # %TEST-EXEC: chmod +x normalize-output
-# %TEST-EXEC: btest -j 5 t1 t2 t3 t4 t5 2>&1 | ./normalize-output | grep "4.*5" >output.j5
+# %TEST-EXEC: btest -j 5 t1 t2 t3 t4 t5 2>&1 | ./normalize-output | grep "4.*5" | sed "s/[0-36-9] //" >output.j5
 # %TEST-EXEC: btest -j 1 t1 t2 t3 t4 t5 2>&1 | ./normalize-output >output.j1
 # %TEST-EXEC: btest -j 0 t1 t2 t3 t4 t5 2>&1 | cat >output.j0
 # %TEST-EXEC: btest-diff output.j5
