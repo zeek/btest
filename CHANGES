@@ -1,4 +1,12 @@
 
+0.4-49 | 2013-08-13 18:43:03 -0700
+
+  * Fixing test portability problems. (Daniel Thayer)
+
+  * Adding TEST_BASE environment variable. The existing TESTBASE isn't
+    always behaving as expected and wasn't documented to begin with.
+    (Robin Sommer)
+
 0.4-43 | 2013-08-12 16:04:53 -0700
 
   * Bugfix for ignored tests. (Robin Sommer)
