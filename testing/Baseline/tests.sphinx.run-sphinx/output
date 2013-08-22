@@ -16,16 +16,30 @@ Hello, world! Again. Again.
 This will fail soon!
 </pre></div>
 </div>
-<div class="highlight-none"><div class="highlight"><pre>ERROR executing test &#39;tests.sphinx.hello-world-fail&#39; (part 1)
+<p>This should fail and include the diag output instead:</p>
+<div class="highlight-none"><div class="highlight"><pre>ERROR executing test &#39;tests.sphinx.hello-world-fail&#39; (part 2)
 
 % &#39;echo StDeRr &gt;&amp;2; echo 1 | grep -q 2&#39; failed unexpectedly (exit code 1)
 % cat .stderr
  StDeRr
 </pre></div>
 </div>
-<p>This should fail and include the diag output instead:</p>
-<div class="highlight-none"><div class="highlight"><pre># echo This succeeds!
-This succeeds!
+<p>This should succeed:</p>
+<div class="highlight-none"><div class="highlight"><pre># echo This succeeds again!
+This succeeds again!
+</pre></div>
+</div>
+<p>This should fail again and include the diag output instead:</p>
+<div class="highlight-none"><div class="highlight"><pre>ERROR executing test &#39;tests.sphinx.hello-world-fail&#39; (part 4)
+
+% &#39;echo StDeRr &gt;&amp;2; echo 3 | grep -q 4&#39; failed unexpectedly (exit code 1)
+% cat .stderr
+ StDeRr
+ StDeRr
+</pre></div>
+</div>
+<div class="highlight-none"><div class="highlight"><pre># echo This succeeds again!
+This succeeds again!
 </pre></div>
 </div>
 </div>
