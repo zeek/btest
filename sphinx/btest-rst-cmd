@@ -16,27 +16,38 @@ function usage()
     echo "    -o          Do not include command into output."
     echo "    -c <cmd>    Show <cmd> in output instead of the one actually executed."
     echo "    -f <filter> Run <filter> command on command output (or file) before including."
+    echo "    -n <n>      Include only n lines of output, adding a [...] marker if there's more."
     echo
     exit 1
 }
 
+function apply_filter()
+{
+    eval $filter_env | eval $filter_opt
+}
+
 stdout=`mktemp -t $(basename $0).XXX`
 cmd_out=`mktemp -t $(basename $0).XXX`
-tmps="$tmps $stdout $cmd_out"
+filter_out=`mktemp -t $(basename $0).XXX`
+tmps="$tmps $stdout $cmd_out $filter_out"
 
 include=$cmd_out
 show_command=1
 cmd_display=""
 dry=0
+lines=0
 
-while getopts "odhr:f:c:" opt; do
+filter_env=${BTEST_RST_FILTER}
+
+while getopts "odhr:f:c:n:" opt; do
     case $opt in
         h) usage;;
         o) show_command=0;;
         r) include=$OPTARG;;
         d) dry=1; include="";;
         c) cmd_display=$OPTARG;;
-        f) filter=$OPTARG;;
+        f) filter_opt=$OPTARG;;
+        n) lines=$OPTARG;;
         *) exit 1;;
     esac
 done
@@ -45,7 +56,8 @@ shift $(($OPTIND - 1))
 
 cmd=$@
 test "$cmd_display" == "" && cmd_display=$cmd
-test "$filter" == "" && filter=cat
+test "$filter_opt" == "" && filter_opt=cat
+test "$filter_env" == "" && filter_env=cat
 
 test "$cmd" == "" && usage;
 
@@ -55,19 +67,31 @@ if [ "$dry" != "1" ]; then
     fi
 fi
 
+
 # Generate reST output.
 
 if [ "$show_command" == "1" ]; then
     echo ".. code-block:: none" >>$stdout
     echo >>$stdout
-    echo "  # $cmd_display" >>$stdout;
+    echo "  > $cmd_display" | apply_filter >>$stdout;
 else
     echo ".. code-block:: guess" >>$stdout
     echo >>$stdout
 fi
 
 for i in $include; do
-    cat $i | eval $filter | sed 's/^/  /g' >>$stdout
+    cat $i | apply_filter | sed 's/^/  /g' >$filter_out
+
+    if [ $lines = 0 ]; then
+        cat $filter_out >>$stdout
+    else
+        cat $filter_out | head -n $lines >>$stdout
+        if [ `wc -l <$filter_out` -gt $lines ]; then
+            echo '  [...]' >>$stdout
+        fi
+    fi
+
+    rm -f $filter_out
 done
 
 echo >>$stdout
