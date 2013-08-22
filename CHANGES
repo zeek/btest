@@ -1,4 +1,9 @@
 
+0.4-51 | 2013-08-22 10:36:34 -0700
+
+  * Improve cleanup of processes that don't terminate with
+    btest-bg-wait. (Jon Siwek)
+ 
 0.4-49 | 2013-08-13 18:43:03 -0700
 
   * Fixing test portability problems. (Daniel Thayer)
