@@ -406,6 +406,10 @@ class Test(object):
             cmdline = CmdLine(cmd.strip(), success != "-FAIL", part, file)
             self.cmdlines += [cmdline]
 
+        if PartFinalizer != "":
+            finalizer = CmdLine("%s %s" % (PartFinalizer, self.name), True, part, "<PartFinalizer>")
+            self.cmdlines += [finalizer]
+
         if "serialize" in cmds:
             self.serialize = cmds["serialize"]
 
@@ -1423,15 +1427,13 @@ TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], 
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
 Initializer = getOption("Initializer", "")
 Finalizer = getOption("Finalizer", "")
+PartFinalizer = getOption("PartFinalizer", "")
 
 Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
     Config.configured_tests = findTests(testdirs, output_handler)
-
-# if Finalizer:
-#    Finalizer = os.path.abspath(Finalizer)
 
 if args:
     tests = findTests(args, output_handler)

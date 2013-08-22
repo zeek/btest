@@ -350,6 +350,12 @@ configuration file:
     value indicates whether the test should indeed be considered
     successful. By default, there's no finalizer set.
 
+``PartFinalizer``
+    An executable that will be executed each time a test *part* has
+    successfully run. This operates similarly to ``Finalizer`` except
+    that it runs after each test part rather than only at completion
+    of the full test. See `parts`_ for more about test parts.
+
 ``CommandPrefix``
     Changes the naming of all ``btest`` commands by replacing the
     ``@TEST-`` prefix with a custom string. For example, with
@@ -656,6 +662,8 @@ supported:
    When using option ``-j`` to parallelize execution, all tests that
    specify the same serialization set are guaranteed to run
    sequentially. ``<set>`` is an arbitrary user-chosen string.
+
+.. _parts:
 
 Splitting Tests into Parts
 ==========================
