@@ -1,4 +1,18 @@
 
+0.4-45 | 2013-08-22 15:32:07 -0700
+
+  * New "Sphinx-mode" for BTest, activated with -S. This allows to
+    capture a test's diagnostic output when running from inside
+    Sphinx; the output will now be inserted into the generated
+    document. (Robin Sommer)
+
+  * Adding an option -n to btest-rst-cmd that truncates output longer
+    than N lines. (Robin Sommer)
+
+  * Adding a PartFinalizer that runs a commmand at the completion of
+    each test part. (Robin Sommer)
+
+
 0.4-42 | 2013-07-31 20:46:30 -0700
 
   * Adding support for "parts": One can split a single test across

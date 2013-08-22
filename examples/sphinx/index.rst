@@ -26,6 +26,33 @@ Testing
 
     @TEST-EXEC: btest-rst-cmd echo "Hello, world! Again. Again."
 
+.. btest:: hello-world-fail
+
+    @TEST-EXEC: btest-rst-cmd echo "This will fail soon!"
+
+This should fail and include the diag output instead:
+
+.. btest:: hello-world-fail
+
+    @TEST-EXEC: echo StDeRr >&2; echo 1 | grep -q 2
+
+This should succeed:
+
+.. btest:: hello-world-fail
+
+    @TEST-EXEC: btest-rst-cmd echo "This succeeds again!"
+
+This should fail again and include the diag output instead:
+
+.. btest:: hello-world-fail
+
+    @TEST-EXEC: echo StDeRr >&2; echo 3 | grep -q 4
+
+.. btest:: hello-world-fail
+
+    @TEST-EXEC: btest-rst-cmd echo "This succeeds again!"
+
+
 Indices and tables
 ==================
 

@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-42" # Automatically filled in.
+VERSION = "0.4-45" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -537,11 +537,23 @@ class Test(object):
             finalizer = CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>")
             cmds += [finalizer]
 
+        skip_part = -1
+
         for cmd in cmds:
+            if skip_part >= 0 and skip_part == cmd.part:
+                continue
+
             (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
                 failures += 1
+
+                if Options.sphinx:
+                    # We still execute the remaining commands and
+                    # raise a failure for each one that fails.
+                    self.mgr.testFailed(self)
+                    skip_part = cmd.part
+                    continue
 
                 if failures == 1:
                     self.mgr.testFailed(self)
@@ -991,6 +1003,67 @@ class Diag(OutputHandler):
         if self._file:
             self.output(test, "%s ... not available, skipped" % test.displayName(), True, self._file)
 
+class SphinxOutput(OutputHandler):
+    def __init__(self, options, all=False, file=None):
+        """Output handler for producing output when running from
+        Sphinx. The main point here is that we save all diagnostic output to
+        $BTEST_RST_OUTPUT.
+
+        options: An optparser with the global options.
+        """
+        OutputHandler.__init__(self, options)
+
+        self._output = None
+
+        try:
+            self._rst_output = os.environ["BTEST_RST_OUTPUT"]
+        except KeyError:
+            print >>sys.stderr, "warning: environment variable BTEST_RST_OUTPUT not set, will not produce output"
+            self._rst_output = None
+
+    def testStart(self, test):
+        self._output = None
+
+    def testCommand(self, test, cmdline):
+        if not self._rst_output:
+            return
+
+        self._output = "%s#%s" % (self._rst_output, cmdline.part)
+        self._part = cmdline.part
+
+    def testSucceeded(self, test):
+        pass
+
+    def testFailed(self, test):
+        if not self._output:
+            return
+
+        out = open(self._output, "a")
+
+        print >>out, ""
+        print >>out, ".. code-block:: none "
+        print >>out, ""
+        print >>out, "  ERROR executing test '%s' (part %s)" % (test.displayName(), self._part)
+        print >>out, ""
+
+        for line in test.diagmsgs:
+            print >>out, "  % " + line
+
+        test.diagmsgs = []
+
+        for f in (test.diag, os.path.join(test.tmpdir, ".stderr")):
+            if not f:
+                continue
+
+            if os.path.isfile(f):
+                print >>out, "  % cat " + os.path.basename(f)
+                for line in open(f):
+                    print >>out, "  ", line.strip()
+                print >>out, ""
+
+    def testSkipped(self, test):
+        pass
+
 class XMLReport(OutputHandler):
     def __init__(self, options, file=None):
         """Output handler for producing an XML report of test results.
@@ -1293,6 +1366,8 @@ optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile
                      help="write a report of test results in JUnit XML format to file; if file exists, it is overwritten")
 optparser.add_option("-a", "--alternative", action="store", type="string", dest="alternatives", default=None,
                      help="activate given alternative")
+optparser.add_option("-S", "--sphinx", action="store_true", dest="sphinx", default=False,
+                     help="indicitates that we're running from inside Sphinx; for internal purposes")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1312,6 +1387,9 @@ defaults["testbase"] = TestBase
 defaults["default_path"] = os.environ["PATH"]
 Config = ConfigParser.ConfigParser(defaults)
 Config.read(fname)
+
+if Options.sphinx:
+    Options.quiet = True
 
 if Options.quiet:
     Options.brief = True
@@ -1345,6 +1423,9 @@ if Options.diagfile:
 
     except IOError, e:
         print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
+
+if Options.sphinx:
+    output_handlers += [SphinxOutput(Options)]
 
 if Options.xmlfile:
     try:
@@ -1489,7 +1570,10 @@ output_handler.finished()
 
 if failed > 0:
     skipped = (", %d skipped" % skipped) if skipped > 0 else ""
-    output("%d of %d test%s failed%s" % (failed, total, "s" if total > 1 else "", skipped))
+
+    if not Options.quiet:
+        output("%d of %d test%s failed%s" % (failed, total, "s" if total > 1 else "", skipped))
+
     sys.exit(1)
 
 else:

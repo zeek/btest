@@ -73,7 +73,7 @@ fi
 if [ "$show_command" == "1" ]; then
     echo ".. code-block:: none" >>$stdout
     echo >>$stdout
-    echo "  > $cmd_display" | apply_filter >>$stdout;
+    echo "  # $cmd_display" | apply_filter >>$stdout;
 else
     echo ".. code-block:: guess" >>$stdout
     echo >>$stdout

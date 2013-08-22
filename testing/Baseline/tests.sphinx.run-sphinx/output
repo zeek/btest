@@ -12,5 +12,21 @@ Hello, world! Again.
 Hello, world! Again. Again.
 </pre></div>
 </div>
+<div class="highlight-none"><div class="highlight"><pre># echo This will fail soon!
+This will fail soon!
+</pre></div>
+</div>
+<div class="highlight-none"><div class="highlight"><pre>ERROR executing test &#39;tests.sphinx.hello-world-fail&#39; (part 1)
+
+% &#39;echo StDeRr &gt;&amp;2; echo 1 | grep -q 2&#39; failed unexpectedly (exit code 1)
+% cat .stderr
+ StDeRr
+</pre></div>
+</div>
+<p>This should fail and include the diag output instead:</p>
+<div class="highlight-none"><div class="highlight"><pre># echo This succeeds!
+This succeeds!
+</pre></div>
+</div>
 </div>
 <div class="section" id="indices-and-tables">

@@ -73,7 +73,7 @@ class Test(object):
         self.cleanTmps()
 
         try:
-            subprocess.check_call("btest -qd %s" % self.path, shell=True)
+            subprocess.check_call("btest -S %s" % self.path, shell=True)
         except (OSError, IOError, subprocess.CalledProcessError), e:
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
