@@ -1,5 +1,5 @@
 # %TEST-EXEC-FAIL: btest -d -x output.raw.xml t1 t2 t3
-# %TEST-EXEC: cat output.raw.xml | sed 's/hostname[^"]*"[^"]*"/XXX/g' | sed 's/time[^"]*"[^"]*"/XXX/g' >output.xml
+# %TEST-EXEC: cat output.raw.xml | sed 's/hostname[^"]*"[^"]*"/XXX/g' | sed 's/time[^"]*"[^"]*"/XXX/g' | sed '/^$/d' | sed 's/> />\n/' | sed 's/^[ ]*//' >output.xml
 # %TEST-EXEC: btest-diff output.xml
 
 %TEST-START-FILE t1

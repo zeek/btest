@@ -4,11 +4,11 @@ from distutils.core import setup, Extension
 
 scripts = ["btest", "btest-diff", "btest-bg-run",
            "btest-bg-run-helper", "btest-bg-wait", "btest-setsid",
-           "sphinx/btest-rst-cmd", "sphinx/btest-rst-pipe", "sphinx/btest-rst-include", 
+           "sphinx/btest-rst-cmd", "sphinx/btest-rst-pipe", "sphinx/btest-rst-include",
            ]
 
 setup(name='btest',
-      version="0.4-45", # Filled in automatically.
+      version="0.4-55", # Filled in automatically.
       description='A simple unit testing framework',
       author='Robin Sommer',
       author_email='robin@icir.org',
