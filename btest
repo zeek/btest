@@ -977,7 +977,7 @@ class Diag(OutputHandler):
                     self.output(test, "  " + line.strip(), True, self._file)
                 self.output(test, "", True, self._file)
 
-        if self.options().wait and not file:
+        if self.options().wait and not self._file:
             self.output(test, "<Enter> ...")
             try:
                 sys.stdin.readline()
