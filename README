@@ -185,7 +185,7 @@ and 1 otherwise.
         configuration file. This option can be given multiple times to
         run tests with several alternatives. If ``ALTERNATIVE`` is ``-``
         that refers to running with the standard setup, which can be used
-        to run tests both with and without alterantives by giving both.
+        to run tests both with and without alternatives by giving both.
 
     -b, --brief
         Does not output *anything* for tests which pass. If all tests
@@ -213,7 +213,7 @@ and 1 otherwise.
         Writes diagnostics for all failed tests into the given file.
         If the file already exists, it will be overwritten.
 
-    -g GROUPS, --group=GROUPS
+    -g GROUPS, --groups=GROUPS
         Runs only tests assigned to the given test groups, see
         `@TEST-GROUP`_. Multiple groups can be given as a
         comma-separated list. Specifying ``-`` as a group name selects
@@ -411,10 +411,10 @@ Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
 An alternative can add further environment variables by defining an
-``[environment-<name>]`` section:
+``[environment-<name>]`` section::
 
-     [environment-myalternative]
-     CFLAGS=-O3
+    [environment-myalternative]
+    CFLAGS=-O3
 
 Running ``btest`` with ``--alternative=myalternative`` will now make
 the ``CFLAGS`` environment variable available to all commands
@@ -537,7 +537,7 @@ supported:
 
         ``TEST_BASE``
             The btest base directory, i.e., the directory where
-            ``btest.cf`` is located in.
+            ``btest.cfg`` is located.
 
     .. note::
 
@@ -565,15 +565,15 @@ supported:
     a particular library is available). Multiple requirements may be
     specified and then all must be met for the test to continue.
 
-``@TEST-ALTERNATIVE: <alternative>`` Runs this test only for the given
-   alternative (see alternative_). If ``<alternatives>`` is
-   ``default``, the test executes when BTest runs with no alternative
-   given (which however is the default anyways).
+``@TEST-ALTERNATIVE: <alternative>``
+    Runs this test only for the given alternative (see alternative_).
+    If ``<alternative>`` is ``default``, the test executes when BTest runs
+    with no alternative given (which however is the default anyway).
 
-``@TEST-NOT-ALTERNATIVE: <alternative>`` Ignores this test for the
-   given alternative (see alternative_).  If ``<alternative>`` is
-   ``default``, the test is ignored if BTest runs with no alternative
-   given.
+``@TEST-NOT-ALTERNATIVE: <alternative>``
+    Ignores this test for the given alternative (see alternative_).
+    If ``<alternative>`` is ``default``, the test is ignored if BTest runs
+    with no alternative given.
 
 ``@TEST-COPY-FILE: <file>``
     Copy the given file into the test's directory before the test is
