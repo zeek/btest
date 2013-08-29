@@ -3,12 +3,14 @@ import os
 import os.path
 import tempfile
 import subprocess
+import re
 
 from docutils import nodes, statemachine, utils
 from docutils.parsers.rst import directives, Directive, DirectiveError, Parser
 from docutils.transforms import TransformError, Transform
 from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
 from sphinx.errors import SphinxError
+from sphinx.directives.code import LiteralInclude
 
 Initialized = False
 App = None
@@ -18,6 +20,7 @@ BTestTests = None
 BTestTmp = None
 
 Tests = {}
+Includes = set()
 
 def init(settings, reporter):
     global Intialized, App, Reporter, BTestBase, BTestTests, BTestTmp
@@ -165,7 +168,70 @@ class BTest(Directive):
 
         return [pending]
 
+class BTestInclude(LiteralInclude):
+    def error(self, msg):
+        self.state.document.settings.env.note_reread()
+        msg = red(msg)
+        msg = self.state.document.reporter.error(str(msg), line=self.lineno)
+        return [msg]
+
+    def message(self, msg):
+        Reporter.info(msg)
+
+    def run(self):
+        if not Initialized:
+            # FIXME: Better way to handle one-time initialization?
+            init(self.state.document.settings, self.state.document.reporter)
+
+        document = self.state.document
+        if not document.settings.file_insertion_enabled:
+            return [document.reporter.warning('File insertion disabled',
+                                              line=self.lineno)]
+        env = document.settings.env
+
+        expanded_arg = os.path.expandvars(self.arguments[0])
+        sphinx_src_relation = os.path.relpath(expanded_arg, env.srcdir)
+        self.arguments[0] = os.path.join(os.sep, sphinx_src_relation)
+
+        retnode = super(BTestInclude, self).run()
+
+        os.chdir(BTestBase)
+
+        tag = os.path.normpath(self.arguments[0])
+        tag = re.sub("[^a-zA-Z0-9-]", "_", tag)
+
+        if tag.startswith("_"):
+            tag = tag[1:]
+
+        test_path = ("include-" + tag + ".btest")
+
+        if BTestTests:
+            test_path = os.path.join(BTestTests, test_path)
+
+        test_path = os.path.abspath(test_path)
+
+        i = 1
+        (base, ext) = os.path.splitext(test_path)
+        while test_path in Includes:
+            i += 1
+
+            test_path = "%s@%d" % (base, i)
+            if ext:
+                test_path += ext
+
+        Includes.add(test_path)
+
+        out = open(test_path, "w")
+        print >>out, "# @TEST-EXEC: btest-diff %INPUT\n"
+
+        for i in retnode:
+            out.write(i.rawsource)
+        out.close()
+
+        return retnode
+
 directives.register_directive('btest', BTest)
+directives.register_directive('btest-include', BTestInclude)
 
 def setup(app):
     global App

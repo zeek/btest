@@ -900,6 +900,16 @@ The following Sphinx support scripts come with ``btest``:
     provided just for convenience and leverage ``btest-rst-cmd``
     internally.
 
+Including Literal Text
+----------------------
+
+The Sphinx module also provides a directive ``btest-include`` that
+functions like ``literalinclude`` (including all its options) but also
+creates a test checking the included code for changes. As one further
+extension, the directive expands environment variables of the form
+``${xxx}`` in the given path.
+
+
 License
 =======
 

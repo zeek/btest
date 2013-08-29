@@ -42,5 +42,16 @@ This succeeds again!
 This succeeds again!
 </pre></div>
 </div>
+<div class="highlight-python"><pre>
+[btest]
+TestDirs    = tests
+TmpDir      = %(testbase)s/.tmp
+BaselineDir = %(testbase)s/Baseline
+Finalizer   = btest-diff-rst
+
+[environment]
+PATH=%(testbase)s/../../:%(testbase)s/../../sphinx:%(default_path)s
+</pre>
+</div>
 </div>
 <div class="section" id="indices-and-tables">

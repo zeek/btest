@@ -52,6 +52,8 @@ This should fail again and include the diag output instead:
 
     @TEST-EXEC: btest-rst-cmd echo "This succeeds again!"
 
+.. btest-include:: btest.cfg
+
 
 Indices and tables
 ==================
