@@ -1,4 +1,11 @@
 
+0.4-63 | 2013-08-28 21:10:39 -0700
+
+  * btest-sphinx now provides a new directive btest-include. This
+    works like literalinclude (with all its options) but it also saves
+    a version of the included text as a test to detect changes. (Robin
+    Sommer)
+
 0.4-60 | 2013-08-28 18:54:51 -0700
 
   * Fix typos and reST formatting in README (Daniel Thayer)
