@@ -1,4 +1,15 @@
 
+0.4-60 | 2013-08-28 18:54:51 -0700
+
+  * Fix typos and reST formatting in README (Daniel Thayer)
+    
+  * Fix a couple of error messages. (Daniel Thayer)
+    
+  * Fixed a reference to a non-existent variable which was causing the
+    "-w" option to have no effect. (Daniel Thayer)
+
+  * Test portability fix.  (Robin Sommer)
+
 0.4-55 | 2013-08-22 16:09:21 -0700
 
   * New "Sphinx-mode" for BTest, activated with -S. This allows to

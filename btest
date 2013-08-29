@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.4-55" # Automatically filled in.
+VERSION = "0.4-60" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -366,7 +366,7 @@ class Test(object):
 
                     if not multiple:
                         if tag in cmds:
-                            error("%s: %d defined multiple times." % (self.name, tag))
+                            error("%s: %s defined multiple times." % (file, tag))
 
                         cmds[tag] = value
 
@@ -977,7 +977,7 @@ class Diag(OutputHandler):
                     self.output(test, "  " + line.strip(), True, self._file)
                 self.output(test, "", True, self._file)
 
-        if self.options().wait and not file:
+        if self.options().wait and not self._file:
             self.output(test, "<Enter> ...")
             try:
                 sys.stdin.readline()
@@ -1281,7 +1281,7 @@ def readTestFile(filename, output_handler):
 
             m = RE_END_FILE.search(line)
             if m:
-                error("unexpected %sEND-FILE" % CommandPrefix)
+                error("%s: unexpected %sEND-FILE" % (filename, CommandPrefix))
 
             m = RE_START_NEXT_TEST.search(line)
             if not m:
@@ -1374,7 +1374,7 @@ optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile
 optparser.add_option("-a", "--alternative", action="store", type="string", dest="alternatives", default=None,
                      help="activate given alternative")
 optparser.add_option("-S", "--sphinx", action="store_true", dest="sphinx", default=False,
-                     help="indicitates that we're running from inside Sphinx; for internal purposes")
+                     help="indicates that we're running from inside Sphinx; for internal purposes")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
