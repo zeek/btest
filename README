@@ -539,6 +539,9 @@ supported:
             The btest base directory, i.e., the directory where
             ``btest.cfg`` is located.
 
+        ``TEST_PART``
+            The test part number (see `parts`_ for more about test parts).
+
     .. note::
 
         If a command returns the special exit code 100, the test is
@@ -674,7 +677,7 @@ Splitting Tests into Parts
 
 One can split a single test across multiple files by adding a
 numerical ``#<n>`` postfix to their names, where each ``<n>``
-represents a separate part of the test. ``btests`` will combine all of
+represents a separate part of the test. ``btest`` will combine all of
 a test's parts in numerical order and execute them subsequently within
 the same sandbox. Example::
 
@@ -687,16 +690,16 @@ the same sandbox. Example::
         > cat examples/t7.sh#3
         # @TEST-EXEC: btest-diff output
 
-        > btest -D t7
+        > btest -D examples/t7.sh
         examples.t7 ... ok
         % cat .diag
         == File ===============================
         Part 1 - /Users/robin/bro/docs/aux/btest/.tmp/examples.t7/t7.sh#1
         Part 2 - /Users/robin/bro/docs/aux/btest/.tmp/examples.t7/t7.sh#2
 
-Note how ``output`` contains the output of both ``t7#1`` and ``t7#2``,
+Note how ``output`` contains the output of both ``t7.sh#1`` and ``t7.sh#2``,
 however in each case ``%INPUT`` refers to the corresponding part. For
-the first part of a test, one can also skip the ``#1`` postfix.
+the first part of a test, one can also omit the ``#1`` postfix in the filename.
 
 Canonifying Diffs
 =================
