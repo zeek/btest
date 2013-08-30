@@ -1,27 +1,38 @@
 .. code-block:: none
+  :linenos:
+  :emphasize-lines: 1,1
 
   # echo Hello
   Hello
 
 .. code-block:: guess
+   :linenos:
 
   Hello 2, no command
 
 .. code-block:: none
+  :linenos:
+  :emphasize-lines: 1,1
 
   # Different command
   Hello 3, no command
 
 .. code-block:: none
+  :linenos:
+  :emphasize-lines: 1,1
 
   # echo Hello 4, no output
 
 .. code-block:: none
+  :linenos:
+  :emphasize-lines: 1,1
 
   # Xcho HXllo 5, filtXr
   HXllo 5, filtXr
 
 .. code-block:: none
+  :linenos:
+  :emphasize-lines: 1,1
 
   # echo Hello 6, file
   Example file.

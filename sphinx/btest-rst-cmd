@@ -26,6 +26,22 @@ function apply_filter()
     eval $filter_env | eval $filter_opt
 }
 
+# Strip leading white-space and then indent to 2 space.
+function indent()
+{
+    python -c "
+
+import sys
+input = sys.stdin.readlines();
+n = 1e10
+for i in input:
+    n = min(n, len(i) - len(i.lstrip()))
+
+for i in input:
+    print '  ' + i[n:],
+"
+}
+
 stdout=`mktemp -t $(basename $0).XXX`
 cmd_out=`mktemp -t $(basename $0).XXX`
 filter_out=`mktemp -t $(basename $0).XXX`
@@ -72,15 +88,20 @@ fi
 
 if [ "$show_command" == "1" ]; then
     echo ".. code-block:: none" >>$stdout
+    echo "  :linenos:" >>$stdout
+    echo "  :emphasize-lines: 1,1" >>$stdout
     echo >>$stdout
     echo "  # $cmd_display" | apply_filter >>$stdout;
 else
     echo ".. code-block:: guess" >>$stdout
+    echo "   :linenos:" >>$stdout
     echo >>$stdout
 fi
 
 for i in $include; do
-    cat $i | apply_filter | sed 's/^/  /g' >$filter_out
+    echo "-- `basename $i`" >>$filter_out
+    echo "" >>$filter_out
+    cat $i | apply_filter | indent >$filter_out
 
     if [ $lines = 0 ]; then
         cat $filter_out >>$stdout

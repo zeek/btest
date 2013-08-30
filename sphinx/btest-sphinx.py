@@ -22,6 +22,15 @@ BTestTmp = None
 Tests = {}
 Includes = set()
 
+# Maps file name extensiosn to Pygments formatter.
+ExtMappings = {
+    "bro": "bro",
+    "rst": "rest",
+    "c": "c",
+    "cc": "cc",
+    "py": "python"
+}
+
 def init(settings, reporter):
     global Intialized, App, Reporter, BTestBase, BTestTests, BTestTmp
 
@@ -169,6 +178,10 @@ class BTest(Directive):
         return [pending]
 
 class BTestInclude(LiteralInclude):
+    def __init__(self, *args, **kwargs):
+        super(BTestInclude, self).__init__(*args, **kwargs)
+        self.options["linenos"] = "1"
+
     def error(self, msg):
         self.state.document.settings.env.note_reread()
         msg = red(msg)
@@ -192,6 +205,16 @@ class BTestInclude(LiteralInclude):
         expanded_arg = os.path.expandvars(self.arguments[0])
         sphinx_src_relation = os.path.relpath(expanded_arg, env.srcdir)
         self.arguments[0] = os.path.join(os.sep, sphinx_src_relation)
+
+
+        ext = os.path.splitext(self.arguments[0])
+
+        if ext in ExtMappings:
+            self.options["language"] = ExtMappings[ext]
+
+        self.options["linenos"] = "1"
+        self.options["prepend"] = "-- %s\n" % os.path.basename(self.arguments[0])
+        self.options["emphasize-lines"] = "1,1"
 
         retnode = super(BTestInclude, self).run()
 
