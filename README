@@ -332,6 +332,9 @@ configuration file:
     ignore when scanning given test directories recursively.
     Default is empty.
 
+    An alternative way to ignore a file is by placing ``@TEST-IGNORE``
+    in it.
+
 ``StateFile``
     The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
@@ -460,7 +463,7 @@ form ``cp $1 $2``.
 .. _substitution:
 
 Substitutions
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Substitutions are similar to filters, yet they do not adapt the input
 but the command line being executed. A substitution is defined by
@@ -655,6 +658,12 @@ supported:
     Another is to store a file in the same directory as the test
     itself, making sure it's ignored via ``IgnoreFiles``, and then
     refer to it via ``%DIR/<name>``.
+
+``@TEST-IGNORE``
+    This is used to indicate that this file should be skipped (i.e., no
+    test commands in this file will be executed).  An alternative way to
+    ignore files is by using the ``IgnoreFiles`` option in the btest
+    configuration file.
 
 .. _@TEST-GROUP:
 
