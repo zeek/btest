@@ -94,7 +94,7 @@ if [ "$show_command" == "1" ]; then
     echo "  # $cmd_display" | apply_filter >>$stdout;
 else
     echo ".. code-block:: guess" >>$stdout
-    echo "   :linenos:" >>$stdout
+    echo "  :linenos:" >>$stdout
     echo >>$stdout
 fi
 
