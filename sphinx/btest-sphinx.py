@@ -221,7 +221,9 @@ class BTestInclude(LiteralInclude):
         os.chdir(BTestBase)
 
         tag = os.path.normpath(self.arguments[0])
+        tag = os.path.relpath(tag, BTestBase)
         tag = re.sub("[^a-zA-Z0-9-]", "_", tag)
+        tag = re.sub("__+", "_", tag)
 
         if tag.startswith("_"):
             tag = tag[1:]
@@ -245,7 +247,7 @@ class BTestInclude(LiteralInclude):
         Includes.add(test_path)
 
         out = open(test_path, "w")
-        print >>out, "# @TEST-EXEC: btest-diff %INPUT\n"
+        print >>out, "# @TEST-EXEC: cat %INPUT >output && btest-diff output\n"
 
         for i in retnode:
             out.write(i.rawsource)
