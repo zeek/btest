@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 #
-# Executes a command and formats its stdout in reST.
+# Executes a command and formats the command and its stdout in reST.
 #
 
 trap "rm -f $tmps; exit" INT TERM EXIT

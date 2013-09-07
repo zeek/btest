@@ -807,9 +807,9 @@ inside a Sphinx document::
         <test content>
 
 Here, ``<test-name>`` is a custom name for the test; it will be
-stored in ``btest_tests`` under that name. ``<test content>`` is just
-a standard test as you would normally put into one of the
-``TestDirs``. Example::
+stored in ``btest_tests`` under that name (with a file extension of
+``.btest``). ``<test content>`` is just a standard test as you would
+normally put into one of the ``TestDirs``. Example::
 
 
     .. btest:: just-a-test
@@ -817,7 +817,7 @@ a standard test as you would normally put into one of the
         @TEST-EXEC: expr 2 + 2
 
 When you now run Sphinx, it will (1) store the test content into
-``tests/doc/just-a-test`` (assuming the above path layout), and (2)
+``tests/doc/just-a-test.btest`` (assuming the above path layout), and (2)
 execute the test by running ``btest`` on it. You can then run
 ``btest`` manually in ``tests/`` as well and it will execute the test
 just as it would in a standard setup. If a test fails when Sphinx runs
@@ -864,7 +864,8 @@ The following Sphinx support scripts come with ``btest``:
 
     By default, this executes ``<cmdline>`` and includes both the
     command line itself and its standard output into the generated
-    documentation. See above for an example.
+    documentation (but only if the command line succeeds).
+    See above for an example.
 
     This script provides the following options:
 
@@ -887,18 +888,32 @@ The following Sphinx support scripts come with ``btest``:
             documentation, just its output.
 
         -r FILE
-            Insert ``FILE`` into output instead of stdout.
+            Insert ``FILE`` into output instead of stdout. The ``FILE`` must
+            be created by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
+
+        -n N
+            Include only ``N`` lines of output, adding a ``[...]`` marker if
+            there's more.
 
 
-``btest-rst-include <file>``
+``btest-rst-include [options] <file>``
 
-    Includes ``<file>`` inside a code block.
+    Includes ``<file>`` inside a code block.  The ``<file>`` must be created
+    by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
+
+    This script provides the following options:
+
+        -n N
+            Include only ``N`` lines of output, adding a ``[...]`` marker if
+            there's more.
+
 
 ``btest-rst-pipe <cmdline>``
 
     Executes ``<cmdline>``, includes its standard output inside a code
-    block. Note that this script does not include the command line
-    itself into the code block, just the output.
+    block (but only if the command line succeeds). Note that
+    this script does not include the command line itself into the code
+    block, just the output.
 
 .. note::
 
