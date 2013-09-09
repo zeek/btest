@@ -786,14 +786,13 @@ Then add the following to your Sphinx ``conf.py``::
     btest_base="tests"         # Relative to Sphinx-root.
     btest_tests="doc"          # Relative to btest_base.
 
-Next, a finalizer to ``btest.cfg``::
+Next, create a ``btest.cfg`` in ``tests/`` as usual and add
+``doc/`` to the ``TestDirs`` option.  Also, add a finalizer to ``btest.cfg``::
 
     [btest]
     ...
-    Finalizer=btest-diff-rst
+    PartFinalizer=btest-diff-rst
 
-Finally, create a ``btest.cfg`` in ``tests/`` as usual and add
-``doc/`` to the ``TestDirs`` option.
 
 Including a Test into a Sphinx Document
 ---------------------------------------
@@ -841,19 +840,19 @@ When running Sphinx, this will render as:
 .. code::
 
     # echo Hello, world!
-    Hello world!
+    Hello, world!
 
-
-When running ``btest`` manually in ``tests/``, the ``Finalizer`` we
-added to ``btest.cfg`` (see above) compares the generated reST code
-with a previously established baseline, just like ``btest-diff`` does
-with files. To establish the initial baseline, run ``btest -u``, like
-you would with ``btest-diff``.
 
 The same ``<test-name>`` can be used multiple times, in which case
 each entry will become one part of a joint test. ``btest`` will
 execute all parts subsequently within a single sandbox, and earlier
 results will thus be available to later parts.
+
+When running ``btest`` manually in ``tests/``, the ``PartFinalizer`` we
+added to ``btest.cfg`` (see above) compares the generated reST code
+with a previously established baseline, just like ``btest-diff`` does
+with files. To establish the initial baseline, run ``btest -u``, like
+you would with ``btest-diff``.
 
 Scripts
 -------
