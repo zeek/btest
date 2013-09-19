@@ -1,4 +1,29 @@
 
+0.4-75 | 2013-09-19 15:19:44 -0700
+
+  * Fix the btest-rst-pipe script. (Daniel Thayer)
+
+  * A set of of documentation fixes, clarifications, and extensions.
+    (Daniel Thayer)
+    
+  * A set of changes to Sphinx commands and directives. (Robin Sommer)
+    
+    btest-rst-*:
+        - Always show line numbers.
+
+        - Highlight the command executed.
+
+        - rst-cmd-include gets an option -n <i> to include only upto i lines.
+
+        - rst-cmd-include prefixes output with "<file>" to show what we're
+          including.
+
+    btest-include:
+        - Set Pygments language automatically if we show a file with an
+          extension we know (in particular ".bro").
+
+        - Prefix output with "<file>" to show what we're including.
+
 0.4-63 | 2013-08-28 21:10:39 -0700
 
   * btest-sphinx now provides a new directive btest-include. This

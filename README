@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.4-63
+.. |version| replace:: 0.4-75
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -332,6 +332,9 @@ configuration file:
     ignore when scanning given test directories recursively.
     Default is empty.
 
+    An alternative way to ignore a file is by placing ``@TEST-IGNORE``
+    in it.
+
 ``StateFile``
     The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
@@ -460,7 +463,7 @@ form ``cp $1 $2``.
 .. _substitution:
 
 Substitutions
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Substitutions are similar to filters, yet they do not adapt the input
 but the command line being executed. A substitution is defined by
@@ -538,6 +541,9 @@ supported:
         ``TEST_BASE``
             The btest base directory, i.e., the directory where
             ``btest.cfg`` is located.
+
+        ``TEST_PART``
+            The test part number (see `parts`_ for more about test parts).
 
     .. note::
 
@@ -653,6 +659,12 @@ supported:
     itself, making sure it's ignored via ``IgnoreFiles``, and then
     refer to it via ``%DIR/<name>``.
 
+``@TEST-IGNORE``
+    This is used to indicate that this file should be skipped (i.e., no
+    test commands in this file will be executed).  An alternative way to
+    ignore files is by using the ``IgnoreFiles`` option in the btest
+    configuration file.
+
 .. _@TEST-GROUP:
 
 ``@TEST-GROUP: <group>``
@@ -674,7 +686,7 @@ Splitting Tests into Parts
 
 One can split a single test across multiple files by adding a
 numerical ``#<n>`` postfix to their names, where each ``<n>``
-represents a separate part of the test. ``btests`` will combine all of
+represents a separate part of the test. ``btest`` will combine all of
 a test's parts in numerical order and execute them subsequently within
 the same sandbox. Example::
 
@@ -687,16 +699,16 @@ the same sandbox. Example::
         > cat examples/t7.sh#3
         # @TEST-EXEC: btest-diff output
 
-        > btest -D t7
+        > btest -D examples/t7.sh
         examples.t7 ... ok
         % cat .diag
         == File ===============================
         Part 1 - /Users/robin/bro/docs/aux/btest/.tmp/examples.t7/t7.sh#1
         Part 2 - /Users/robin/bro/docs/aux/btest/.tmp/examples.t7/t7.sh#2
 
-Note how ``output`` contains the output of both ``t7#1`` and ``t7#2``,
+Note how ``output`` contains the output of both ``t7.sh#1`` and ``t7.sh#2``,
 however in each case ``%INPUT`` refers to the corresponding part. For
-the first part of a test, one can also skip the ``#1`` postfix.
+the first part of a test, one can also omit the ``#1`` postfix in the filename.
 
 Canonifying Diffs
 =================
@@ -747,12 +759,16 @@ situation:
 Integration with Sphinx
 =======================
 
-``btest`` comes with a new directive for the documentation framework
-`Sphinx <http://sphinx.pocoo.org>`_. The directive allows to write a
-test directly inside a Sphinx document, and then to include output
-from the test's command into the generated documentation. The same
-tests can also run externally and will catch if any changes to the
-included content occur. The following walks through setting this up.
+``btest`` comes with an extension module for the documentation framework
+`Sphinx <http://sphinx.pocoo.org>`_. The extension module provides two
+new directives called ``btest`` and ``btest-include``.  The ``btest``
+directive allows writing a test directly inside a Sphinx document, and
+then the output from the test's command is included in the generated
+documentation. The ``btest-include`` directive allows for literal text
+from another file to be included in the generated documentation.
+The tests from both directives can also be run externally and will catch
+if any changes to the included content occur. The following walks
+through setting this up.
 
 Configuration
 -------------
@@ -774,14 +790,13 @@ Then add the following to your Sphinx ``conf.py``::
     btest_base="tests"         # Relative to Sphinx-root.
     btest_tests="doc"          # Relative to btest_base.
 
-Next, a finalizer to ``btest.cfg``::
+Next, create a ``btest.cfg`` in ``tests/`` as usual and add
+``doc/`` to the ``TestDirs`` option.  Also, add a finalizer to ``btest.cfg``::
 
     [btest]
     ...
-    Finalizer=btest-diff-rst
+    PartFinalizer=btest-diff-rst
 
-Finally, create a ``btest.cfg`` in ``tests/`` as usual and add
-``doc/`` to the ``TestDirs`` option.
 
 Including a Test into a Sphinx Document
 ---------------------------------------
@@ -795,9 +810,9 @@ inside a Sphinx document::
         <test content>
 
 Here, ``<test-name>`` is a custom name for the test; it will be
-stored in ``btest_tests`` under that name. ``<test content>`` is just
-a standard test as you would normally put into one of the
-``TestDirs``. Example::
+stored in ``btest_tests`` under that name (with a file extension of
+``.btest``). ``<test content>`` is just a standard test as you would
+normally put into one of the ``TestDirs``. Example::
 
 
     .. btest:: just-a-test
@@ -805,7 +820,7 @@ a standard test as you would normally put into one of the
         @TEST-EXEC: expr 2 + 2
 
 When you now run Sphinx, it will (1) store the test content into
-``tests/doc/just-a-test`` (assuming the above path layout), and (2)
+``tests/doc/just-a-test.btest`` (assuming the above path layout), and (2)
 execute the test by running ``btest`` on it. You can then run
 ``btest`` manually in ``tests/`` as well and it will execute the test
 just as it would in a standard setup. If a test fails when Sphinx runs
@@ -829,19 +844,19 @@ When running Sphinx, this will render as:
 .. code::
 
     # echo Hello, world!
-    Hello world!
+    Hello, world!
 
-
-When running ``btest`` manually in ``tests/``, the ``Finalizer`` we
-added to ``btest.cfg`` (see above) compares the generated reST code
-with a previously established baseline, just like ``btest-diff`` does
-with files. To establish the initial baseline, run ``btest -u``, like
-you would with ``btest-diff``.
 
 The same ``<test-name>`` can be used multiple times, in which case
 each entry will become one part of a joint test. ``btest`` will
 execute all parts subsequently within a single sandbox, and earlier
 results will thus be available to later parts.
+
+When running ``btest`` manually in ``tests/``, the ``PartFinalizer`` we
+added to ``btest.cfg`` (see above) compares the generated reST code
+with a previously established baseline, just like ``btest-diff`` does
+with files. To establish the initial baseline, run ``btest -u``, like
+you would with ``btest-diff``.
 
 Scripts
 -------
@@ -852,7 +867,8 @@ The following Sphinx support scripts come with ``btest``:
 
     By default, this executes ``<cmdline>`` and includes both the
     command line itself and its standard output into the generated
-    documentation. See above for an example.
+    documentation (but only if the command line succeeds).
+    See above for an example.
 
     This script provides the following options:
 
@@ -875,18 +891,32 @@ The following Sphinx support scripts come with ``btest``:
             documentation, just its output.
 
         -r FILE
-            Insert ``FILE`` into output instead of stdout.
+            Insert ``FILE`` into output instead of stdout. The ``FILE`` must
+            be created by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
+
+        -n N
+            Include only ``N`` lines of output, adding a ``[...]`` marker if
+            there's more.
 
 
-``btest-rst-include <file>``
+``btest-rst-include [options] <file>``
 
-    Includes ``<file>`` inside a code block.
+    Includes ``<file>`` inside a code block.  The ``<file>`` must be created
+    by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
+
+    This script provides the following options:
+
+        -n N
+            Include only ``N`` lines of output, adding a ``[...]`` marker if
+            there's more.
+
 
 ``btest-rst-pipe <cmdline>``
 
     Executes ``<cmdline>``, includes its standard output inside a code
-    block. Note that this script does not include the command line
-    itself into the code block, just the output.
+    block (but only if the command line succeeds). Note that
+    this script does not include the command line itself into the code
+    block, just the output.
 
 .. note::
 
@@ -903,11 +933,22 @@ The following Sphinx support scripts come with ``btest``:
 Including Literal Text
 ----------------------
 
-The Sphinx module also provides a directive ``btest-include`` that
-functions like ``literalinclude`` (including all its options) but also
-creates a test checking the included code for changes. As one further
-extension, the directive expands environment variables of the form
-``${var}`` in its argument.
+The ``btest`` Sphinx extension module also provides a directive
+``btest-include`` that functions like ``literalinclude`` (including all
+its options) but also creates a test checking the included content for
+changes. As one further extension, the directive expands environment
+variables of the form ``${var}`` in its argument.  Example::
+
+    .. btest-include:: ${var}/path/to/file
+
+When you now run Sphinx, it will automatically generate a test
+file in the directory specified by the ``btest_tests`` variable in
+the Sphinx ``conf.py`` configuration file.  In this example, the filename
+would be ``include-path_to_file.btest`` (it automatically adds a prefix of
+"include-" and a file extension of ".btest").  When you run
+the tests externally, the tests generated by the ``btest-include``
+directive will check if any of the included content has changed (you'll
+first need to run ``btest -u`` to establish the initial baseline).
 
 
 License
