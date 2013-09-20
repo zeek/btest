@@ -1,5 +1,5 @@
 
-0.4-75 | 2013-09-19 15:19:44 -0700
+0.5 | 2013-09-19 15:22:21 -0700
 
   * Fix the btest-rst-pipe script. (Daniel Thayer)
 
@@ -71,7 +71,6 @@
 0.4-43 | 2013-08-12 16:04:53 -0700
 
   * Bugfix for ignored tests. (Robin Sommer)
->>>>>>> 50d426ba09adc6ae6127cce93d59057c0f09abb1
 
 0.4-42 | 2013-07-31 20:46:30 -0700
 
