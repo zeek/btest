@@ -180,7 +180,6 @@ class BTest(Directive):
 class BTestInclude(LiteralInclude):
     def __init__(self, *args, **kwargs):
         super(BTestInclude, self).__init__(*args, **kwargs)
-        self.options["linenos"] = "1"
 
     def error(self, msg):
         self.state.document.settings.env.note_reread()
@@ -206,15 +205,21 @@ class BTestInclude(LiteralInclude):
         sphinx_src_relation = os.path.relpath(expanded_arg, env.srcdir)
         self.arguments[0] = os.path.join(os.sep, sphinx_src_relation)
 
+        (root, ext) = os.path.splitext(self.arguments[0])
 
-        ext = os.path.splitext(self.arguments[0])
+        if ext.startswith("."):
+            ext = ext[1:]
 
         if ext in ExtMappings:
             self.options["language"] = ExtMappings[ext]
+        else:
+            # Note that we always need to set a language, otherwise the lineos/emphasis don't seem to work.
+            self.options["language"] = "none"
 
-        self.options["linenos"] = "1"
-        self.options["prepend"] = "-- %s\n" % os.path.basename(self.arguments[0])
+        self.options["linenos"] = True
+        self.options["prepend"] = "%s\n" % os.path.basename(self.arguments[0])
         self.options["emphasize-lines"] = "1,1"
+        self.options["style"] = "X"
 
         retnode = super(BTestInclude, self).run()
 
@@ -252,6 +257,9 @@ class BTestInclude(LiteralInclude):
         for i in retnode:
             out.write(i.rawsource)
         out.close()
+
+        for node in retnode:
+            node["classes"] += ["btest-include"]
 
         return retnode
 

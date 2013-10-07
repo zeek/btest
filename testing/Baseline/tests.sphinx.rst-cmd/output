@@ -1,40 +1,52 @@
-.. code-block:: none
-  :linenos:
-  :emphasize-lines: 1,1
+.. rst-class:: btest-cmd
 
-  # echo Hello
-  Hello
+    .. code-block:: none
+      :linenos:
+      :emphasize-lines: 1,1
 
-.. code-block:: guess
-  :linenos:
+      # echo Hello
+      Hello
 
-  Hello 2, no command
+.. rst-class:: btest-include
 
-.. code-block:: none
-  :linenos:
-  :emphasize-lines: 1,1
+    .. code-block:: guess
+      :linenos:
 
-  # Different command
-  Hello 3, no command
+      Hello 2, no command
 
-.. code-block:: none
-  :linenos:
-  :emphasize-lines: 1,1
+.. rst-class:: btest-cmd
 
-  # echo Hello 4, no output
+    .. code-block:: none
+      :linenos:
+      :emphasize-lines: 1,1
 
-.. code-block:: none
-  :linenos:
-  :emphasize-lines: 1,1
+      # Different command
+      Hello 3, no command
 
-  # Xcho HXllo 5, filtXr
-  HXllo 5, filtXr
+.. rst-class:: btest-cmd
 
-.. code-block:: none
-  :linenos:
-  :emphasize-lines: 1,1
+    .. code-block:: none
+      :linenos:
+      :emphasize-lines: 1,1
 
-  # echo Hello 6, file
-  Example file.
-  Line 2
+      # echo Hello 4, no output
+
+.. rst-class:: btest-cmd
+
+    .. code-block:: none
+      :linenos:
+      :emphasize-lines: 1,1
+
+      # Xcho HXllo 5, filtXr
+      HXllo 5, filtXr
+
+.. rst-class:: btest-cmd
+
+    .. code-block:: none
+      :linenos:
+      :emphasize-lines: 1,1
+
+      # echo Hello 6, file
+      Example file.
+      Line 2
 
