@@ -1,21 +1,21 @@
 <div class="section" id="testing">
 <h1>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+<div class="btest-cmd highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll"># echo Hello, world!
 </span>Hello, world!
 </pre></div>
 </td></tr></table></div>
-<div class="highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+<div class="btest-cmd highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll"># echo Hello, world! Again.
 </span>Hello, world! Again.
 </pre></div>
 </td></tr></table></div>
-<div class="highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+<div class="btest-cmd highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll"># echo Hello, world! Again. Again.
 </span>Hello, world! Again. Again.
 </pre></div>
 </td></tr></table></div>
-<div class="highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+<div class="btest-cmd highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll"># echo This will fail soon!
 </span>This will fail soon!
 </pre></div>
@@ -29,7 +29,7 @@
 </pre></div>
 </div>
 <p>This should succeed:</p>
-<div class="highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+<div class="btest-cmd highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll"># echo This succeeds again!
 </span>This succeeds again!
 </pre></div>
@@ -43,13 +43,23 @@
  StDeRr
 </pre></div>
 </div>
-<div class="highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+<div class="btest-cmd highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll"># echo This succeeds again!
 </span>This succeeds again!
 </pre></div>
 </td></tr></table></div>
-<div class="highlight-python"><pre>-- btest.cfg
-
+<div class="btest-include highlight-none"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11</pre></div></td><td class="code"><div class="highlight"><pre><span class="hll">btest.cfg
+</span>
 
 [btest]
 TestDirs    = tests
@@ -59,7 +69,7 @@ Finalizer   = btest-diff-rst
 
 [environment]
 PATH=%(testbase)s/../../:%(testbase)s/../../sphinx:%(default_path)s
-</pre>
-</div>
+</pre></div>
+</td></tr></table></div>
 </div>
 <div class="section" id="indices-and-tables">
