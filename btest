@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.51" # Automatically filled in.
+VERSION = "0.51-1" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -202,7 +202,7 @@ class TestManager(multiprocessing.managers.SyncManager):
     def threadRun(self, thread_num):
         while True:
             tests = self.nextTests(thread_num)
-            if not tests:
+            if tests == None:
                 # No more work for us.
                 return
 
