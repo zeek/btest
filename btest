@@ -23,7 +23,7 @@ import xml.dom.minidom
 import socket
 from datetime import datetime
 
-VERSION = "0.51-1" # Automatically filled in.
+VERSION = "0.51-2" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -333,6 +333,7 @@ class Test(object):
         self.start = None
         self.contents = []
         self.cloned = False
+        self.known_failure = False
 
     def displayName(self):
         name = self.name
@@ -359,7 +360,10 @@ class Test(object):
                 m = regexp.search(line)
 
                 if m:
-                    value = m.group(group1)
+                    value = None
+
+                    if group1 >= 0:
+                        value = m.group(group1)
 
                     if group2 >= 0:
                         value = (value, m.group(group2))
@@ -430,6 +434,9 @@ class Test(object):
         if "not-alternative" in cmds:
             self.ignore_alternatives = [cmd.strip() for cmd in cmds["not-alternative"]]
 
+        if "known-failure" in cmds:
+            self.known_failure = True
+
         return True
 
     # Copies all control information over to a new Test but replacing the test's
@@ -442,6 +449,7 @@ class Test(object):
         clone.serialize = clone.serialize
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
+        clone.known_failure = self.known_failure
 
         assert(len(self.contents) == 1)
         clone.contents = [(self.contents[0][0], content)]
@@ -464,6 +472,7 @@ class Test(object):
         self.requires += part.requires
         self.copy_files += part.copy_files
         self.contents += part.contents
+        self.known_failure |= part.known_failure
 
     def run(self, mgr):
         self.start = time.time()
@@ -845,7 +854,10 @@ class Standard(OutputHandler):
         self.output(test, "ok")
 
     def testFailed(self, test):
-        self.output(test, "failed")
+        if not test.known_failure:
+            self.output(test, "failed")
+        else:
+            self.output(test, "failed (expected)")
 
     def testSkipped(self, test):
         self.output(test, "not available, skipped")
@@ -867,7 +879,10 @@ class Console(OutputHandler):
         self.consoleOutput(test, "ok", False)
 
     def testFailed(self, test):
-        self.consoleOutput(test, "failed", True)
+        if not test.known_failure:
+            self.consoleOutput(test, "failed", True)
+        else:
+            self.consoleOutput(test, "failed (expected)", True)
 
     def testSkipped(self, test):
         self.consoleOutput(test, "skipped", False)
@@ -905,7 +920,11 @@ class Brief(OutputHandler):
 
     def testFailed(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "%s ... failed" % test.displayName())
+
+        if not test.known_failure:
+            self.output(test, "%s ... failed" % test.displayName())
+        else:
+            self.output(test, "%s ... failed (expected)" % test.displayName())
 
     def testSkipped(self, test):
         pass
@@ -934,7 +953,11 @@ class Verbose(OutputHandler):
     def testFailed(self, test):
         self.output(test, self.threadPrefix(), nl=False)
         self.showTestVerbose(test)
-        self.output(test, "... %s failed" % test.displayName())
+
+        if not test.known_failure:
+            self.output(test, "... %s failed" % test.displayName())
+        else:
+            self.output(test, "... %s failed (expected)" % test.displayName())
 
     def testSkipped(self, test):
         self.output(test, self.threadPrefix(), nl=False)
@@ -996,7 +1019,10 @@ class Diag(OutputHandler):
 
     def testFailed(self, test):
         if self._file:
-            self.output(test, "%s ... failed" % test.displayName(), True, self._file)
+            if not test.known_failure:
+                self.output(test, "%s ... failed" % test.displayName(), True, self._file)
+            else:
+                self.output(test, "%s ... failed (expected)" % test.displayName(), True, self._file)
 
         self.showDiag(test)
 
@@ -1507,8 +1533,9 @@ RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALI
 RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
 RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
 RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
+RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE)
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
