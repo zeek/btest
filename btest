@@ -281,19 +281,31 @@ class TestManager(multiprocessing.managers.SyncManager):
             self._output_handler.testCommand(test, cmdline)
 
     def testSucceeded(self, test):
+        msg = "ok"
+
+        if test.known_failure:
+            msg += " (but expected to fail)"
+
         with self._lock:
-            self._output_handler.testSucceeded(test)
+            self._output_handler.testSucceeded(test, msg)
             self._succeeded.value += 1
 
     def testFailed(self, test):
+        msg = "failed"
+
+        if test.known_failure:
+            msg += " (expected)"
+
         with self._lock:
-            self._output_handler.testFailed(test)
+            self._output_handler.testFailed(test, msg)
             self._failed.value += 1
             self._failed_tests += [test.name]
 
     def testSkipped(self, test):
+        msg = "not available, skipped"
+
         with self._lock:
-            self._output_handler.testSkipped(test)
+            self._output_handler.testSkipped(test, msg)
             self._skipped.value += 1
 
     def testReplayOutput(self, test):
@@ -781,15 +793,15 @@ class OutputHandler:
         """Called just before a command line is exected for a trace."""
         pass
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         """Called when a test was successful."""
         pass
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         """Called when a test failed."""
         pass
 
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         """Called when a test is skipped because its dependencies aren't met."""
         pass
 
@@ -820,19 +832,19 @@ class Forwarder(OutputHandler):
         for h in self._handlers:
             h.testCommand(test, cmdline)
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         """Called when a test was successful."""
         for h in self._handlers:
-            h.testSucceeded(test)
+            h.testSucceeded(test, msg)
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         """Called when a test failed."""
         for h in self._handlers:
-            h.testFailed(test)
+            h.testFailed(test, msg)
 
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         for h in self._handlers:
-            h.testSkipped(test)
+            h.testSkipped(test, msg)
 
     def replayOutput(self, test):
         for h in self._handlers:
@@ -850,17 +862,14 @@ class Standard(OutputHandler):
     def testCommand(self, test, cmdline):
         pass
 
-    def testSucceeded(self, test):
-        self.output(test, "ok")
+    def testSucceeded(self, test, msg):
+        self.output(test, msg)
 
-    def testFailed(self, test):
-        if not test.known_failure:
-            self.output(test, "failed")
-        else:
-            self.output(test, "failed (expected)")
+    def testFailed(self, test, msg):
+        self.output(test, msg)
 
-    def testSkipped(self, test):
-        self.output(test, "not available, skipped")
+    def testSkipped(self, test, msg):
+        self.output(test, msg)
 
 class Console(OutputHandler):
     """Output handler that writes compact progress report to the console."""
@@ -875,17 +884,14 @@ class Console(OutputHandler):
     def testCommand(self, test, cmdline):
         pass
 
-    def testSucceeded(self, test):
-        self.consoleOutput(test, "ok", False)
+    def testSucceeded(self, test, msg):
+        self.consoleOutput(test, msg, False)
 
-    def testFailed(self, test):
-        if not test.known_failure:
-            self.consoleOutput(test, "failed", True)
-        else:
-            self.consoleOutput(test, "failed (expected)", True)
+    def testFailed(self, test, msg):
+        self.consoleOutput(test, msg, True)
 
-    def testSkipped(self, test):
-        self.consoleOutput(test, "skipped", False)
+    def testSkipped(self, test, msg):
+        self.consoleOutput(test, msg, False)
 
     def finished(self):
         sys.stdout.write(chr(27) + '[2K')
@@ -915,18 +921,14 @@ class Brief(OutputHandler):
     def testCommand(self, test, cmdline):
         pass
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         pass
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "%s ... %s" % (test.displayName(), msg))
 
-        if not test.known_failure:
-            self.output(test, "%s ... failed" % test.displayName())
-        else:
-            self.output(test, "%s ... failed (expected)" % test.displayName())
-
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         pass
 
 class Verbose(OutputHandler):
@@ -945,24 +947,20 @@ class Verbose(OutputHandler):
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, "  > %s%s" % (cmdline.cmdline, part))
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         self.output(test, self.threadPrefix(), nl=False)
         self.showTestVerbose(test)
-        self.output(test, "... %s ok" % test.displayName())
+        self.output(test, "... %s %s" % (test.displayName(), msg))
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         self.output(test, self.threadPrefix(), nl=False)
         self.showTestVerbose(test)
+        self.output(test, "... %s %s" % (test.displayName(), msg))
 
-        if not test.known_failure:
-            self.output(test, "... %s failed" % test.displayName())
-        else:
-            self.output(test, "... %s failed (expected)" % test.displayName())
-
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         self.output(test, self.threadPrefix(), nl=False)
         self.showTestVerbose(test)
-        self.output(test, "... %s not available, skipped" % test.displayName())
+        self.output(test, "... %s %s" % (test.displayName(), msg))
 
     def showTestVerbose(self, test):
         if not os.path.exists(test.verbose):
@@ -1010,25 +1008,22 @@ class Diag(OutputHandler):
     def testCommand(self, test, cmdline):
         pass
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         if self._all:
             if self._file:
-                self.output(test, "%s ... ok" % test.displayName(), True, self._file)
+                self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
 
             self.showDiag(test)
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         if self._file:
-            if not test.known_failure:
-                self.output(test, "%s ... failed" % test.displayName(), True, self._file)
-            else:
-                self.output(test, "%s ... failed (expected)" % test.displayName(), True, self._file)
+            self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
 
         self.showDiag(test)
 
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         if self._file:
-            self.output(test, "%s ... not available, skipped" % test.displayName(), True, self._file)
+            self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
 
 class SphinxOutput(OutputHandler):
     def __init__(self, options, all=False, file=None):
@@ -1058,10 +1053,10 @@ class SphinxOutput(OutputHandler):
         self._output = "%s#%s" % (self._rst_output, cmdline.part)
         self._part = cmdline.part
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         pass
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         if not self._output:
             return
 
@@ -1088,7 +1083,7 @@ class SphinxOutput(OutputHandler):
                     print >>out, "  ", line.strip()
                 print >>out, ""
 
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         pass
 
 class XMLReport(OutputHandler):
@@ -1152,10 +1147,10 @@ class XMLReport(OutputHandler):
 
         return context
 
-    def testSucceeded(self, test):
+    def testSucceeded(self, test, msg):
         self.makeTestCaseElement(test)
 
-    def testFailed(self, test):
+    def testFailed(self, test, msg):
         self._num_failures += 1;
         test_case = self.makeTestCaseElement(test)
         e = self._doc.createElement("failure")
@@ -1164,7 +1159,7 @@ class XMLReport(OutputHandler):
         e.appendChild(text_node)
         test_case.appendChild(e)
 
-    def testSkipped(self, test):
+    def testSkipped(self, test, msg):
         test_case = self.makeTestCaseElement(test)
         e = self._doc.createElement("skipped")
         e.setAttribute("type", "skip")
