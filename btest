@@ -874,6 +874,12 @@ class Standard(OutputHandler):
 class Console(OutputHandler):
     """Output handler that writes compact progress report to the console."""
 
+    Green  = "\033[32m"
+    Red    = "\033[31m"
+    Yellow = "\033[33m"
+    Gray   = "\033[37m"
+    Normal = "\033[0m"
+
     def __init__(self, options):
         OutputHandler.__init__(self, options)
         self.sticky = False
@@ -885,12 +891,23 @@ class Console(OutputHandler):
         pass
 
     def testSucceeded(self, test, msg):
+        if test.known_failure:
+            msg = Console.Yellow + msg + Console.Normal
+        else:
+            msg = Console.Green + msg + Console.Normal
+
         self.consoleOutput(test, msg, False)
 
     def testFailed(self, test, msg):
+        if test.known_failure:
+            msg = Console.Yellow + msg + Console.Normal
+        else:
+            msg = Console.Red + msg + Console.Normal
+
         self.consoleOutput(test, msg, True)
 
     def testSkipped(self, test, msg):
+        msg = Console.Gray + msg + Console.Normal
         self.consoleOutput(test, msg, False)
 
     def finished(self):
