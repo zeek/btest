@@ -21,6 +21,9 @@ import multiprocessing.managers
 import multiprocessing.sharedctypes
 import xml.dom.minidom
 import socket
+import resource
+import struct
+import uuid
 from datetime import datetime
 
 VERSION = "0.51-2" # Automatically filled in.
@@ -59,6 +62,29 @@ def mkdir(dir):
     else:
         if not os.path.isdir(dir):
             error("path %s exists but is not a directory" % dir)
+
+def which(cmd):
+    # Adapted from http://stackoverflow.com/a/377028
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    (fpath, fname) = os.path.split(cmd)
+
+    if fpath:
+        if is_exe(cmd):
+            return cmd
+
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, cmd)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+def platform():
+    return os.uname()[0]
 
 def getOption(key, default):
     try:
@@ -132,6 +158,67 @@ def replaceEnvs(s):
 
     return RE_ENV.sub(replace_with_env, s)
 
+# Run a subprocess along with timing its execution.
+# Takes same arguments as subprocess.check_call()
+def runSubprocess(*args, **kwargs):
+    def child(q, measure_time):
+        try:
+            cargs = args
+            ckwargs = kwargs
+
+            if measure_time:
+                if platform() == "Linux":
+                    targs = [TimingPerfPath, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c"]
+                    targs += [" ".join(cargs)]
+                    cargs = [targs]
+                    del ckwargs["shell"]
+
+                else:
+                    error("unexpected platform in runSubprocess (%s)" % platform())
+
+            subprocess.check_call(*cargs, **ckwargs)
+            success = True
+            rc = 0
+
+        except subprocess.CalledProcessError, e:
+            success = False
+            rc = e.returncode
+
+        except KeyboardInterrupt:
+            success = False
+            rc = 0
+
+        utime = 0
+
+        if measure_time:
+            try:
+                for line in open(os.path.join(kwargs["cwd"], ".timing")):
+                    if "instructions" in line:
+                        (utime, tag) = line.split()
+
+            except IOError:
+                success = False
+                rc = -42
+
+        q.put([success, rc, int(utime)])
+
+    try:
+        measure_time = "measure_time" in kwargs
+        del kwargs["measure_time"]
+
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(target=child, args=(q, measure_time))
+        p.start()
+        result = q.get()
+        p.join()
+
+    except KeyboardInterrupt:
+        # Bailout here directly as otherwise we'll a bunch of errors
+        # from all the childs.
+        os._exit(1)
+
+    return result
+
 cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
 ConfigParser.ConfigParser._interpolate = cpExpandBackticks
 ConfigParser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
@@ -153,13 +240,14 @@ class TestManager(multiprocessing.managers.SyncManager):
         self.start()
 
         self._output_handler = output_handler
-        self._lock = self.Lock()
+        self._lock = self.RLock()
         self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
         self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
         self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
         self._tests = self.list(tests)
         self._failed_tests = self.list([])
         self._num_tests = len(self._tests)
+        self._timing = self.loadTiming()
 
         num_threads = Options.threads
 
@@ -200,11 +288,15 @@ class TestManager(multiprocessing.managers.SyncManager):
         return 100.0 * count / self._num_tests
 
     def threadRun(self, thread_num):
+        all_tests = []
+
         while True:
             tests = self.nextTests(thread_num)
             if tests == None:
                 # No more work for us.
                 return
+
+            all_tests += tests
 
             for t in tests:
                 try:
@@ -218,6 +310,8 @@ class TestManager(multiprocessing.managers.SyncManager):
                         # Rethrow
                         raise
 
+            if Options.update_times:
+                self.saveTiming(all_tests)
 
     def nextTests(self, thread_num):
         with self._lock:
@@ -286,6 +380,8 @@ class TestManager(multiprocessing.managers.SyncManager):
         if test.known_failure:
             msg += " (but expected to fail)"
 
+        msg += test.timePostfix()
+
         with self._lock:
             self._output_handler.testSucceeded(test, msg)
             self._succeeded.value += 1
@@ -295,6 +391,8 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         if test.known_failure:
             msg += " (expected)"
+
+        msg += test.timePostfix()
 
         with self._lock:
             self._output_handler.testFailed(test, msg)
@@ -311,6 +409,56 @@ class TestManager(multiprocessing.managers.SyncManager):
     def testReplayOutput(self, test):
         with self._lock:
             self._output_handler.replayOutput(test)
+
+    def testTimingBaseline(self, test):
+        return self._timing.get(test.name, 0.0)
+
+    # Returns the name of the file to store the timing baseline in for this host.
+    def timingPath(self):
+        id = uuid.uuid3(uuid.NAMESPACE_DNS, str(uuid.getnode()))
+        return os.path.abspath(os.path.join(BaselineTimingDir, id.hex))
+
+    # Loads baseline timing information for this host if available. Returns
+    # empty directory if not.
+    def loadTiming(self):
+        timing = {}
+
+        with self._lock:
+            path = self.timingPath()
+
+            if not os.path.exists(path):
+                return {}
+
+            for line in open(path):
+                (k, v) = line.split()
+                timing[k] = float(v)
+
+        return timing
+
+    # Updates the timing baseline for the given tests on this host.
+    def saveTiming(self, tests):
+        with self._lock:
+            changed = False
+            timing = self.loadTiming()
+
+            for t in tests:
+                if t and t.measure_time and t.utime:
+                    changed = True
+                    timing[t.name] = t.utime
+
+            if not changed:
+                return
+
+            path = self.timingPath()
+            (dir, base) = os.path.split(path)
+            mkdir(dir)
+
+            out = open(path, "w")
+
+            for (k, v) in timing.items():
+                print >>out, "%s %u" % (k, v)
+
+            out.close()
 
 # One @TEST-{EXEC,REQUIRES} command line.
 class CmdLine:
@@ -346,6 +494,11 @@ class Test(object):
         self.contents = []
         self.cloned = False
         self.known_failure = False
+        self.measure_time = False
+        self.utime = 0
+        self.utime_base = 0
+        self.utime_perc = 0.0
+        self.utime_exceeded = False
 
     def displayName(self):
         name = self.name
@@ -449,7 +602,27 @@ class Test(object):
         if "known-failure" in cmds:
             self.known_failure = True
 
+        if "measure-time" in cmds:
+            if platform() == "Linux":
+                if TimingPerfPath and os.path.exists(TimingPerfPath):
+                    self.measure_time = True
+                else:
+                    self.timingUnsupported("'perf' tool not found")
+
+            else:
+                self.timingUnsupported("not available on %s" % platform())
+
         return True
+
+    # Prints a warning about time measurements being unsupported, but only once.
+    def timingUnsupported(self, reason):
+        if Test._timing_unsupported_done:
+            return
+
+        warning("Timing measurements requested, but not supported (%s)" % reason)
+        Test._timing_unsupported_done = True
+
+    _timing_unsupported_done = False
 
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
@@ -462,6 +635,7 @@ class Test(object):
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
         clone.known_failure = self.known_failure
+        clone.measure_time = self.measure_time
 
         assert(len(self.contents) == 1)
         clone.contents = [(self.contents[0][0], content)]
@@ -485,6 +659,7 @@ class Test(object):
         self.copy_files += part.copy_files
         self.contents += part.contents
         self.known_failure |= part.known_failure
+        self.measure_time |= part.measure_time
 
     def run(self, mgr):
         self.start = time.time()
@@ -496,6 +671,10 @@ class Test(object):
         self.verbose = os.path.join(self.tmpdir, ".verbose")
         self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
         self.diagmsgs = []
+        self.utime = 0
+        self.utime_base = self.mgr.testTimingBaseline(self)
+        self.utime_perc = 0.0;
+        self.utime_exceeded = False
 
         self.rmTmp()
         mkdir(self.baseline)
@@ -586,8 +765,23 @@ class Test(object):
                 if rc != 100:
                     break
 
+        self.utime_perc = 0.0
+        self.utime_exceeded = False
+
         if failures == 0:
-            self.mgr.testSucceeded(self)
+            # If we don't have a timing baseline, we silently ignore that so that
+            # on systems that can't measure execution time, the test will just pass.
+            if self.utime_base and self.utime:
+                delta = getOption("TimingDeltaPerc", "1.0")
+                self.utime_perc = (100.0 * (self.utime - self.utime_base) / self.utime_base)
+                self.utime_exceeded = (abs(self.utime_perc) > float(delta))
+
+            if self.utime_exceeded and not Options.update_times:
+                self.diagmsgs += ["'%s' exceeded permitted execution time deviation%s" % (self.name, self.timePostfix())]
+                self.mgr.testFailed(self)
+
+            else:
+                self.mgr.testSucceeded(self)
 
             if not Options.tmps:
                 self.rmTmp()
@@ -659,21 +853,22 @@ class Test(object):
 
         env = self.prepareEnv(cmd, addl_envs)
 
-        try:
-            subprocess.check_call(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
-        except subprocess.CalledProcessError, e:
+        (success, rc, utime) = runSubprocess(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout, measure_time=self.measure_time)
+        self.utime += utime
+
+        if success:
             if cmd.expect_success:
-                self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, e.returncode)]
-                return (False, e.returncode)
+                return (True, rc)
 
-            else:
-                return (True, e.returncode)
-
-        if not cmd.expect_success:
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
             return (False, 0)
 
-        return (True, 0)
+        else:
+            if not cmd.expect_success:
+                return (True, rc)
+
+            self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, rc)]
+            return (False, rc)
 
     def rmTmp(self):
         try:
@@ -713,6 +908,15 @@ class Test(object):
     def addFiles(self, files):
         # files is a list of tuple (fname, lines).
         self.files = files
+
+    # If timing information is requested and available returns a
+    # string that summarizes the time spent for the test.
+    # Otherwise, returns an empty string.
+    def timePostfix(self):
+        if self.utime_exceeded:
+            return " (%+.1f%%)" % self.utime_perc
+        else:
+            return ""
 
 ### Output handlers.
 
@@ -1413,6 +1617,8 @@ optparser.add_option("-a", "--alternative", action="store", type="string", dest=
                      help="activate given alternative")
 optparser.add_option("-S", "--sphinx", action="store_true", dest="sphinx", default=False,
                      help="indicates that we're running from inside Sphinx; for internal purposes")
+optparser.add_option("-T", "--update-times", action="store_true", dest="update_times", default=False,
+                     help="create a new timing baseline for tests being measured")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1546,15 +1752,18 @@ RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNA
 RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
 RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
 RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
+RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME)
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
 Initializer = getOption("Initializer", "")
+BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDir, "_Timing")))
 Finalizer = getOption("Finalizer", "")
 PartFinalizer = getOption("PartFinalizer", "")
+TimingPerfPath = getOption("PerfPath", which("perf"))
 
 Config.configured_tests = []
 
@@ -1582,7 +1791,6 @@ else:
         tests = Config.configured_tests
 
 if Options.groups:
-
     Options.groups = set(Options.groups.split(","))
 
     def rightGroup(t):
