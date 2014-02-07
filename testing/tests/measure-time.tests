@@ -1,4 +1,6 @@
 # %TEST-REQUIRES: which perf
+# %TEST-REQUIRES: perf stat -o /dev/null true 2> /dev/null
+# %TEST-REQUIRES: test "`uname`" == "Linux"
 # %TEST-EXEC: btest -D %INPUT >>output 2>&1
 # %TEST-EXEC: echo ----- >>output
 # %TEST-EXEC: test '!' -e Baseline/_Timing

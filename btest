@@ -158,26 +158,28 @@ def replaceEnvs(s):
 
     return RE_ENV.sub(replace_with_env, s)
 
-# Run a subprocess along with timing its execution.
-# Takes same arguments as subprocess.check_call()
+# Execute one of test's command line *cmdline*. *measure_time* indicates if
+# timing measurement is desired. *kw_args* are further keyword arguments
+# interpreted the same way as with subprocess.check_call().
+# Returns a 3-tuple (success, rc, time) where the former two likewise
+# have the same meaning as with runSubprocess(), and 'time' is an integer
+# value corresponding to the commands execution time measured in some
+# appropiate integer measure. If 'time' is negative, that's an indicator
+# that time measurement wasn't possible and the value is to be ignored.
+def runTestCommandLine(cmdline, measure_time, **kwargs):
+    if measure_time and Timer:
+        return Timer.timeSubprocess(cmdline, **kwargs)
+    else:
+        (success, rc) = runSubprocess(cmdline, **kwargs)
+        return (success, rc, -1)
+
+# Runs a subprocess. Takes same arguments as subprocess.check_call()
+# and returns a 2-tuple (success, rc) where *success* is a boolean
+# indicating if the command executed, and *rc* is its exit code if it did.
 def runSubprocess(*args, **kwargs):
-    def child(q, measure_time):
+    def child(q):
         try:
-            cargs = args
-            ckwargs = kwargs
-
-            if measure_time:
-                if platform() == "Linux":
-                    targs = [TimingPerfPath, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c"]
-                    targs += [" ".join(cargs)]
-                    cargs = [targs]
-                    del ckwargs["shell"]
-
-                else:
-                    # Platform not supported.
-                    measure_time = False
-
-            subprocess.check_call(*cargs, **ckwargs)
+            subprocess.check_call(*args, **kwargs)
             success = True
             rc = 0
 
@@ -189,29 +191,11 @@ def runSubprocess(*args, **kwargs):
             success = False
             rc = 0
 
-        utime = 0
-
-        if measure_time:
-            try:
-                for line in open(os.path.join(kwargs["cwd"], ".timing")):
-                    try:
-                        if "instructions" in line:
-                            (utime, tag) = line.split()
-                    except ValueError:
-                        pass
-
-            except IOError:
-                success = False
-                rc = -42
-
-        q.put([success, rc, int(utime)])
+        q.put([success, rc])
 
     try:
-        measure_time = "measure_time" in kwargs
-        del kwargs["measure_time"]
-
         q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=child, args=(q, measure_time))
+        p = multiprocessing.Process(target=child, args=(q,))
         p.start()
         result = q.get()
         p.join()
@@ -415,7 +399,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             self._output_handler.replayOutput(test)
 
     def testTimingBaseline(self, test):
-        return self._timing.get(test.name, 0.0)
+        return self._timing.get(test.name, -1)
 
     # Returns the name of the file to store the timing baseline in for this host.
     def timingPath(self):
@@ -446,7 +430,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             timing = self.loadTiming()
 
             for t in tests:
-                if t and t.measure_time and t.utime:
+                if t and t.measure_time and t.utime >= 0:
                     changed = True
                     timing[t.name] = t.utime
 
@@ -499,8 +483,8 @@ class Test(object):
         self.cloned = False
         self.known_failure = False
         self.measure_time = False
-        self.utime = 0
-        self.utime_base = 0
+        self.utime = -1
+        self.utime_base = -1
         self.utime_perc = 0.0
         self.utime_exceeded = False
 
@@ -607,26 +591,9 @@ class Test(object):
             self.known_failure = True
 
         if "measure-time" in cmds:
-            if platform() == "Linux":
-                if TimingPerfPath and os.path.exists(TimingPerfPath):
-                    self.measure_time = True
-                else:
-                    self.timingUnsupported("'perf' tool not found")
-
-            else:
-                self.timingUnsupported("not available on %s" % platform())
+            self.measure_time = True
 
         return True
-
-    # Prints a warning about time measurements being unsupported, but only once.
-    def timingUnsupported(self, reason):
-        if Test._timing_unsupported_done:
-            return
-
-        warning("Timing measurements requested, but not supported (%s)" % reason)
-        Test._timing_unsupported_done = True
-
-    _timing_unsupported_done = False
 
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
@@ -675,7 +642,7 @@ class Test(object):
         self.verbose = os.path.join(self.tmpdir, ".verbose")
         self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
         self.diagmsgs = []
-        self.utime = 0
+        self.utime = -1
         self.utime_base = self.mgr.testTimingBaseline(self)
         self.utime_perc = 0.0;
         self.utime_exceeded = False
@@ -775,7 +742,7 @@ class Test(object):
         if failures == 0:
             # If we don't have a timing baseline, we silently ignore that so that
             # on systems that can't measure execution time, the test will just pass.
-            if self.utime_base and self.utime:
+            if self.utime_base >= 0 and self.utime >= 0:
                 delta = getOption("TimingDeltaPerc", "1.0")
                 self.utime_perc = (100.0 * (self.utime - self.utime_base) / self.utime_base)
                 self.utime_exceeded = (abs(self.utime_perc) > float(delta))
@@ -856,9 +823,12 @@ class Test(object):
         print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
 
         env = self.prepareEnv(cmd, addl_envs)
+        measure_time = self.measure_time and (Options.update_times or self.utime_base >= 0)
 
-        (success, rc, utime) = runSubprocess(cmdline, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout, measure_time=self.measure_time)
-        self.utime += utime
+        (success, rc, utime) = runTestCommandLine(cmdline, measure_time, cwd=self.tmpdir, shell=True, env=env, stderr=self.stderr, stdout=self.stdout)
+
+        if utime > 0:
+            self.utime += utime
 
         if success:
             if cmd.expect_success:
@@ -917,7 +887,7 @@ class Test(object):
     # string that summarizes the time spent for the test.
     # Otherwise, returns an empty string.
     def timePostfix(self):
-        if self.utime_base:
+        if self.utime_base >= 0 and self.utime >= 0:
             return " (%+.1f%%)" % self.utime_perc
         else:
             return ""
@@ -1400,6 +1370,68 @@ class XMLReport(OutputHandler):
 
         print >>self._file, self._doc.toprettyxml(indent="    ")
 
+### Timing measurements.
+
+# Base class for all timers.
+class TimerBase:
+    # Returns true if time measurement are supported by this class on the
+    # current platform. Must be overidden by derived classes.
+    def available(self):
+        raise NotImplementedError("Timer.available not implemented")
+
+    # Runs a subprocess and measures its execution time. Arguments are as with
+    # runSubprocess. Return value is the same with CmdLine.execute(). This method
+    # must only be called if available() returns True. Must be overidden by
+    # derived classes.
+    def timeSubprocess(self, *args, **kwargs):
+        raise NotImplementedError("Timer.measureSubprocess not implemented")
+
+# Linux version of time measurements. Uses "perf".
+class LinuxTimer(TimerBase):
+    def __init__(self):
+        self.perf = getOption("PerfPath", which("perf"))
+
+    def available(self):
+        if not platform() == "Linux":
+            return False
+
+        if not self.perf or not os.path.exists(self.perf):
+            return False
+
+        # Make sure it works.
+        (success, rc) = runSubprocess("%s stat -o /dev/null true 2>/dev/null" % self.perf, shell=True)
+        return success and rc == 0
+
+    def timeSubprocess(self, *args, **kwargs):
+        assert self.perf
+
+        cargs = args
+        ckwargs = kwargs
+
+        targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c"]
+        targs += [" ".join(cargs)]
+        cargs = [targs]
+        del ckwargs["shell"]
+
+        (success, rc) = runSubprocess(*cargs, **ckwargs)
+
+        utime = -1
+
+        try:
+            cwd = kwargs["cwd"] if "cwd" in kwargs else "."
+            for line in open(os.path.join(cwd, ".timing")):
+                if "instructions" in line:
+                    try:
+                        m = line.split()
+                        utime = int(m[0])
+                    except ValueError:
+                        pass
+
+        except IOError:
+            pass
+
+        return (success, rc, utime)
+
 # Walk the given directory and return all test files.
 def findTests(paths, output_handler):
     tests = []
@@ -1692,6 +1724,15 @@ if Options.xmlfile:
 
 output_handler = Forwarder(Options, output_handlers)
 
+# Determine Timer to use.
+
+Timer = None
+
+if platform() == "Linux":
+    t = LinuxTimer()
+    if t.available():
+        Timer = t
+
 # Evaluate other command line options.
 
 if Config.has_section("environment"):
@@ -1767,7 +1808,6 @@ Initializer = getOption("Initializer", "")
 BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDir, "_Timing")))
 Finalizer = getOption("Finalizer", "")
 PartFinalizer = getOption("PartFinalizer", "")
-TimingPerfPath = getOption("PerfPath", which("perf"))
 
 Config.configured_tests = []
 
