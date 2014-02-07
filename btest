@@ -1380,9 +1380,9 @@ class TimerBase:
         raise NotImplementedError("Timer.available not implemented")
 
     # Runs a subprocess and measures its execution time. Arguments are as with
-    # runSubprocess. Return value is the same with CmdLine.execute(). This method
-    # must only be called if available() returns True. Must be overidden by
-    # derived classes.
+    # runSubprocess. Return value is the same with runTestCommandLine(). This
+    # method must only be called if available() returns True. Must be overidden
+    # by derived classes.
     def timeSubprocess(self, *args, **kwargs):
         raise NotImplementedError("Timer.measureSubprocess not implemented")
 
