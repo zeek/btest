@@ -8,7 +8,7 @@ measure-time ... ok
 
 all 1 tests successful
 -----
-measure-time ... ok
+measure-time ... ok (+xx.x%)
   % cat .stderr
 
 all 1 tests successful
@@ -24,7 +24,7 @@ measure-time ... ok (+xx.x%)
 
 all 1 tests successful
 -----
-measure-time ... ok
+measure-time ... ok (+xx.x%)
   % cat .stderr
 
 all 1 tests successful

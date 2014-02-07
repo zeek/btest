@@ -26,7 +26,7 @@ import struct
 import uuid
 from datetime import datetime
 
-VERSION = "0.51-2" # Automatically filled in.
+VERSION = "0.51-6" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -913,7 +913,7 @@ class Test(object):
     # string that summarizes the time spent for the test.
     # Otherwise, returns an empty string.
     def timePostfix(self):
-        if self.utime_exceeded:
+        if self.utime_base:
             return " (%+.1f%%)" % self.utime_perc
         else:
             return ""

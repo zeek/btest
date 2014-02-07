@@ -1,4 +1,20 @@
 
+0.51-6 | 2014-02-06 18:19:08 -0800
+
+  * Adding a timing mode that records test execution times per host.
+    This is for catching regressions (or improvements :) that lets
+    execution times divert significantly. Linux only for now. See the
+    README for more information. (Robin Sommer)
+
+  * Adding color to test status when writing to console. (Robin Sommer)
+
+  * A bit of refactoring to define the status messages ("ok", "failed")
+    only at a single location.
+
+    Also added a note when a test declared as expecting failure in fact
+    succeeds. (Robin Sommer)
+
+
 0.51-2 | 2013-11-17 20:21:08 -0800
 
   * New keyword ``TEST-KNOWN-FAILURE`` to mark tests that are
