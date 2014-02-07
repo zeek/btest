@@ -26,7 +26,7 @@ import struct
 import uuid
 from datetime import datetime
 
-VERSION = "0.51-6" # Automatically filled in.
+VERSION = "0.51-7" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -174,7 +174,8 @@ def runSubprocess(*args, **kwargs):
                     del ckwargs["shell"]
 
                 else:
-                    error("unexpected platform in runSubprocess (%s)" % platform())
+                    # Platform not supported.
+                    measure_time = False
 
             subprocess.check_call(*cargs, **ckwargs)
             success = True
@@ -193,8 +194,11 @@ def runSubprocess(*args, **kwargs):
         if measure_time:
             try:
                 for line in open(os.path.join(kwargs["cwd"], ".timing")):
-                    if "instructions" in line:
-                        (utime, tag) = line.split()
+                    try:
+                        if "instructions" in line:
+                            (utime, tag) = line.split()
+                    except ValueError:
+                        pass
 
             except IOError:
                 success = False

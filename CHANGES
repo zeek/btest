@@ -1,4 +1,9 @@
 
+0.51-7 | 2014-02-06 21:06:40 -0800
+
+  * Fix for platforms that don't support timing measurements yet.
+    (Robin Sommer)
+
 0.51-6 | 2014-02-06 18:19:08 -0800
 
   * Adding a timing mode that records test execution times per host.
