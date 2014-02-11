@@ -385,7 +385,9 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.testFailed(test, msg)
             self._failed.value += 1
-            self._failed_tests += [test.name]
+
+            if not test.known_failure:
+                self._failed_tests += [test.name]
 
     def testSkipped(self, test):
         msg = "not available, skipped"
