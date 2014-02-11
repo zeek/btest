@@ -1,4 +1,15 @@
 
+0.51-11 | 2014-02-11 15:37:40 -0800
+
+  * Fix for Linux systems that have the perf tool but don't support
+    measuring instructions. (Robin Sommer)
+
+  * No longer tracking tests that are expected to fail in state file.
+    (Robin Sommer)
+
+  * Refactoring the timing code to no longer execute at all when not
+    needed.(Robin Sommer)
+
 0.51-7 | 2014-02-06 21:06:40 -0800
 
   * Fix for platforms that don't support timing measurements yet.

@@ -26,7 +26,7 @@ import struct
 import uuid
 from datetime import datetime
 
-VERSION = "0.51-7" # Automatically filled in.
+VERSION = "0.51-11" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1422,7 +1422,7 @@ class LinuxTimer(TimerBase):
         try:
             cwd = kwargs["cwd"] if "cwd" in kwargs else "."
             for line in open(os.path.join(cwd, ".timing")):
-                if "instructions" in line:
+                if "instructions" in line and not "not supported" in line:
                     try:
                         m = line.split()
                         utime = int(m[0])
