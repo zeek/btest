@@ -1,4 +1,9 @@
 
+0.51-12 | 2014-02-11 16:12:44 -0800
+
+  * Work-around for systems reporting that a socket path is too long.
+    Addresses BIT-862. (Robin Sommer)
+
 0.51-11 | 2014-02-11 15:37:40 -0800
 
   * Fix for Linux systems that have the perf tool but don't support

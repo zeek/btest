@@ -24,9 +24,10 @@ import socket
 import resource
 import struct
 import uuid
+import tempfile
 from datetime import datetime
 
-VERSION = "0.51-11" # Automatically filled in.
+VERSION = "0.51-12" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -221,8 +222,8 @@ class Alternative:
 
 # Main class distributing the work across threads.
 class TestManager(multiprocessing.managers.SyncManager):
-    def __init__(self):
-        super(TestManager, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(TestManager, self).__init__(*args, **kwargs)
 
     def run(self, tests, output_handler):
         self.start()
@@ -1860,7 +1861,10 @@ mkdir(TmpDir)
 tests = mergeTestParts(tests)
 
 try:
-    (succeeded, failed, skipped) = TestManager().run(copy.deepcopy(tests), output_handler)
+    # Building our own path to avoid "error: AF_UNIX path too long" on
+    # some platforms. See BIT-862.
+    addr = os.path.join("%s", "btest-socket-%d") % (tempfile.gettempdir(), os.getpid())
+    (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
 except KeyboardInterrupt:
     print >>sys.stderr, "Aborted."
