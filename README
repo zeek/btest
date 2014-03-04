@@ -805,7 +805,7 @@ will then execute as usual yet also record the duration for which it
 executes. From then on, further runs on the same host will compare
 their times against that baseline and declare a test failed if it
 deviates by more than, by default, 1%. (To tune the behaviour, look at
-the ``Timing*`` `options.`_)
+the ``Timing*`` `options`_.)
 
 
 As timing for a test can deviate quite a bit even on the same host,
