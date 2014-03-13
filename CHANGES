@@ -1,4 +1,8 @@
 
+0.51-14 | 2014-03-13 14:05:36 -0700
+
+  * Fix a link in the README. (Jon Siwek)
+
 0.51-12 | 2014-02-11 16:12:44 -0800
 
   * Work-around for systems reporting that a socket path is too long.
