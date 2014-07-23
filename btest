@@ -27,7 +27,7 @@ import uuid
 import tempfile
 from datetime import datetime
 
-VERSION = "0.52" # Automatically filled in.
+VERSION = "0.52-2" # Automatically filled in.
 
 Name ="btest"
 Config = None

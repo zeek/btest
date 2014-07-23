@@ -1,4 +1,8 @@
 
+0.52-2 | 2014-07-22 17:36:15 -0700
+
+  * Update MANIFEST.in and setup.py to fix packaging. (Jon Siwek)
+
 0.52 | 2014-03-13 14:05:44 -0700
 
   * Release 0.52.

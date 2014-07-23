@@ -1,11 +1,12 @@
-include LICENSE
-include README
+include CHANGES
+include COPYING
 include MANIFEST
 include MANIFEST.in
-include btest
-include btest-diff
-include setup.py
+include Makefile
+include README
+include VERSION
 include btest.cfg.example
+include setup.py
 graft Baseline
 graft examples
-
+graft testing
