@@ -1,4 +1,9 @@
 
+0.53-1 | 2014-11-11 13:21:10 -0800
+
+  * In diagnostics, do not show verbose output for tests known to
+    fail. (Robin Sommer)
+
 0.53 | 2014-07-22 17:36:24 -0700
 
   * Release 0.53.

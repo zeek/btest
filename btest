@@ -27,7 +27,7 @@ import uuid
 import tempfile
 from datetime import datetime
 
-VERSION = "0.53" # Automatically filled in.
+VERSION = "0.53-1" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1217,7 +1217,8 @@ class Diag(OutputHandler):
         if self._file:
             self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
 
-        self.showDiag(test)
+        if not test.known_failure:
+            self.showDiag(test)
 
     def testSkipped(self, test, msg):
         if self._file:
