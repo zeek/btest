@@ -248,7 +248,7 @@ and 1 otherwise.
         replaced with dots and the file extension removed (e.g., the files
         for ``example/t3.sh`` will be in ``.tmp/example.t3``).
 
-    -T, --timing-baseline
+    -T, --update-times
         Record new timing baselines for the current host. See
         `timing`_ for more.
 
@@ -380,10 +380,10 @@ configuration file:
     A percent value defining the `timing`_ deviation that's tolerated
     for a test before it's considered failed. Default is 1.0%.
 
-``TimingPerfPath``
+``PerfPath``
     Specifies a path to the ``perf`` tool, which is used on Linux to
     measure the execution times of tests. By default, BTest searches
-    ``perf`` in ``PATH``.
+    for ``perf`` in ``PATH``.
 
 .. _environment variables:
 
@@ -800,7 +800,7 @@ deviations from past runs. As execution time is inherently
 system-specific it keeps separate per-host timing baselines for that.
 Furthermore, as time measurements tend to make sense only for
 individual, usually longer running tests, they are activated on per
-test basis by adding a ``@TEST-RECORD-TIMING`` directive. The test
+test basis by adding a ``@TEST-MEASURE-TIME`` directive. The test
 will then execute as usual yet also record the duration for which it
 executes. From then on, further runs on the same host will compare
 their times against that baseline and declare a test failed if it
@@ -810,11 +810,11 @@ the ``Timing*`` `options`_.)
 
 As timing for a test can deviate quite a bit even on the same host,
 BTest does not actually measure *time* but the number of CPU
-instructions that a tests executes, which tends to be more stable.
+instructions that a test executes, which tends to be more stable.
 That however requires the right tools to be in place. On Linux, BTest
 leverages `perf <https://perf.wiki.kernel.org>`_. If a test requests
 measurement but BTest can't find it, it will warn and ignore the
-request. By default, BTest will search ``perf`` in the ``PATH``; you
+request. By default, BTest will search for ``perf`` in the ``PATH``; you
 can specify a different path to the binary by setting ``PerfPath`` in
 ``btest.cfg``.
 

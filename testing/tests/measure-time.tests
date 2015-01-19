@@ -21,5 +21,5 @@
 # %TEST-EXEC: mv tmp output
 # %TEST-EXEC: btest-diff output
 
-@TEST-MEASURE-TIME:
+@TEST-MEASURE-TIME
 @TEST-EXEC: awk 'BEGIN { for ( i = 1; i < 100000; i++ ) x += i; print x; }; done' </dev/null
