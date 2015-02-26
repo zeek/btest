@@ -1388,7 +1388,7 @@ class TimerBase:
     # method must only be called if available() returns True. Must be overidden
     # by derived classes.
     def timeSubprocess(self, *args, **kwargs):
-        raise NotImplementedError("Timer.measureSubprocess not implemented")
+        raise NotImplementedError("Timer.timeSubprocess not implemented")
 
 # Linux version of time measurements. Uses "perf".
 class LinuxTimer(TimerBase):
@@ -1736,6 +1736,9 @@ if platform() == "Linux":
     t = LinuxTimer()
     if t.available():
         Timer = t
+
+if Options.update_times and not Timer:
+    warning("unable to create timing baseline because timer is not available")
 
 # Evaluate other command line options.
 
