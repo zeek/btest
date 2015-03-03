@@ -1,4 +1,14 @@
 
+0.53-6 | 2015-03-02 17:21:26 -0800
+
+  * Improve documentation of timing functionality. (Daniel Thayer)
+
+  * Add a new section to documentation that lists the BTest
+    prerequisites. (Daniel Thayer)
+
+  * Add warning when btest cannot create timing baseline. (Daniel
+    Thayer)
+
 0.53-3 | 2015-01-22 07:25:01 -0800
 
   * Fix some typos in the README. (Daniel Thayer)

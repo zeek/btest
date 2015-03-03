@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.53-3
+.. |version| replace:: 0.53-6
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -33,6 +33,23 @@ BTest's git repository is located at `git://git.bro.org/btest.git
 This document describes BTest |version|. See the ``CHANGES``
 file for version history.
 
+
+Prerequisites
+=============
+
+BTest has the following prerequisites:
+
+  - Python version >= 2.6.
+
+  - Bash (note that on FreeBSD, bash is not installed by default).
+
+BTest has the following optional prerequisites to enable additional
+functionality:
+
+  - Sphinx.
+
+  - perf (Linux only).  Note that on Debian/Ubuntu, you also need to install
+    the "linux-tools" package.
 
 Installation
 ============
@@ -249,8 +266,10 @@ and 1 otherwise.
         for ``example/t3.sh`` will be in ``.tmp/example.t3``).
 
     -T, --update-times
-        Record new timing baselines for the current host. See
-        `timing`_ for more.
+        Record new `timing`_ baselines for the current host for tests that
+        have `@TEST-MEASURE-TIME`_. Tests are run as normal except that
+        the timing measurements are recorded as the new baseline instead
+        of being compared to a previous baseline.
 
     -U, --update-baseline
         Records a new baseline for all ``btest-diff`` commands found
@@ -707,11 +726,12 @@ supported:
 
     .. @TEST-KNOWN-FAILURE: We know this fails because ....
 
+.. _@TEST-MEASURE-TIME:
+
 ``@TEST-MEASURE-TIME``
    Measures execution time for this test and compares it to a
-   previously established baseline. If it deviates significantly, the
-   test will be considered failed. See `timing`_ for more about timing
-   test execution.
+   previously established `timing`_ baseline. If it deviates significantly,
+   the test will be considered failed.
 
 .. _parts:
 
@@ -800,23 +820,23 @@ deviations from past runs. As execution time is inherently
 system-specific it keeps separate per-host timing baselines for that.
 Furthermore, as time measurements tend to make sense only for
 individual, usually longer running tests, they are activated on per
-test basis by adding a ``@TEST-MEASURE-TIME`` directive. The test
+test basis by adding a `@TEST-MEASURE-TIME`_ directive. The test
 will then execute as usual yet also record the duration for which it
-executes. From then on, further runs on the same host will compare
-their times against that baseline and declare a test failed if it
-deviates by more than, by default, 1%. (To tune the behaviour, look at
-the ``Timing*`` `options`_.)
-
+executes. After the timing baselines are created (with the ``--update-times``
+option), further runs on the same host will compare their times against that
+baseline and declare a test failed if it deviates by more than, by
+default, 1%. (To tune the behaviour, look at the ``Timing*`` `options`_.)
+If a test requests measurement but BTest can't find a timing baseline
+or the necessary tools to perform timing measurements, then it will
+ignore the request.
 
 As timing for a test can deviate quite a bit even on the same host,
 BTest does not actually measure *time* but the number of CPU
 instructions that a test executes, which tends to be more stable.
 That however requires the right tools to be in place. On Linux, BTest
-leverages `perf <https://perf.wiki.kernel.org>`_. If a test requests
-measurement but BTest can't find it, it will warn and ignore the
-request. By default, BTest will search for ``perf`` in the ``PATH``; you
-can specify a different path to the binary by setting ``PerfPath`` in
-``btest.cfg``.
+leverages `perf <https://perf.wiki.kernel.org>`_.  By default, BTest
+will search for ``perf`` in the ``PATH``; you can specify a different
+path to the binary by setting ``PerfPath`` in ``btest.cfg``.
 
 
 Integration with Sphinx
