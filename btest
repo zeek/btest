@@ -2,6 +2,7 @@
 #
 # Main test driver.
 
+from __future__ import print_function
 import os
 import os.path
 import sys
@@ -42,15 +43,15 @@ def output(msg, nl=True, file=None):
         file = sys.stderr
 
     if nl:
-        print >>file, msg
+        print(msg, file=file)
     else:
-        print >>file, msg,
+        print(msg, end=" ", file=file)
 
 def warning(msg):
-    print >>sys.stderr, "warning:", msg
+    print("warning: %s" % msg, file=sys.stderr)
 
 def error(msg):
-    print >>sys.stderr, msg
+    print(msg, file=sys.stderr)
     sys.exit(1)
 
 def mkdir(dir):
@@ -263,7 +264,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                 error("cannot open state file %s" % StateFile)
 
             for t in self._failed_tests:
-                print >>state, t
+                print(t, file=state)
 
             state.close()
 
@@ -447,7 +448,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             out = open(path, "w")
 
             for (k, v) in timing.items():
-                print >>out, "%s %u" % (k, v)
+                print("%s %u" % (k, v), file=out)
 
             out.close()
 
@@ -667,7 +668,7 @@ class Test(object):
                 error("cannot write test's additional file '%s'" % fname)
 
             for line in lines:
-                print >>ffile, line,
+                ffile.write(line)
 
             ffile.close()
 
@@ -682,7 +683,7 @@ class Test(object):
             localfile = os.path.join(self.tmpdir, os.path.basename(file))
             out = open(localfile, "w")
             for line in content:
-                print >>out, line,
+                out.write(line)
             out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w")
@@ -823,7 +824,7 @@ class Test(object):
 
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
-        print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
+        print("%s (expect %s)" % (cmdline, ("failure", "success")[cmd.expect_success]), file=self.log)
 
         env = self.prepareEnv(cmd, addl_envs)
         measure_time = self.measure_time and (Options.update_times or self.utime_base >= 0)
@@ -931,10 +932,10 @@ class OutputHandler:
             file = sys.stderr
 
         if nl:
-            print >>file, msg
+            print(msg, file=file)
         else:
             if msg:
-                print >>file, msg,
+                print(msg, end=" ", file=file)
 
     def output(self, test, msg, nl=True, file=None):
         """Output one line of output to user. In non-threaded mode, this will
@@ -1239,7 +1240,7 @@ class SphinxOutput(OutputHandler):
         try:
             self._rst_output = os.environ["BTEST_RST_OUTPUT"]
         except KeyError:
-            print >>sys.stderr, "warning: environment variable BTEST_RST_OUTPUT not set, will not produce output"
+            print("warning: environment variable BTEST_RST_OUTPUT not set, will not produce output", file=sys.stderr)
             self._rst_output = None
 
     def testStart(self, test):
@@ -1261,14 +1262,11 @@ class SphinxOutput(OutputHandler):
 
         out = open(self._output, "a")
 
-        print >>out, ""
-        print >>out, ".. code-block:: none "
-        print >>out, ""
-        print >>out, "  ERROR executing test '%s' (part %s)" % (test.displayName(), self._part)
-        print >>out, ""
+        print("\n.. code-block:: none ", file=out)
+        print("\n  ERROR executing test '%s' (part %s)\n" % (test.displayName(), self._part), file=out)
 
         for line in test.diagmsgs:
-            print >>out, "  % " + line
+            print("  % " + line, file=out)
 
         test.diagmsgs = []
 
@@ -1277,10 +1275,10 @@ class SphinxOutput(OutputHandler):
                 continue
 
             if os.path.isfile(f):
-                print >>out, "  % cat " + os.path.basename(f)
+                print("  % cat " + os.path.basename(f), file=out)
                 for line in open(f):
-                    print >>out, "  ", line.strip()
-                print >>out, ""
+                    print("   %s" % line.strip(), file=out)
+                print(file=out)
 
     def testSkipped(self, test, msg):
         pass
@@ -1372,7 +1370,7 @@ class XMLReport(OutputHandler):
         self._testsuite.setAttribute("failures", str(self._num_failures))
         self._testsuite.setAttribute("errors", str(0))
 
-        print >>self._file, self._doc.toprettyxml(indent="    ")
+        print(self._doc.toprettyxml(indent="    "), file=self._file)
 
 ### Timing measurements.
 
@@ -1713,7 +1711,7 @@ if Options.diagfile:
         output_handlers += [Diag(Options, Options.diagall, diagfile)]
 
     except IOError, e:
-        print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
+        print("cannot open %s: %s" % (Options.diagfile, e), file=sys.stderr)
 
 if Options.sphinx:
     output_handlers += [SphinxOutput(Options)]
@@ -1724,7 +1722,7 @@ if Options.xmlfile:
         output_handlers += [XMLReport(Options, xmlfile)]
 
     except IOError, e:
-        print >>sys.stderr, "cannot open %s: %s" (Options.xmlfile, e)
+        print("cannot open %s: %s" % (Options.xmlfile, e), file=sys.stderr)
 
 output_handler = Forwarder(Options, output_handlers)
 
@@ -1871,7 +1869,7 @@ try:
     (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
 except KeyboardInterrupt:
-    print >>sys.stderr, "Aborted."
+    print("Aborted.", file=sys.stderr)
     sys.exit(1)
 
 output_handler.finished()
