@@ -1499,17 +1499,11 @@ def findTests(paths, output_handler):
 # Merge parts belonging to the same test into one.
 def mergeTestParts(tests):
     def key(t):
-        if t:
-            return (t.basename, t.number, t.part)
-        else:
-            return t
+        return (t.basename, t.number, t.part)
 
     out = {}
 
     for t in sorted(tests, key=key):
-        if not t:
-            continue
-
         try:
             other = out[t.name]
 
@@ -1595,7 +1589,9 @@ def readTestFile(filename, output_handler):
 
     input.close()
 
-    tests += [newTest(content, previous)]
+    t = newTest(content, previous)
+    if t:
+        tests.append(t)
 
     for t in tests:
         if t:
