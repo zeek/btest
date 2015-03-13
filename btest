@@ -58,7 +58,7 @@ def mkdir(dir):
     if not os.path.exists(dir):
         try:
             os.makedirs(dir)
-        except OSError, e:
+        except OSError as e:
             error("cannot create directory %s: %s" % (dir, e))
 
     else:
@@ -124,7 +124,7 @@ def cpExpandBackticks(self, section, option, rawval, vars):
 
         try:
             return subprocess.Popen(cmd.split(), stdout=subprocess.PIPE).communicate()[0].strip()
-        except OSError, e:
+        except OSError as e:
             error("cannot execute '%s': %s" % (cmd, e))
 
     value = cpOriginalInterpolate(self, section, option, rawval, vars)
@@ -185,7 +185,7 @@ def runSubprocess(*args, **kwargs):
             success = True
             rc = 0
 
-        except subprocess.CalledProcessError, e:
+        except subprocess.CalledProcessError as e:
             success = False
             rc = e.returncode
 
@@ -260,7 +260,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
             try:
                 state = open(StateFile, "w")
-            except IOError, e:
+            except IOError as e:
                 error("cannot open state file %s" % StateFile)
 
             for t in self._failed_tests:
@@ -664,7 +664,7 @@ class Test(object):
                 mkdir(subdir)
             try:
                 ffile = open(fname, "w")
-            except IOError, e:
+            except IOError as e:
                 error("cannot write test's additional file '%s'" % fname)
 
             for line in lines:
@@ -676,7 +676,7 @@ class Test(object):
             src = replaceEnvs(file)
             try:
                 shutil.copy2(src, self.tmpdir)
-            except IOError, e:
+            except IOError as e:
                 error("cannot copy %s: %s" % (src, e))
 
         for (file, content) in self.contents:
@@ -767,7 +767,7 @@ class Test(object):
         try:
             # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
             os.rmdir(self.baseline)
-        except OSError, e:
+        except OSError:
             pass
 
         self.log.close()
@@ -856,7 +856,7 @@ class Test(object):
             if os.path.isdir(self.tmpdir):
                 subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir, shell=True)
 
-        except OSError, e:
+        except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
@@ -1538,7 +1538,7 @@ def readTestFile(filename, output_handler):
 
     try:
         input = open(filename)
-    except IOError, e:
+    except IOError as e:
         error("cannot read test file: %s" % e)
 
     tests = []
@@ -1710,7 +1710,7 @@ if Options.diagfile:
         diagfile = open(Options.diagfile, "w", 1)
         output_handlers += [Diag(Options, Options.diagall, diagfile)]
 
-    except IOError, e:
+    except IOError as e:
         print("cannot open %s: %s" % (Options.diagfile, e), file=sys.stderr)
 
 if Options.sphinx:
@@ -1721,7 +1721,7 @@ if Options.xmlfile:
         xmlfile = open(Options.xmlfile, "w", 1)
         output_handlers += [XMLReport(Options, xmlfile)]
 
-    except IOError, e:
+    except IOError as e:
         print("cannot open %s: %s" % (Options.xmlfile, e), file=sys.stderr)
 
 output_handler = Forwarder(Options, output_handlers)
