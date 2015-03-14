@@ -15,7 +15,6 @@ import subprocess
 import copy
 import glob
 import fnmatch
-import ConfigParser
 import time
 import multiprocessing
 import multiprocessing.managers
@@ -27,6 +26,11 @@ import struct
 import uuid
 import tempfile
 from datetime import datetime
+
+try:
+    import ConfigParser as configparser
+except ImportError:
+    import configparser
 
 VERSION = "0.53-6" # Automatically filled in.
 
@@ -91,7 +95,7 @@ def platform():
 def getOption(key, default):
     try:
         return Config.get("btest", key)
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         return default
 
 reBackticks = re.compile(r"`(([^`]|\`)*)`")
@@ -138,7 +142,7 @@ def cpItemsNoDefaults(self, section):
     try:
         items = self._sections[section].items()
     except KeyError:
-        raise ConfigParser.NoSectionError(section)
+        raise configparser.NoSectionError(section)
 
 
     d = self._defaults.copy()
@@ -209,9 +213,9 @@ def runSubprocess(*args, **kwargs):
 
     return result
 
-cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
-ConfigParser.ConfigParser._interpolate = cpExpandBackticks
-ConfigParser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+cpOriginalInterpolate = configparser.ConfigParser._interpolate
+configparser.ConfigParser._interpolate = cpExpandBackticks
+configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
 
 # Description of an alternative configuration.
 class Alternative:
@@ -1670,7 +1674,7 @@ TestBase = os.getcwd()
 defaults = os.environ
 defaults["testbase"] = TestBase
 defaults["default_path"] = os.environ["PATH"]
-Config = ConfigParser.ConfigParser(defaults)
+Config = configparser.ConfigParser(defaults)
 Config.read(fname)
 
 if Options.sphinx:
@@ -1757,7 +1761,7 @@ if Options.alternatives:
                 if not name.startswith("__"):
                     a.filters[name] = value
 
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             pass
 
         try:
@@ -1765,7 +1769,7 @@ if Options.alternatives:
                 if not name.startswith("__"):
                     a.substitutions[name] = value
 
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             pass
 
         try:
@@ -1773,7 +1777,7 @@ if Options.alternatives:
                 if not name.startswith("__"):
                     a.envs[name] = value
 
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             pass
 
         Alternatives[tag] = a
