@@ -112,7 +112,7 @@ def readStateFile():
 
             tests += [line]
 
-        tests = findTests(tests, output_handler)
+        tests = findTests(tests)
 
     except IOError:
         return (False, [])
@@ -466,7 +466,7 @@ class CmdLine:
 
 # One test.
 class Test(object):
-    def __init__(self, file, output_handler):
+    def __init__(self, file):
         self.dir = os.path.abspath(os.path.dirname(file))
         self.name = None
         self.basename = None
@@ -485,7 +485,6 @@ class Test(object):
         self.files = []
         self.requires = []
         self.copy_files = []
-        self.output_handler = output_handler
         self.start = None
         self.contents = []
         self.cloned = False
@@ -606,7 +605,7 @@ class Test(object):
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
     def clone(self, content):
-        clone = Test("", self.output_handler)
+        clone = Test("")
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
@@ -1439,7 +1438,7 @@ class LinuxTimer(TimerBase):
         return (success, rc, utime)
 
 # Walk the given directory and return all test files.
-def findTests(paths, output_handler):
+def findTests(paths):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
@@ -1453,11 +1452,11 @@ def findTests(paths, output_handler):
             error("Do not specify files with part numbers directly, use the base test name (%s)" % path)
 
         if os.path.isfile(path):
-            tests += readTestFile(path, output_handler)
+            tests += readTestFile(path)
 
             # See if there are more parts.
             for part in glob.glob("%s#*" % path):
-                tests += readTestFile(part, output_handler)
+                tests += readTestFile(part)
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
@@ -1473,7 +1472,7 @@ def findTests(paths, output_handler):
                         if fnmatch.fnmatch(file, gl):
                             break
                     else:
-                        tests += readTestFile(os.path.join(dirpath, file), output_handler)
+                        tests += readTestFile(os.path.join(dirpath, file))
 
                 # Don't recurse into these.
                 for (dir, path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
@@ -1492,7 +1491,7 @@ def findTests(paths, output_handler):
             if not found:
                 # See if there are parts.
                 for part in glob.glob("%s#*" % path):
-                    tests += readTestFile(part, output_handler)
+                    tests += readTestFile(part)
                     found = True
 
                 if not found:
@@ -1520,10 +1519,10 @@ def mergeTestParts(tests):
     return sorted([t for t in out.values()], key=key)
 
 # Read the given test file and instantiate one or more tests from it.
-def readTestFile(filename, output_handler):
+def readTestFile(filename):
     def newTest(content, previous):
         if not previous:
-            t = Test(filename, output_handler)
+            t = Test(filename)
             if t.parse(content, filename):
                 return t
             else:
@@ -1818,10 +1817,10 @@ Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
-    Config.configured_tests = findTests(testdirs, output_handler)
+    Config.configured_tests = findTests(testdirs)
 
 if args:
-    tests = findTests(args, output_handler)
+    tests = findTests(args)
 
 else:
     if Options.rerun:
