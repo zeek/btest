@@ -1,4 +1,9 @@
 
+0.54-1 | 2015-06-18 09:08:34 -0700
+
+  * Add support for BTEST_TEST_BASE environment variable for
+    overriding the test base directory. (Robin Sommer)
+
 0.54 | 2015-03-02 17:22:22 -0800
 
   * Release 0.54.
