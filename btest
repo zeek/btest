@@ -1669,22 +1669,39 @@ optparser.set_defaults(mode="TEST")
 if not os.path.exists(Options.config):
     error("configuration file '%s' not found" % Options.config)
 
-(basedir, fname) = os.path.split(Options.config)
-
-if basedir:
-    os.chdir(basedir)
-
-try:
-    TestBase = os.environ["BTEST_TEST_BASE"]
-except KeyError:
-    TestBase = os.getcwd()
-
+# The defaults come from environment variables
 defaults = os.environ
-defaults["testbase"] = TestBase
 defaults["default_path"] = os.environ["PATH"]
-Config = ConfigParser.ConfigParser(defaults)
-Config.read(fname)
 
+# If the BTEST_TEST_BASE env var is set, we'll use that as the testbase.
+# If not, we'll use the current directory.
+testbase_from_environ = "BTEST_TEST_BASE" in os.environ
+TestBase = os.environ.get("BTEST_TEST_BASE", os.getcwd())
+defaults["testbase"] = TestBase
+
+# Parse our config
+Config = ConfigParser.ConfigParser(defaults)
+Config.read(Options.config)
+
+# If TestBase wasn't explicitly specified as an environment variable, we check to see if
+# we're using an alternative that sets it. We'll use the TestBase from the first alternative that does so.
+if not testbase_from_environ and Options.alternatives:
+    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",") if alt != "-"]
+
+    for tag in Options.alternatives:
+        if Config.has_option("environment-%s" % tag, "BTEST_TEST_BASE"):
+            TestBase = Config.get("environment-%s" % tag, "BTEST_TEST_BASE")
+            defaults["testbase"] = TestBase
+                    
+            # At this point, our defaults have changed, so we reread the configuration.
+            Config = ConfigParser.ConfigParser(defaults)
+            Config.read(Options.config)
+
+            # We reread it, and now we can continue with our config file processing.
+            break
+
+os.chdir(TestBase)
+        
 if Options.sphinx:
     Options.quiet = True
 
@@ -1755,13 +1772,7 @@ if Config.has_section("environment"):
 Alternatives = {}
 
 if Options.alternatives:
-    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
-
     for tag in Options.alternatives:
-
-        if tag == "-":
-            continue
-
         a = Alternative(tag)
 
         try:
