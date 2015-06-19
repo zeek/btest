@@ -1673,7 +1673,7 @@ defaults["default_path"] = os.environ["PATH"]
 # If the BTEST_TEST_BASE env var is set, we'll use that as the testbase.
 # If not, we'll use the current directory.
 testbase_from_environ = "BTEST_TEST_BASE" in os.environ
-TestBase = os.environ.get("BTEST_TEST_BASE", os.getcwd())
+TestBase = os.environ.get("BTEST_TEST_BASE", os.path.dirname(Options.config))
 defaults["testbase"] = TestBase
 
 # Parse our config
