@@ -1670,10 +1670,14 @@ if not os.path.exists(Options.config):
 defaults = os.environ
 defaults["default_path"] = os.environ["PATH"]
 
+dirname = os.path.dirname(Options.config)
+if not dirname:
+    dirname = os.getcwd()
+
 # If the BTEST_TEST_BASE env var is set, we'll use that as the testbase.
 # If not, we'll use the current directory.
 testbase_from_environ = "BTEST_TEST_BASE" in os.environ
-TestBase = os.environ.get("BTEST_TEST_BASE", os.path.dirname(Options.config))
+TestBase = os.environ.get("BTEST_TEST_BASE", dirname)
 defaults["testbase"] = TestBase
 
 # Parse our config
@@ -1684,16 +1688,16 @@ Config.read(Options.config)
 # we're using an alternative that sets it. We'll use the TestBase from the first alternative that does so.
 if not testbase_from_environ and Options.alternatives:
     Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",") if alt != "-"]
-
+    
     for tag in Options.alternatives:
         if Config.has_option("environment-%s" % tag, "BTEST_TEST_BASE"):
             TestBase = Config.get("environment-%s" % tag, "BTEST_TEST_BASE")
             defaults["testbase"] = TestBase
-                    
+            
             # At this point, our defaults have changed, so we reread the configuration.
             Config = ConfigParser.ConfigParser(defaults)
             Config.read(Options.config)
-
+            
             # We reread it, and now we can continue with our config file processing.
             break
 
