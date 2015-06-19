@@ -27,7 +27,7 @@ import uuid
 import tempfile
 from datetime import datetime
 
-VERSION = "0.54" # Automatically filled in.
+VERSION = "0.54-1" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1444,17 +1444,20 @@ def findTests(paths, output_handler):
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
     for path in paths:
+        rpath = path
+        path = os.path.join(TestBase, path)
+
         ignores = [os.path.join(path, dir) for dir in ignore_dirs]
 
-        m = RE_PART.match(path)
+        m = RE_PART.match(rpath)
         if m:
-            error("Do not specify files with part numbers directly, use the base test name (%s)" % path)
+            error("Do not specify files with part numbers directly, use the base test name (%s)" % rpath)
 
         if os.path.isfile(path):
             tests += readTestFile(path, output_handler)
 
             # See if there are more parts.
-            for part in glob.glob("%s#*" % path):
+            for part in glob.glob("%s#*" % rpath):
                 tests += readTestFile(part, output_handler)
 
         elif os.path.isdir(path):
@@ -1483,13 +1486,13 @@ def findTests(paths, output_handler):
             # See if we have test(s) named like this in our configured set.
             found = False
             for t in Config.configured_tests:
-                if t and path == t.name:
+                if t and rpath == t.name:
                     tests += [t]
                     found = True
 
             if not found:
                 # See if there are parts.
-                for part in glob.glob("%s#*" % path):
+                for part in glob.glob("%s#*" % rpath):
                     tests += readTestFile(part, output_handler)
                     found = True
 
