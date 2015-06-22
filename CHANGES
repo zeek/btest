@@ -1,4 +1,11 @@
 
+0.54-7 | 2015-06-22 13:07:42 -0700
+
+  * Allow BTEST_TEST_BASE overriding in alternative configuration.
+    (Vlad Grigorescu)
+
+  * Create README symlink for GitHub rendering. (Vlad Grigorescu)
+
 0.54-1 | 2015-06-18 09:08:34 -0700
 
   * Add support for BTEST_TEST_BASE environment variable for
