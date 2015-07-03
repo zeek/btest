@@ -21,7 +21,7 @@ py_modules = [
 ]
 
 setup(name='btest',
-      version="0.54-7", # Filled in automatically.
+      version="0.54-8", # Filled in automatically.
       description='A simple unit testing framework',
       author='Robin Sommer',
       author_email='robin@icir.org',

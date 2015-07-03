@@ -1,4 +1,8 @@
 
+0.54-8 | 2015-07-03 16:31:24 -0700
+
+  * Expanding globs in TestDirs, relative to TestBase. (Robin Sommer)
+
 0.54-7 | 2015-06-22 13:07:42 -0700
 
   * Allow BTEST_TEST_BASE overriding in alternative configuration.

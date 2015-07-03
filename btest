@@ -27,7 +27,7 @@ import uuid
 import tempfile
 from datetime import datetime
 
-VERSION = "0.54-7" # Automatically filled in.
+VERSION = "0.54-8" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1436,14 +1436,24 @@ class LinuxTimer(TimerBase):
         return (success, rc, utime)
 
 # Walk the given directory and return all test files.
-def findTests(paths, output_handler):
+def findTests(paths, output_handler, expand_globs=False):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
-    for path in paths:
-        rpath = path
+    expanded = []
+
+    for p in paths:
+        p = os.path.join(TestBase, p)
+
+        if expand_globs:
+            expanded += [d for d in glob.glob(p) if os.path.isdir(d)]
+        else:
+            expanded.append(p)
+
+    for path in expanded:
+        rpath = os.path.relpath(path, TestBase)
         path = os.path.join(TestBase, path)
 
         ignores = [os.path.join(path, dir) for dir in ignore_dirs]
@@ -1848,7 +1858,7 @@ Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
-    Config.configured_tests = findTests(testdirs, output_handler)
+    Config.configured_tests = findTests(testdirs, output_handler, True)
 
 if args:
     tests = findTests(args, output_handler)
