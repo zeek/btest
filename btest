@@ -27,7 +27,7 @@ import uuid
 import tempfile
 from datetime import datetime
 
-VERSION = "0.54-8" # Automatically filled in.
+VERSION = "0.54-9" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -1455,6 +1455,9 @@ def findTests(paths, output_handler, expand_globs=False):
     for path in expanded:
         rpath = os.path.relpath(path, TestBase)
         path = os.path.join(TestBase, path)
+
+        if os.path.isdir(path) and os.path.basename(path) in ignore_dirs:
+            continue
 
         ignores = [os.path.join(path, dir) for dir in ignore_dirs]
 

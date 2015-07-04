@@ -1,4 +1,8 @@
 
+0.54-9 | 2015-07-03 18:21:52 -0700
+
+  * Make sure IgnoreDirs works with toplevel globbing. (Robin Sommer)
+
 0.54-8 | 2015-07-03 16:31:24 -0700
 
   * Expanding globs in TestDirs, relative to TestBase. (Robin Sommer)
