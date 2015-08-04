@@ -32,7 +32,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.53-6" # Automatically filled in.
+VERSION = "0.54-9" # Automatically filled in.
 
 Name ="btest"
 Config = None
@@ -143,7 +143,6 @@ def cpItemsNoDefaults(self, section):
         items = self._sections[section].items()
     except KeyError:
         raise configparser.NoSectionError(section)
-
 
     d = self._defaults.copy()
 
@@ -1438,24 +1437,40 @@ class LinuxTimer(TimerBase):
         return (success, rc, utime)
 
 # Walk the given directory and return all test files.
-def findTests(paths):
+def findTests(paths, expand_globs=False):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
-    for path in paths:
+    expanded = []
+
+    for p in paths:
+        p = os.path.join(TestBase, p)
+
+        if expand_globs:
+            expanded += [d for d in glob.glob(p) if os.path.isdir(d)]
+        else:
+            expanded.append(p)
+
+    for path in expanded:
+        rpath = os.path.relpath(path, TestBase)
+        path = os.path.join(TestBase, path)
+
+        if os.path.isdir(path) and os.path.basename(path) in ignore_dirs:
+            continue
+
         ignores = [os.path.join(path, dir) for dir in ignore_dirs]
 
-        m = RE_PART.match(path)
+        m = RE_PART.match(rpath)
         if m:
-            error("Do not specify files with part numbers directly, use the base test name (%s)" % path)
+            error("Do not specify files with part numbers directly, use the base test name (%s)" % rpath)
 
         if os.path.isfile(path):
             tests += readTestFile(path)
 
             # See if there are more parts.
-            for part in glob.glob("%s#*" % path):
+            for part in glob.glob("%s#*" % rpath):
                 tests += readTestFile(part)
 
         elif os.path.isdir(path):
@@ -1484,13 +1499,13 @@ def findTests(paths):
             # See if we have test(s) named like this in our configured set.
             found = False
             for t in Config.configured_tests:
-                if t and path == t.name:
+                if t and rpath == t.name:
                     tests += [t]
                     found = True
 
             if not found:
                 # See if there are parts.
-                for part in glob.glob("%s#*" % path):
+                for part in glob.glob("%s#*" % rpath):
                     tests += readTestFile(part)
                     found = True
 
@@ -1663,18 +1678,50 @@ optparser.set_defaults(mode="TEST")
 if not os.path.exists(Options.config):
     error("configuration file '%s' not found" % Options.config)
 
-(basedir, fname) = os.path.split(Options.config)
-
-if basedir:
-    os.chdir(basedir)
-
-TestBase = os.getcwd()
-
+# The defaults come from environment variables.
 defaults = os.environ
-defaults["testbase"] = TestBase
 defaults["default_path"] = os.environ["PATH"]
-Config = configparser.ConfigParser(defaults)
-Config.read(fname)
+
+dirname = os.path.dirname(Options.config)
+if not dirname:
+    dirname = os.getcwd()
+
+# If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
+# If not, we'll use the current directory.
+TestBase = os.environ.get("BTEST_TEST_BASE", dirname)
+defaults["testbase"] = TestBase
+
+# Parse our config
+Config = ConfigParser.ConfigParser(defaults)
+Config.read(Options.config)
+
+if Options.alternatives:
+    # Preprocess to split into list.
+    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",") if alt != "-"]
+
+    # If TestBase wasn't explicitly specified as an environment
+    # variable, we check to see if we're using an alternative that sets
+    # it. We'll use the TestBase from the first matching alternative that
+    # does so.
+    if not "BTEST_TEST_BASE" in os.environ:
+        for tag in Options.alternatives:
+            try:
+                base = Config.get("environment-%s" % tag, "BTEST_TEST_BASE")
+            except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+                continue
+
+            TestBase = base
+            defaults["testbase"] = TestBase
+
+            # At this point, our defaults have changed, so we
+            # reread the configuration.
+            Config = ConfigParser.ConfigParser(defaults)
+            Config.read(Options.config)
+
+            # Now we continue with normal config file processing.
+            break
+
+os.chdir(TestBase)
 
 if Options.sphinx:
     Options.quiet = True
@@ -1746,13 +1793,7 @@ if Config.has_section("environment"):
 Alternatives = {}
 
 if Options.alternatives:
-    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
-
     for tag in Options.alternatives:
-
-        if tag == "-":
-            continue
-
         a = Alternative(tag)
 
         try:
@@ -1817,7 +1858,7 @@ Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
-    Config.configured_tests = findTests(testdirs)
+    Config.configured_tests = findTests(testdirs, True)
 
 if args:
     tests = findTests(args)

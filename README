@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.53-6
+.. |version| replace:: 0.54-9
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -314,7 +314,9 @@ for defining alternatives_.
 Note that all paths specified in the configuration file are relative
 to ``btest``'s *base directory*. The base directory is either the
 one where the configuration file is located if such is given/found,
-or the current working directory if not. When setting values for
+or the current working directory if not. One can also override it
+explicitly by setting the environment variable ``BTEST_TEST_BASE``.
+When setting values for
 configuration options, the absolute path to the base directory is
 available by using the macro ``%(testbase)s`` (the weird syntax is
 due to Python's ``ConfigParser`` module).
@@ -461,6 +463,12 @@ An alternative can add further environment variables by defining an
 Running ``btest`` with ``--alternative=myalternative`` will now make
 the ``CFLAGS`` environment variable available to all commands
 executed.
+
+As a special case, one can override ``BTEST_TEST_BASE`` inside an
+alternative's environment section, and it will not only be passed on
+to child processes, but also apply to the ``btest`` process itself.
+That way, one can switch to different test base diretory for an
+alternative.
 
 .. _filters:
 
