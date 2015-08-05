@@ -1692,7 +1692,7 @@ TestBase = os.environ.get("BTEST_TEST_BASE", dirname)
 defaults["testbase"] = TestBase
 
 # Parse our config
-Config = ConfigParser.ConfigParser(defaults)
+Config = configparser.ConfigParser(defaults)
 Config.read(Options.config)
 
 if Options.alternatives:
@@ -1707,7 +1707,7 @@ if Options.alternatives:
         for tag in Options.alternatives:
             try:
                 base = Config.get("environment-%s" % tag, "BTEST_TEST_BASE")
-            except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            except (configparser.NoSectionError, configparser.NoOptionError):
                 continue
 
             TestBase = base
@@ -1715,7 +1715,7 @@ if Options.alternatives:
 
             # At this point, our defaults have changed, so we
             # reread the configuration.
-            Config = ConfigParser.ConfigParser(defaults)
+            Config = configparser.ConfigParser(defaults)
             Config.read(Options.config)
 
             # Now we continue with normal config file processing.
