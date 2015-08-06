@@ -27,6 +27,18 @@
 @TEST-EXEC: exit 0
 %TEST-END-FILE
 
+%TEST-START-FILE all/skip
+@TEST-EXEC: exit 0
+@TEST-IGNORE
+%TEST-END-FILE
+
+%TEST-START-FILE all/sub2/.btest-ignore
+%TEST-END-FILE
+
+%TEST-START-FILE all/sub2/skip-this
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
 
 %TEST-START-FILE btest.cfg
 [btest]
