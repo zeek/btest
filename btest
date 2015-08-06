@@ -149,7 +149,10 @@ def cpItemsNoDefaults(self, section):
     result = {}
 
     for (key, value) in items:
-        result[key] = cpExpandBackticks(self, section, key, value, d)
+        # Python 2 includes a key of "__name__" that we don't want (Python 3
+        # doesn't include this)
+        if not key.startswith("__"):
+            result[key] = cpExpandBackticks(self, section, key, value, d)
 
     return result.items()
 
@@ -864,13 +867,6 @@ class Test(object):
     # Prepares the environment for the child processes.
     def prepareEnv(self, cmd, addl = {}):
         env = copy.deepcopy(os.environ)
-
-        # Make sure these don't propagate from parent processes.
-        for i in ["TESTBASE", "DEFAULT_PATH"]:
-            try:
-                del env[i]
-            except KeyError:
-                pass
 
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
@@ -1678,8 +1674,10 @@ optparser.set_defaults(mode="TEST")
 if not os.path.exists(Options.config):
     error("configuration file '%s' not found" % Options.config)
 
-# The defaults come from environment variables.
-defaults = os.environ
+# The defaults come from environment variables, plus a few additional items.
+defaults = {}
+# Changes to defaults should not change os.environ
+defaults.update(os.environ)
 defaults["default_path"] = os.environ["PATH"]
 
 dirname = os.path.dirname(Options.config)
@@ -1787,7 +1785,8 @@ if Options.update_times and not Timer:
 # Evaluate other command line options.
 
 if Config.has_section("environment"):
-    for (name, value) in Config.items("environment"):
+    for (name, value) in Config.itemsNoDefaults("environment"):
+        # Here we don't want to include items from defaults
         os.environ[name.upper()] = value
 
 Alternatives = {}
@@ -1798,24 +1797,21 @@ if Options.alternatives:
 
         try:
             for (name, value) in Config.itemsNoDefaults("filter-%s" % tag):
-                if not name.startswith("__"):
-                    a.filters[name] = value
+                a.filters[name] = value
 
         except configparser.NoSectionError:
             pass
 
         try:
             for (name, value) in Config.itemsNoDefaults("substitution-%s" % tag):
-                if not name.startswith("__"):
-                    a.substitutions[name] = value
+                a.substitutions[name] = value
 
         except configparser.NoSectionError:
             pass
 
         try:
             for (name, value) in Config.itemsNoDefaults("environment-%s" % tag):
-                if not name.startswith("__"):
-                    a.envs[name] = value
+                a.envs[name] = value
 
         except configparser.NoSectionError:
             pass
