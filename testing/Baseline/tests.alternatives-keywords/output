@@ -1,6 +1,9 @@
 default1 ... ok
 notfoo1 ... ok
 all 2 tests successful
+default1 ... ok
+notfoo1 ... ok
+all 2 tests successful
 foo1 [foo] ... ok
 notdefault1 [foo] ... ok
 all 2 tests successful
