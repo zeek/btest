@@ -7,6 +7,7 @@ TEST
 environment
 <...>/.tmp/tests.environment/.tmp/environment/.verbose
 <...>/.tmp/tests.environment
+1
 Foo
 testbase is correct
 42
@@ -16,3 +17,4 @@ UPDATE
 environment
 <...>/.tmp/tests.environment/.tmp/environment/.verbose
 <...>/.tmp/tests.environment
+1

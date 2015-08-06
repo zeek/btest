@@ -14,3 +14,4 @@
 @TEST-EXEC: echo ${TEST_NAME} >>../../output
 @TEST-EXEC: echo ${TEST_VERBOSE} | strip-test-base >>../../output
 @TEST-EXEC: echo ${TEST_BASE} | strip-test-base >>../../output
+@TEST-EXEC: echo ${TEST_PART} >>../../output
