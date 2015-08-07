@@ -1,0 +1,9 @@
+# %TEST-EXEC: mv btest.cfg myfile
+# %TEST-EXEC: btest -c myfile %INPUT > output 2>&1
+# %TEST-EXEC: BTEST_CFG=myfile btest %INPUT >> output 2>&1
+# %TEST-EXEC: BTEST_CFG=notexist btest -c myfile %INPUT >> output 2>&1
+# %TEST-EXEC-FAIL: btest %INPUT >> output 2>&1
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: exit 0
+
