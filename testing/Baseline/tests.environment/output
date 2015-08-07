@@ -1,6 +1,7 @@
 Foo
 testbase is correct
 42
+default_path is correct
 <...>/.tmp/tests.environment/.tmp/environment/.diag
 TEST
 <...>/.tmp/tests.environment/Baseline/environment
@@ -11,6 +12,7 @@ environment
 Foo
 testbase is correct
 42
+default_path is correct
 <...>/.tmp/tests.environment/.tmp/environment/.diag
 UPDATE
 <...>/.tmp/tests.environment/Baseline/environment

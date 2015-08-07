@@ -7,6 +7,7 @@
 @TEST-EXEC: set >>1
 @TEST-EXEC: test "${ENV2}" = `cd ../.. && pwd` && echo "testbase is correct" >>../../output
 @TEST-EXEC: echo ${ENV3} >>../../output
+@TEST-EXEC: test "${ORIGPATH}" = "${PATH}" && echo "default_path is correct" >>../../output
 
 @TEST-EXEC: echo ${TEST_DIAGNOSTICS} | strip-test-base >>../../output
 @TEST-EXEC: echo ${TEST_MODE} >>../../output
