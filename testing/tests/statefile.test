@@ -1,0 +1,12 @@
+# %TEST-EXEC: btest %INPUT
+# %TEST-EXEC: test -f mystate
+# %TEST-EXEC: test ! -e .btest.failed.dat
+
+@TEST-EXEC: exit 0
+
+%TEST-START-FILE btest.cfg
+[btest]
+TmpDir      = .tmp
+BaselineDir = Baseline
+StateFile   = mystate
+%TEST-END-FILE
