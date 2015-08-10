@@ -1,7 +1,7 @@
 Foo
 testbase is correct
 42
-tests.environment
+macro expansion within backticks is correct
 default_path is correct
 <...>/.tmp/tests.environment/.tmp/environment/.diag
 TEST
@@ -13,7 +13,7 @@ environment
 Foo
 testbase is correct
 42
-tests.environment
+macro expansion within backticks is correct
 default_path is correct
 <...>/.tmp/tests.environment/.tmp/environment/.diag
 UPDATE
