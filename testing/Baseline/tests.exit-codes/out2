@@ -1,2 +1,10 @@
 t1 ... failed
 t2 ... failed
+t4 ... ok
+t5 ... failed
+t6 ... ok
+1 of 3 tests failed
+t7 ... ok
+t8 ... failed
+t9 ... ok
+1 of 3 tests failed
