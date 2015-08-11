@@ -2,6 +2,9 @@
 # %TEST-EXEC: btest -U %INPUT
 # %TEST-EXEC: btest-diff output
 
+@TEST-REQUIRES: test -n "${ENV2}"
+@TEST-EXEC-FAIL: test -z "${ENV2}"
+
 @TEST-EXEC: echo ${ENV1} >>../../output
 @TEST-EXEC: echo ${ENV2} >1
 @TEST-EXEC: set >>1
