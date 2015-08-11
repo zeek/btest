@@ -1,5 +1,11 @@
-diag-all ... ok
+t1 ... ok
   % cat .stderr
   Stderr output
 
-all 1 tests successful
+t2 ... ok
+  % cat .diag
+  This is the contents of the .diag file
+
+  % cat .stderr
+
+all 2 tests successful
