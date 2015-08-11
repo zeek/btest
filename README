@@ -199,8 +199,9 @@ and 1 otherwise.
 
     -a ALTERNATIVE, --alternative=ALTERNATIVE
         Activates an alternative_ configuration defined in the
-        configuration file. This option can be given multiple times to
-        run tests with several alternatives. If ``ALTERNATIVE`` is ``-``
+        configuration file. Multiple alternatives can be given as a
+        comma-separated list (in this case, all specified tests are run
+        once for each specified alternative). If ``ALTERNATIVE`` is ``-``
         that refers to running with the standard setup, which can be used
         to run tests both with and without alternatives by giving both.
 
@@ -212,8 +213,9 @@ and 1 otherwise.
     -c CONFIG, --config=CONFIG
         Specifies an alternative `configuration file`_ to use. If not
         specified, the default is to use a file called ``btest.cfg``
-        if found in the current directory. That default can be
-        overridden with ``BTEST_CFG`` environment variable.
+        if found in the current directory. An alternative way to specify
+        a different config file is with the ``BTEST_CFG`` environment
+        variable (however, the command-line option overrides ``BTEST_CFG``).
 
     -d, --diagnostics
         Reports diagnostics for all failed tests. The diagnostics
@@ -319,7 +321,7 @@ explicitly by setting the environment variable ``BTEST_TEST_BASE``.
 When setting values for
 configuration options, the absolute path to the base directory is
 available by using the macro ``%(testbase)s`` (the weird syntax is
-due to Python's ``ConfigParser`` module).
+due to Python's ``ConfigParser`` class).
 
 Furthermore, all values can use standard "backtick-syntax" to
 include the output of external commands (e.g., xyz=`\echo test\`).
@@ -398,8 +400,9 @@ configuration file:
     ``%(testbase)s/Baseline/_Timing``.
 
 ``TimingDeltaPerc``
-    A percent value defining the `timing`_ deviation that's tolerated
-    for a test before it's considered failed. Default is 1.0%.
+    A value defining the `timing`_ deviation percentage that's tolerated
+    for a test before it's considered failed. Default is 1.0 (which means
+    a 1.0% deviation is tolerated by default).
 
 ``PerfPath``
     Specifies a path to the ``perf`` tool, which is used on Linux to
@@ -467,7 +470,7 @@ executed.
 As a special case, one can override ``BTEST_TEST_BASE`` inside an
 alternative's environment section, and it will not only be passed on
 to child processes, but also apply to the ``btest`` process itself.
-That way, one can switch to different test base diretory for an
+That way, one can switch to a different test base directory for an
 alternative.
 
 .. _filters:
@@ -561,9 +564,10 @@ supported:
 
         ``TEST_DIAGNOSTICS``
             A file where further diagnostic information can be saved
-            in case a command fails. ``--diagnostics`` will show
-            this file. (This is also where ``btest-diff`` stores its
-            diff.)
+            in case a command fails (this is also where ``btest-diff``
+            stores its diff). If this file exists, then the
+            ``--diagnostics-all`` or ``--diagnostics`` options will show
+            this file (for the latter option, only if a command fails).
 
         ``TEST_MODE``
             This is normally set to ``TEST``, but will be ``UPDATE``
@@ -595,12 +599,15 @@ supported:
     .. note::
 
         If a command returns the special exit code 100, the test is
-        considered failed, however subsequent test commands are still
-        run. ``btest-diff`` uses this special exit code to indicate that
-        no baseline has yet been established.
+        considered failed, however subsequent test commands within the
+        current test are still run. ``btest-diff`` uses this special
+        exit code to indicate that no baseline has yet been established.
 
         If a command returns the special exit code 200, the test is
-        considered failed and all further test executions are aborted.
+        considered failed and all further tests are aborted.
+        ``btest-diff`` uses this special exit code when btest is run
+        with the ``--update-interactive`` option and the user chooses to
+        abort the tests when prompted to record a new baseline.
 
 
 ``@TEST-EXEC-FAIL: <cmdline>``
@@ -930,9 +937,7 @@ the documentation. Example::
 
         @TEST-EXEC: btest-rst-cmd echo Hello, world!
 
-When running Sphinx, this will render as:
-
-.. code::
+When running Sphinx, this will render as::
 
     # echo Hello, world!
     Hello, world!
