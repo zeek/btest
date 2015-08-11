@@ -1,4 +1,5 @@
 # %TEST-EXEC-FAIL: btest %INPUT
+# %TEST-EXEC: test ! -e Baseline/diff/output
 # %TEST-EXEC: btest -U %INPUT
 # %TEST-EXEC: test -f Baseline/diff/output
 # %TEST-EXEC: btest %INPUT
