@@ -34,7 +34,9 @@ except ImportError:
 
 VERSION = "0.54-9" # Automatically filled in.
 
-Name ="btest"
+using_py3 = (sys.version_info[0] == 3)
+
+Name = "btest"
 Config = None
 
 try:
@@ -92,11 +94,18 @@ def which(cmd):
 def platform():
     return os.uname()[0]
 
-def getOption(key, default):
+# Get the value of the specified option in the specified section (or
+# section "btest" if not specified), or return the specified default value
+# if the option or section is not found.  The returned value has macros and
+# backticks from the config file expanded, but if the default value is returned
+# it will not be modified in any way.
+def getOption(key, default, section="btest"):
     try:
-        return Config.get("btest", key)
+        value = Config.get(section, key)
     except (configparser.NoSectionError, configparser.NoOptionError):
         return default
+
+    return ExpandBackticks(value)
 
 reBackticks = re.compile(r"`(([^`]|\`)*)`")
 
@@ -119,40 +128,50 @@ def readStateFile():
 
     return (True, tests)
 
-# We monkey-patch the OptionParser to expand backticks.
-def cpExpandBackticks(self, section, option, rawval, vars):
+# Expand backticks in a config option value and return the result.
+def ExpandBackticks(origvalue):
     def _exec(m):
         cmd = m.group(1)
         if not cmd:
             return ""
 
         try:
-            return subprocess.Popen(cmd.split(), stdout=subprocess.PIPE).communicate()[0].strip()
+            pp = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
         except OSError as e:
             error("cannot execute '%s': %s" % (cmd, e))
 
-    value = cpOriginalInterpolate(self, section, option, rawval, vars)
-    value = reBackticks.sub(_exec, value)
+        out = pp.communicate()[0]
+        if using_py3:
+            out = out.decode()
+
+        return out.strip()
+
+    value = reBackticks.sub(_exec, origvalue)
 
     return value
 
-# We monkey-patch the OptionParser to provide an alternative method that does not include
-# defaults in returns section items.
+# We monkey-patch the config parser to provide an alternative method that
+# expands backticks in option values and does not include defaults in
+# returned section items.
 def cpItemsNoDefaults(self, section):
+    # Get the keys from the specified section without anything from the
+    # default section (the values are raw, so we need to fetch the actual
+    # value below).
     try:
         items = self._sections[section].items()
     except KeyError:
         raise configparser.NoSectionError(section)
 
-    d = self._defaults.copy()
-
     result = {}
 
-    for (key, value) in items:
+    for (key, rawvalue) in items:
         # Python 2 includes a key of "__name__" that we don't want (Python 3
         # doesn't include this)
         if not key.startswith("__"):
-            result[key] = cpExpandBackticks(self, section, key, value, d)
+            # Expand macros such as %(testbase)s.
+            value = self.get(section, key)
+            # Expand backticks (if any) in the value.
+            result[key] = ExpandBackticks(value)
 
     return result.items()
 
@@ -215,8 +234,6 @@ def runSubprocess(*args, **kwargs):
 
     return result
 
-cpOriginalInterpolate = configparser.ConfigParser._interpolate
-configparser.ConfigParser._interpolate = cpExpandBackticks
 configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
 
 # Description of an alternative configuration.
@@ -1703,9 +1720,8 @@ if Options.alternatives:
     # does so.
     if not "BTEST_TEST_BASE" in os.environ:
         for tag in Options.alternatives:
-            try:
-                base = Config.get("environment-%s" % tag, "BTEST_TEST_BASE")
-            except (configparser.NoSectionError, configparser.NoOptionError):
+            base = getOption("BTEST_TEST_BASE", None, section="environment-%s" % tag)
+            if base is None:
                 continue
 
             TestBase = base
