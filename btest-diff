@@ -1,12 +1,16 @@
 #! /usr/bin/env bash
 #
-# TEST_MODE={TEST|UPDATE|UPDATE_INTERACTIVE}
-# TEST_BASELINE
-# TEST_DIAGNOSTICS
-# TEST_NAME
+# Usage:  btest-diff <filename>
 #
-# TEST_DIFF_CANONIFIER
-# TEST_DIFF_BRIEF
+# These environment variables are set by btest:
+#   TEST_MODE={TEST|UPDATE|UPDATE_INTERACTIVE}
+#   TEST_BASELINE
+#   TEST_DIAGNOSTICS
+#   TEST_NAME
+#
+# A test can optionally set these environment variables:
+#   TEST_DIFF_CANONIFIER
+#   TEST_DIFF_BRIEF
 
 # Maximum number of lines to show from mismatching input file.
 MAX_LINES=5000
@@ -71,7 +75,7 @@ if [ -e $TEST_BASELINE/$canon ]; then
    diff -au $@ $diff1 $diff2 >>$TEST_DIAGNOSTICS
    result=$?
 else
-   echo "== Error ===============================" >>$TEST_DIAGNOSTICS
+   echo "== Error ==============================" >>$TEST_DIAGNOSTICS
    echo "test-diff: no baseline found." >>$TEST_DIAGNOSTICS
    result=100
 fi
