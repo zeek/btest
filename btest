@@ -234,7 +234,17 @@ def runSubprocess(*args, **kwargs):
 
     return result
 
-configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+def getcfgparser(defaults):
+    if using_py3:
+        configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+        cfg = configparser.ConfigParser(defaults)
+    else:
+        # For Python 2, use SafeConfigParser because it behaves the same
+        # as ConfigParser in Python 3.
+        configparser.SafeConfigParser.itemsNoDefaults = cpItemsNoDefaults
+        cfg = configparser.SafeConfigParser(defaults)
+
+    return cfg
 
 # Description of an alternative configuration.
 class Alternative:
@@ -1707,7 +1717,7 @@ TestBase = os.environ.get("BTEST_TEST_BASE", dirname)
 defaults["testbase"] = TestBase
 
 # Parse our config
-Config = configparser.ConfigParser(defaults)
+Config = getcfgparser(defaults)
 Config.read(Options.config)
 
 if Options.alternatives:
@@ -1729,7 +1739,7 @@ if Options.alternatives:
 
             # At this point, our defaults have changed, so we
             # reread the configuration.
-            Config = configparser.ConfigParser(defaults)
+            Config = getcfgparser(defaults)
             Config.read(Options.config)
 
             # Now we continue with normal config file processing.
