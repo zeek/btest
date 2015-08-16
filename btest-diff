@@ -58,6 +58,7 @@ else
 fi
 
 if [ -e $TEST_BASELINE/$canon ]; then
+   error=0
 
    if [ "$TEST_DIFF_CANONIFIER" != "" ]; then
        diff1=/tmp/test-diff.$$.$canon.baseline.tmp
@@ -65,15 +66,30 @@ if [ -e $TEST_BASELINE/$canon ]; then
        tmpfiles="$tmpfiles $diff1 $diff2"
 
        eval $TEST_DIFF_CANONIFIER $TEST_BASELINE/$canon <$TEST_BASELINE/$canon >$diff1
+       if [ $? -ne 0 ]; then
+           error=1
+           echo "== Error ==============================" >>$TEST_DIAGNOSTICS
+           echo "btest-diff: TEST_DIFF_CANONIFIER failed on file '$TEST_BASELINE/$canon'" >>$TEST_DIAGNOSTICS
+           result=1
+       fi
+
        eval $TEST_DIFF_CANONIFIER $input <$input >$diff2
+       if [ $? -ne 0 ]; then
+           error=1
+           echo "== Error ==============================" >>$TEST_DIAGNOSTICS
+           echo "btest-diff: TEST_DIFF_CANONIFIER failed on file '$input'" >>$TEST_DIAGNOSTICS
+           result=1
+       fi
    else
        diff1=$TEST_BASELINE/$canon
        diff2=$input
    fi
 
-   echo "== Diff ===============================" >>$TEST_DIAGNOSTICS
-   diff -au $@ $diff1 $diff2 >>$TEST_DIAGNOSTICS
-   result=$?
+   if [ $error -eq 0 ]; then
+       echo "== Diff ===============================" >>$TEST_DIAGNOSTICS
+       diff -au $@ $diff1 $diff2 >>$TEST_DIAGNOSTICS
+       result=$?
+   fi
 else
    echo "== Error ==============================" >>$TEST_DIAGNOSTICS
    echo "test-diff: no baseline found." >>$TEST_DIAGNOSTICS
