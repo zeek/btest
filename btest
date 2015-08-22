@@ -2,6 +2,7 @@
 #
 # Main test driver.
 
+from __future__ import print_function
 import os
 import os.path
 import sys
@@ -14,7 +15,6 @@ import subprocess
 import copy
 import glob
 import fnmatch
-import ConfigParser
 import time
 import multiprocessing
 import multiprocessing.managers
@@ -27,9 +27,16 @@ import uuid
 import tempfile
 from datetime import datetime
 
-VERSION = "0.54-9" # Automatically filled in.
+try:
+    import ConfigParser as configparser
+except ImportError:
+    import configparser
 
-Name ="btest"
+VERSION = "0.54-53" # Automatically filled in.
+
+using_py3 = (sys.version_info[0] == 3)
+
+Name = "btest"
 Config = None
 
 try:
@@ -42,22 +49,22 @@ def output(msg, nl=True, file=None):
         file = sys.stderr
 
     if nl:
-        print >>file, msg
+        print(msg, file=file)
     else:
-        print >>file, msg,
+        print(msg, end=" ", file=file)
 
 def warning(msg):
-    print >>sys.stderr, "warning:", msg
+    print("warning: %s" % msg, file=sys.stderr)
 
 def error(msg):
-    print >>sys.stderr, msg
+    print(msg, file=sys.stderr)
     sys.exit(1)
 
 def mkdir(dir):
     if not os.path.exists(dir):
         try:
             os.makedirs(dir)
-        except OSError, e:
+        except OSError as e:
             error("cannot create directory %s: %s" % (dir, e))
 
     else:
@@ -87,11 +94,18 @@ def which(cmd):
 def platform():
     return os.uname()[0]
 
-def getOption(key, default):
+# Get the value of the specified option in the specified section (or
+# section "btest" if not specified), or return the specified default value
+# if the option or section is not found.  The returned value has macros and
+# backticks from the config file expanded, but if the default value is returned
+# it will not be modified in any way.
+def getOption(key, default, section="btest"):
     try:
-        return Config.get("btest", key)
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        value = Config.get(section, key)
+    except (configparser.NoSectionError, configparser.NoOptionError):
         return default
+
+    return ExpandBackticks(value)
 
 reBackticks = re.compile(r"`(([^`]|\`)*)`")
 
@@ -107,44 +121,57 @@ def readStateFile():
 
             tests += [line]
 
-        tests = findTests(tests, output_handler)
+        tests = findTests(tests)
 
     except IOError:
         return (False, [])
 
     return (True, tests)
 
-# We monkey-patch the OptionParser to expand backticks.
-def cpExpandBackticks(self, section, option, rawval, vars):
+# Expand backticks in a config option value and return the result.
+def ExpandBackticks(origvalue):
     def _exec(m):
         cmd = m.group(1)
         if not cmd:
             return ""
 
         try:
-            return subprocess.Popen(cmd.split(), stdout=subprocess.PIPE).communicate()[0].strip()
-        except OSError, e:
+            pp = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+        except OSError as e:
             error("cannot execute '%s': %s" % (cmd, e))
 
-    value = cpOriginalInterpolate(self, section, option, rawval, vars)
-    value = reBackticks.sub(_exec, value)
+        out = pp.communicate()[0]
+        if using_py3:
+            out = out.decode()
+
+        return out.strip()
+
+    value = reBackticks.sub(_exec, origvalue)
 
     return value
 
-# We monkey-patch the OptionParser to provide an alternative method that does not include
-# defaults in returns section items.
+# We monkey-patch the config parser to provide an alternative method that
+# expands backticks in option values and does not include defaults in
+# returned section items.
 def cpItemsNoDefaults(self, section):
+    # Get the keys from the specified section without anything from the
+    # default section (the values are raw, so we need to fetch the actual
+    # value below).
     try:
         items = self._sections[section].items()
     except KeyError:
-        raise ConfigParser.NoSectionError(section)
-
-    d = self._defaults.copy()
+        raise configparser.NoSectionError(section)
 
     result = {}
 
-    for (key, value) in items:
-        result[key] = cpExpandBackticks(self, section, key, value, d)
+    for (key, rawvalue) in items:
+        # Python 2 includes a key of "__name__" that we don't want (Python 3
+        # doesn't include this)
+        if not key.startswith("__"):
+            # Expand macros such as %(testbase)s.
+            value = self.get(section, key)
+            # Expand backticks (if any) in the value.
+            result[key] = ExpandBackticks(value)
 
     return result.items()
 
@@ -183,7 +210,7 @@ def runSubprocess(*args, **kwargs):
             success = True
             rc = 0
 
-        except subprocess.CalledProcessError, e:
+        except subprocess.CalledProcessError as e:
             success = False
             rc = e.returncode
 
@@ -207,9 +234,17 @@ def runSubprocess(*args, **kwargs):
 
     return result
 
-cpOriginalInterpolate = ConfigParser.ConfigParser._interpolate
-ConfigParser.ConfigParser._interpolate = cpExpandBackticks
-ConfigParser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+def getcfgparser(defaults):
+    if using_py3:
+        configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+        cfg = configparser.ConfigParser(defaults)
+    else:
+        # For Python 2, use SafeConfigParser because it behaves the same
+        # as ConfigParser in Python 3.
+        configparser.SafeConfigParser.itemsNoDefaults = cpItemsNoDefaults
+        cfg = configparser.SafeConfigParser(defaults)
+
+    return cfg
 
 # Description of an alternative configuration.
 class Alternative:
@@ -258,11 +293,11 @@ class TestManager(multiprocessing.managers.SyncManager):
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
             try:
                 state = open(StateFile, "w")
-            except IOError, e:
+            except IOError as e:
                 error("cannot open state file %s" % StateFile)
 
             for t in self._failed_tests:
-                print >>state, t
+                print(t, file=state)
 
             state.close()
 
@@ -446,7 +481,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             out = open(path, "w")
 
             for (k, v) in timing.items():
-                print >>out, "%s %u" % (k, v)
+                print("%s %u" % (k, v), file=out)
 
             out.close()
 
@@ -460,7 +495,7 @@ class CmdLine:
 
 # One test.
 class Test(object):
-    def __init__(self, file, output_handler):
+    def __init__(self, file):
         self.dir = os.path.abspath(os.path.dirname(file))
         self.name = None
         self.basename = None
@@ -479,7 +514,6 @@ class Test(object):
         self.files = []
         self.requires = []
         self.copy_files = []
-        self.output_handler = output_handler
         self.start = None
         self.contents = []
         self.cloned = False
@@ -600,7 +634,7 @@ class Test(object):
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
     def clone(self, content):
-        clone = Test("", self.output_handler)
+        clone = Test("")
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
@@ -662,11 +696,11 @@ class Test(object):
                 mkdir(subdir)
             try:
                 ffile = open(fname, "w")
-            except IOError, e:
+            except IOError as e:
                 error("cannot write test's additional file '%s'" % fname)
 
             for line in lines:
-                print >>ffile, line,
+                ffile.write(line)
 
             ffile.close()
 
@@ -674,14 +708,14 @@ class Test(object):
             src = replaceEnvs(file)
             try:
                 shutil.copy2(src, self.tmpdir)
-            except IOError, e:
+            except IOError as e:
                 error("cannot copy %s: %s" % (src, e))
 
         for (file, content) in self.contents:
             localfile = os.path.join(self.tmpdir, os.path.basename(file))
             out = open(localfile, "w")
             for line in content:
-                print >>out, line,
+                out.write(line)
             out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w")
@@ -765,7 +799,7 @@ class Test(object):
         try:
             # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
             os.rmdir(self.baseline)
-        except OSError, e:
+        except OSError:
             pass
 
         self.log.close()
@@ -822,7 +856,7 @@ class Test(object):
 
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
-        print >>self.log, cmdline, "(expect %s)" % (("failure", "success")[cmd.expect_success])
+        print("%s (expect %s)" % (cmdline, ("failure", "success")[cmd.expect_success]), file=self.log)
 
         env = self.prepareEnv(cmd, addl_envs)
         measure_time = self.measure_time and (Options.update_times or self.utime_base >= 0)
@@ -854,19 +888,12 @@ class Test(object):
             if os.path.isdir(self.tmpdir):
                 subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir, shell=True)
 
-        except OSError, e:
+        except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
     def prepareEnv(self, cmd, addl = {}):
         env = copy.deepcopy(os.environ)
-
-        # Make sure these don't propagate from parent processes.
-        for i in ["TESTBASE", "DEFAULT_PATH"]:
-            try:
-                del env[i]
-            except KeyError:
-                pass
 
         env["TEST_BASELINE"] = self.baseline
         env["TEST_DIAGNOSTICS"] = self.diag
@@ -930,10 +957,10 @@ class OutputHandler:
             file = sys.stderr
 
         if nl:
-            print >>file, msg
+            print(msg, file=file)
         else:
             if msg:
-                print >>file, msg,
+                print(msg, end=" ", file=file)
 
     def output(self, test, msg, nl=True, file=None):
         """Output one line of output to user. In non-threaded mode, this will
@@ -1238,7 +1265,7 @@ class SphinxOutput(OutputHandler):
         try:
             self._rst_output = os.environ["BTEST_RST_OUTPUT"]
         except KeyError:
-            print >>sys.stderr, "warning: environment variable BTEST_RST_OUTPUT not set, will not produce output"
+            print("warning: environment variable BTEST_RST_OUTPUT not set, will not produce output", file=sys.stderr)
             self._rst_output = None
 
     def testStart(self, test):
@@ -1260,14 +1287,11 @@ class SphinxOutput(OutputHandler):
 
         out = open(self._output, "a")
 
-        print >>out, ""
-        print >>out, ".. code-block:: none "
-        print >>out, ""
-        print >>out, "  ERROR executing test '%s' (part %s)" % (test.displayName(), self._part)
-        print >>out, ""
+        print("\n.. code-block:: none ", file=out)
+        print("\n  ERROR executing test '%s' (part %s)\n" % (test.displayName(), self._part), file=out)
 
         for line in test.diagmsgs:
-            print >>out, "  % " + line
+            print("  % " + line, file=out)
 
         test.diagmsgs = []
 
@@ -1276,10 +1300,10 @@ class SphinxOutput(OutputHandler):
                 continue
 
             if os.path.isfile(f):
-                print >>out, "  % cat " + os.path.basename(f)
+                print("  % cat " + os.path.basename(f), file=out)
                 for line in open(f):
-                    print >>out, "  ", line.strip()
-                print >>out, ""
+                    print("   %s" % line.strip(), file=out)
+                print(file=out)
 
     def testSkipped(self, test, msg):
         pass
@@ -1371,7 +1395,7 @@ class XMLReport(OutputHandler):
         self._testsuite.setAttribute("failures", str(self._num_failures))
         self._testsuite.setAttribute("errors", str(0))
 
-        print >>self._file, self._doc.toprettyxml(indent="    ")
+        print(self._doc.toprettyxml(indent="    "), file=self._file)
 
 ### Timing measurements.
 
@@ -1436,7 +1460,7 @@ class LinuxTimer(TimerBase):
         return (success, rc, utime)
 
 # Walk the given directory and return all test files.
-def findTests(paths, output_handler, expand_globs=False):
+def findTests(paths, expand_globs=False):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
@@ -1466,11 +1490,11 @@ def findTests(paths, output_handler, expand_globs=False):
             error("Do not specify files with part numbers directly, use the base test name (%s)" % rpath)
 
         if os.path.isfile(path):
-            tests += readTestFile(path, output_handler)
+            tests += readTestFile(path)
 
             # See if there are more parts.
             for part in glob.glob("%s#*" % rpath):
-                tests += readTestFile(part, output_handler)
+                tests += readTestFile(part)
 
         elif os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
@@ -1486,7 +1510,7 @@ def findTests(paths, output_handler, expand_globs=False):
                         if fnmatch.fnmatch(file, gl):
                             break
                     else:
-                        tests += readTestFile(os.path.join(dirpath, file), output_handler)
+                        tests += readTestFile(os.path.join(dirpath, file))
 
                 # Don't recurse into these.
                 for (dir, path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
@@ -1505,7 +1529,7 @@ def findTests(paths, output_handler, expand_globs=False):
             if not found:
                 # See if there are parts.
                 for part in glob.glob("%s#*" % rpath):
-                    tests += readTestFile(part, output_handler)
+                    tests += readTestFile(part)
                     found = True
 
                 if not found:
@@ -1516,17 +1540,11 @@ def findTests(paths, output_handler, expand_globs=False):
 # Merge parts belonging to the same test into one.
 def mergeTestParts(tests):
     def key(t):
-        if t:
-            return (t.basename, t.number, t.part)
-        else:
-            return t
+        return (t.basename, t.number, t.part)
 
     out = {}
 
     for t in sorted(tests, key=key):
-        if not t:
-            continue
-
         try:
             other = out[t.name]
 
@@ -1539,10 +1557,10 @@ def mergeTestParts(tests):
     return sorted([t for t in out.values()], key=key)
 
 # Read the given test file and instantiate one or more tests from it.
-def readTestFile(filename, output_handler):
+def readTestFile(filename):
     def newTest(content, previous):
         if not previous:
-            t = Test(filename, output_handler)
+            t = Test(filename)
             if t.parse(content, filename):
                 return t
             else:
@@ -1555,7 +1573,7 @@ def readTestFile(filename, output_handler):
 
     try:
         input = open(filename)
-    except IOError, e:
+    except IOError as e:
         error("cannot read test file: %s" % e)
 
     tests = []
@@ -1612,7 +1630,9 @@ def readTestFile(filename, output_handler):
 
     input.close()
 
-    tests += [newTest(content, previous)]
+    t = newTest(content, previous)
+    if t:
+        tests.append(t)
 
     for t in tests:
         if t:
@@ -1681,8 +1701,10 @@ optparser.set_defaults(mode="TEST")
 if not os.path.exists(Options.config):
     error("configuration file '%s' not found" % Options.config)
 
-# The defaults come from environment variables.
-defaults = os.environ
+# The defaults come from environment variables, plus a few additional items.
+defaults = {}
+# Changes to defaults should not change os.environ
+defaults.update(os.environ)
 defaults["default_path"] = os.environ["PATH"]
 
 dirname = os.path.dirname(Options.config)
@@ -1695,7 +1717,7 @@ TestBase = os.environ.get("BTEST_TEST_BASE", dirname)
 defaults["testbase"] = TestBase
 
 # Parse our config
-Config = ConfigParser.ConfigParser(defaults)
+Config = getcfgparser(defaults)
 Config.read(Options.config)
 
 if Options.alternatives:
@@ -1708,9 +1730,8 @@ if Options.alternatives:
     # does so.
     if not "BTEST_TEST_BASE" in os.environ:
         for tag in Options.alternatives:
-            try:
-                base = Config.get("environment-%s" % tag, "BTEST_TEST_BASE")
-            except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            base = getOption("BTEST_TEST_BASE", None, section="environment-%s" % tag)
+            if base is None:
                 continue
 
             TestBase = base
@@ -1718,7 +1739,7 @@ if Options.alternatives:
 
             # At this point, our defaults have changed, so we
             # reread the configuration.
-            Config = ConfigParser.ConfigParser(defaults)
+            Config = getcfgparser(defaults)
             Config.read(Options.config)
 
             # Now we continue with normal config file processing.
@@ -1759,8 +1780,8 @@ if Options.diagfile:
         diagfile = open(Options.diagfile, "w", 1)
         output_handlers += [Diag(Options, Options.diagall, diagfile)]
 
-    except IOError, e:
-        print >>sys.stderr, "cannot open %s: %s" (Options.diagfile, e)
+    except IOError as e:
+        print("cannot open %s: %s" % (Options.diagfile, e), file=sys.stderr)
 
 if Options.sphinx:
     output_handlers += [SphinxOutput(Options)]
@@ -1770,8 +1791,8 @@ if Options.xmlfile:
         xmlfile = open(Options.xmlfile, "w", 1)
         output_handlers += [XMLReport(Options, xmlfile)]
 
-    except IOError, e:
-        print >>sys.stderr, "cannot open %s: %s" (Options.xmlfile, e)
+    except IOError as e:
+        print("cannot open %s: %s" % (Options.xmlfile, e), file=sys.stderr)
 
 output_handler = Forwarder(Options, output_handlers)
 
@@ -1790,7 +1811,8 @@ if Options.update_times and not Timer:
 # Evaluate other command line options.
 
 if Config.has_section("environment"):
-    for (name, value) in Config.items("environment"):
+    for (name, value) in Config.itemsNoDefaults("environment"):
+        # Here we don't want to include items from defaults
         os.environ[name.upper()] = value
 
 Alternatives = {}
@@ -1801,26 +1823,23 @@ if Options.alternatives:
 
         try:
             for (name, value) in Config.itemsNoDefaults("filter-%s" % tag):
-                if not name.startswith("__"):
-                    a.filters[name] = value
+                a.filters[name] = value
 
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             pass
 
         try:
             for (name, value) in Config.itemsNoDefaults("substitution-%s" % tag):
-                if not name.startswith("__"):
-                    a.substitutions[name] = value
+                a.substitutions[name] = value
 
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             pass
 
         try:
             for (name, value) in Config.itemsNoDefaults("environment-%s" % tag):
-                if not name.startswith("__"):
-                    a.envs[name] = value
+                a.envs[name] = value
 
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             pass
 
         Alternatives[tag] = a
@@ -1861,10 +1880,10 @@ Config.configured_tests = []
 
 testdirs = getOption("TestDirs", "").split()
 if testdirs:
-    Config.configured_tests = findTests(testdirs, output_handler, True)
+    Config.configured_tests = findTests(testdirs, True)
 
 if args:
-    tests = findTests(args, output_handler)
+    tests = findTests(args)
 
 else:
     if Options.rerun:
@@ -1912,7 +1931,7 @@ try:
     (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
 except KeyboardInterrupt:
-    print >>sys.stderr, "Aborted."
+    print("Aborted.", file=sys.stderr)
     sys.exit(1)
 
 output_handler.finished()

@@ -10,9 +10,6 @@ except:
 
 prog = sys.argv[1]
 
-try:
-	args = sys.argv[1:]
-except:
-	args = []
+args = sys.argv[1:]
 
 os.execvp(prog, args)

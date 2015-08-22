@@ -1,4 +1,9 @@
-verbose ...
+t1 ...
   > echo "Hello, World!"
-... verbose ok
-all 1 tests successful
+... t1 ok
+t2 ...
+  > echo "This is the contents of the .verbose file" > ${TEST_VERBOSE}
+  > echo "Hello, World!"
+  > [test-verbose] This is the contents of the .verbose file
+... t2 ok
+all 2 tests successful

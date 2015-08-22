@@ -1,4 +1,13 @@
 
+0.54-53 | 2015-08-21 17:02:44 -0700
+
+  * Port to Python 3. (Daniel Thayer)
+
+  * Various cleanup, bug fix, simplifications, and smaller
+    improvements. (Daniel Thayer)
+
+  * Improve and extend test suite substantially. (Daniel Thayer)
+
 0.54-9 | 2015-07-03 18:21:52 -0700
 
   * Make sure IgnoreDirs works with toplevel globbing. (Robin Sommer)

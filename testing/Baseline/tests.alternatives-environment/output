@@ -2,3 +2,9 @@ alternatives-environment ... ok
 all 1 tests successful
 alternatives-environment [foo] ... ok
 all 1 tests successful
+alternatives-environment [foo] ... ok
+alternatives-environment [foo2] ... ok
+all 2 tests successful
+alternatives-environment [foo] ... ok
+alternatives-environment [foo2] ... ok
+all 2 tests successful

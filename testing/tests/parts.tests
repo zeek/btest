@@ -2,13 +2,13 @@
 # %TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
 
 # %TEST-START-FILE test
-@TEST-EXEC: echo "Hello, world! (%INPUT)" >>../../output
+@TEST-EXEC: echo "${TEST_PART} Hello, world! (%INPUT)" >>../../output
 # %TEST-END-FILE
 
 # %TEST-START-FILE test#2
-@TEST-EXEC: echo "Hello, world! Again. (%INPUT)" >>../../output
+@TEST-EXEC: echo "${TEST_PART} Hello, world! Again. (%INPUT)" >>../../output
 # %TEST-END-FILE
 
 # %TEST-START-FILE test#3
-@TEST-EXEC: echo "Hello, world! Again. Again. (%INPUT)" >>../../output
+@TEST-EXEC: echo "${TEST_PART} Hello, world! Again. Again. (%INPUT)" >>../../output
 # %TEST-END-FILE

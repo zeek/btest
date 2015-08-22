@@ -1,18 +1,24 @@
 Foo
 testbase is correct
 42
+macro expansion within backticks is correct
+default_path is correct
 <...>/.tmp/tests.environment/.tmp/environment/.diag
 TEST
 <...>/.tmp/tests.environment/Baseline/environment
 environment
 <...>/.tmp/tests.environment/.tmp/environment/.verbose
 <...>/.tmp/tests.environment
+1
 Foo
 testbase is correct
 42
+macro expansion within backticks is correct
+default_path is correct
 <...>/.tmp/tests.environment/.tmp/environment/.diag
 UPDATE
 <...>/.tmp/tests.environment/Baseline/environment
 environment
 <...>/.tmp/tests.environment/.tmp/environment/.verbose
 <...>/.tmp/tests.environment
+1
