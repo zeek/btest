@@ -11,9 +11,13 @@
 # A test can optionally set these environment variables:
 #   TEST_DIFF_CANONIFIER
 #   TEST_DIFF_BRIEF
+#   TEST_DIFF_FILE_MAX_LINES
 
 # Maximum number of lines to show from mismatching input file.
-MAX_LINES=5000
+MAX_LINES=100
+if [ -n "$TEST_DIFF_FILE_MAX_LINES" ]; then
+    MAX_LINES=$TEST_DIFF_FILE_MAX_LINES
+fi
 
 if [ "$TEST_DIAGNOSTICS" = "" ]; then
     TEST_DIAGNOSTICS=/dev/stdout
@@ -46,15 +50,17 @@ rm -f $TEST_DIAGNOSTICS  2>/dev/null
 
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 
-if [ "$TEST_DIFF_BRIEF" == "" -o ! -e $TEST_BASELINE/$canon ]; then
+if [ ! -e $TEST_BASELINE/$canon ]; then
+    cat $input >>$TEST_DIAGNOSTICS
+elif [ -n "$TEST_DIFF_BRIEF" ]; then
+    echo "<Content not shown>" >>$TEST_DIAGNOSTICS
+else
     if [ `wc -l $input | awk '{print $1}'` -le $MAX_LINES ]; then
         cat $input >>$TEST_DIAGNOSTICS
     else
         head -$MAX_LINES $input >>$TEST_DIAGNOSTICS
         echo "[... File too long, truncated ...]" >>$TEST_DIAGNOSTICS
     fi
-else
-    echo "<Content not shown>" >>$TEST_DIAGNOSTICS
 fi
 
 if [ -e $TEST_BASELINE/$canon ]; then
