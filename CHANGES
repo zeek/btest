@@ -1,4 +1,16 @@
 
+0.54-58 | 2015-10-01 16:04:51 -0700
+
+  * Improved test of TEST_DIFF_FILE_MAX_LINES. (Daniel Thayer)
+
+  * Added ability for a user to override the default number of lines
+    to show for diffs by setting the environment variable
+    TEST_DIFF_FILE_MAX_LINES. Reduced the default to 100. (Daniel
+    Thayer)
+
+  * When no baseline exists, changed btest-diff to always just show
+    the entire file. (Daniel Thayer)
+
 0.54-55 | 2015-08-25 07:47:22 -0700
 
   * Port to Python 3. (Daniel Thayer)
