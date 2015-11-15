@@ -86,7 +86,7 @@ class Test(object):
 
         try:
             subprocess.check_call("btest -S %s" % self.path, shell=True)
-        except (OSError, IOError, subprocess.CalledProcessError), e:
+        except (OSError, IOError, subprocess.CalledProcessError) as e:
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
             # it doesn't pickle.
@@ -111,7 +111,7 @@ class BTestTransform(Transform):
 
         try:
             rawtext = open("%s#%d" % (test.rst_output, part)).read()
-        except IOError, e:
+        except IOError as e:
             rawtext = ""
 
         settings = self.document.settings
