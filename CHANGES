@@ -1,4 +1,8 @@
 
+0.54-60 | 2015-11-16 07:30:38 -0800
+
+  * Updates for Python 3. (Fabian Affolter)
+
 0.54-58 | 2015-10-01 16:04:51 -0700
 
   * Improved test of TEST_DIFF_FILE_MAX_LINES. (Daniel Thayer)
