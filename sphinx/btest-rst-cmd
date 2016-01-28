@@ -42,9 +42,9 @@ for i in input:
 "
 }
 
-stdout=`mktemp -t $(basename $0).XXX`
-cmd_out=`mktemp -t $(basename $0).XXX`
-filter_out=`mktemp -t $(basename $0).XXX`
+stdout=`mktemp -t $(basename $0).XXXXXX`
+cmd_out=`mktemp -t $(basename $0).XXXXXX`
+filter_out=`mktemp -t $(basename $0).XXXXXX`
 tmps="$tmps $stdout $cmd_out $filter_out"
 
 include=$cmd_out
