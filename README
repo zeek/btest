@@ -235,8 +235,12 @@ and 1 otherwise.
     -g GROUPS, --groups=GROUPS
         Runs only tests assigned to the given test groups, see
         `@TEST-GROUP`_. Multiple groups can be given as a
-        comma-separated list. Specifying ``-`` as a group name selects
-        all tests that do not belong to any group.
+        comma-separated list. Specifying groups with a leading ``-``
+        leads to all tests to run that are *not* not part of them.
+        Specifying a sole ``-`` as a group name selects all tests that
+        do not belong to any group. (Note that if you combine these
+        variants to create ambigious situations, it's left
+        undefined which tests will end up running).
 
     -j THREADS, --jobs=THREADS
         Runs up to the given number of tests in parallel. If no number

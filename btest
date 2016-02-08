@@ -1902,13 +1902,25 @@ else:
         tests = Config.configured_tests
 
 if Options.groups:
-    Options.groups = set(Options.groups.split(","))
+    groups = Options.groups.split(",")
+    Options.groups = set([g for g in groups if not g.startswith("-")])
+    Options.no_groups = set([g[1:] for g in groups if g.startswith("-")])
 
     def rightGroup(t):
+        if not t:
+            return True
+
         if t.groups & Options.groups:
             return True
 
-        if "-" in Options.groups and not t.groups:
+        if "" in Options.no_groups:
+            if not t.groups:
+                return True
+
+        elif Options.no_groups:
+            if (t.groups & Options.no_groups):
+                return False
+
             return True
 
         return False
