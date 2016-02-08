@@ -1,4 +1,11 @@
 
+0.54-63 | 2016-02-07 19:39:54 -0800
+
+  * Extending --groups to allow running everything *except* a set of
+    groups. (Robin Sommer)
+
+  * Fix portability issue with use of mktemp. (Daniel Thayer)
+
 0.54-60 | 2015-11-16 07:30:38 -0800
 
   * Updates for Python 3. (Fabian Affolter)
