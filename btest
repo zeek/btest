@@ -32,7 +32,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.54-63" # Automatically filled in.
+VERSION = "0.54-65" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -1219,7 +1219,7 @@ class Diag(OutputHandler):
             if os.path.isfile(f):
                 self.output(test, "  % cat " + os.path.basename(f), True, self._file)
                 for line in open(f):
-                    self.output(test, "  " + line.strip(), True, self._file)
+                    self.output(test, "  " + line.rstrip(), True, self._file)
                 self.output(test, "", True, self._file)
 
         if self.options().wait and not self._file:

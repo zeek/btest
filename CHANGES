@@ -1,4 +1,9 @@
 
+0.54-65 | 2016-02-23 14:00:10 -0800
+
+  * Fine-tuning diagnostic output. It needlessly stripped leading
+    whitespace. (Robin Sommer)
+
 0.54-63 | 2016-02-07 19:39:54 -0800
 
   * Extending --groups to allow running everything *except* a set of
