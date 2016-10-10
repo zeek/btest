@@ -30,15 +30,15 @@ function apply_filter()
 function indent()
 {
     python -c "
-
+from __future__ import print_function
 import sys
-input = sys.stdin.readlines();
+input = sys.stdin.readlines()
 n = 1e10
 for i in input:
     n = min(n, len(i) - len(i.lstrip()))
 
 for i in input:
-    print '      ' + i[n:],
+    print('      ' + i[n:], end='')
 "
 }
 
