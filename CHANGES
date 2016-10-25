@@ -1,4 +1,8 @@
 
+0.55-4 | 2016-10-25 09:31:25 -0700
+
+  * Fix diff-max-lines.test to work on openbsd. (Daniel Thayer)
+
 0.55-2 | 2016-10-10 08:18:54 -0700
 
   * Fix the btest-rst-cmd script to work with Python 3. (Daniel

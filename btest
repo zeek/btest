@@ -32,7 +32,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.55-2" # Automatically filled in.
+VERSION = "0.55-4" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 

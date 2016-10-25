@@ -13,5 +13,5 @@
 # %TEST-EXEC: cat raw | grep -v '+++' | grep -v '\-\-\-' >output2
 # %TEST-EXEC: btest-diff output2
 
-@TEST-EXEC: for i in `seq 1 10`; do echo "Output line $i"; done >child-output
+@TEST-EXEC: awk 'BEGIN{for(i=1;i<=10;i++) print "Output line",i}' >child-output
 @TEST-EXEC: TEST_DIFF_FILE_MAX_LINES=2 btest-diff child-output
