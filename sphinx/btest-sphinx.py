@@ -167,7 +167,7 @@ class BTest(Directive):
 
         out = open(file, "w")
         for line in self.content:
-            print >>out, line
+            out.write("%s\n" % line)
 
         out.close()
 
@@ -252,7 +252,7 @@ class BTestInclude(LiteralInclude):
         Includes.add(test_path)
 
         out = open(test_path, "w")
-        print >>out, "# @TEST-EXEC: cat %INPUT >output && btest-diff output\n"
+        out.write("# @TEST-EXEC: cat %INPUT >output && btest-diff output\n\n")
 
         for i in retnode:
             out.write(i.rawsource)
