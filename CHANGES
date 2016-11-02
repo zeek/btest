@@ -1,4 +1,8 @@
 
+0.56 | 2016-10-31 14:23:57 -0700
+
+  * Release 0.56.
+
 0.55-6 | 2016-10-31 14:23:24 -0700
 
   * Python 3 compatibility fixes for btest-sphinx.py. (Daniel Thayer)
