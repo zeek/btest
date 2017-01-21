@@ -278,7 +278,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             threads = []
 
             for i in range(num_threads):
-                t = multiprocessing.Process(name="#%d" % (i+1), target=lambda : self.threadRun(i))
+                t = multiprocessing.Process(name="#%d" % (i+1), target=lambda: self.threadRun(i))
                 t.start()
                 threads += [t]
 
@@ -315,7 +315,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         while True:
             tests = self.nextTests(thread_num)
-            if tests == None:
+            if tests is None:
                 # No more work for us.
                 return
 
@@ -360,7 +360,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                         if alternative in t.ignore_alternatives:
                             continue
 
-                        if t.include_alternatives and not alternative in t.include_alternatives:
+                        if t.include_alternatives and alternative not in t.include_alternatives:
                             continue
 
                         alternative_test = copy.deepcopy(t)
@@ -372,7 +372,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                         tests += [alternative_test]
 
                 else:
-                    if t.include_alternatives and not "default" in t.include_alternatives:
+                    if t.include_alternatives and "default" not in t.include_alternatives:
                         tests = []
 
                     elif "default" in t.ignore_alternatives:
@@ -571,7 +571,7 @@ class Test(object):
 
         # Make sure all non-optional commands are there.
         for (tag, regexp, multiple, optional, group1, group2) in Commands:
-            if not optional and not tag in cmds:
+            if not optional and tag not in cmds:
                 error("%s: mandatory %s command not found." % (file, tag))
 
         basename = file
@@ -680,7 +680,7 @@ class Test(object):
         self.diagmsgs = []
         self.utime = -1
         self.utime_base = self.mgr.testTimingBaseline(self)
-        self.utime_perc = 0.0;
+        self.utime_perc = 0.0
         self.utime_exceeded = False
 
         self.rmTmp()
@@ -892,7 +892,7 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self, cmd, addl = {}):
+    def prepareEnv(self, cmd, addl={}):
         env = copy.deepcopy(os.environ)
 
         env["TEST_BASELINE"] = self.baseline
@@ -983,7 +983,7 @@ class OutputHandler:
 
     def replayOutput(self, test):
         """Prints out all output buffered in threaded mode by output()."""
-        if not test.name in self._buffered_output:
+        if test.name not in self._buffered_output:
             return
 
         for (msg, nl, file) in self._buffered_output[test.name]:
@@ -1330,7 +1330,7 @@ class XMLReport(OutputHandler):
         self._num_failures = 0
 
     def testStart(self, test):
-        self._num_tests += 1;
+        self._num_tests += 1
 
     def testCommand(self, test, cmdline):
         pass
@@ -1373,7 +1373,7 @@ class XMLReport(OutputHandler):
         self.makeTestCaseElement(test)
 
     def testFailed(self, test, msg):
-        self._num_failures += 1;
+        self._num_failures += 1
         test_case = self.makeTestCaseElement(test)
         e = self._doc.createElement("failure")
         e.setAttribute("type", "fail")
@@ -1447,7 +1447,7 @@ class LinuxTimer(TimerBase):
         try:
             cwd = kwargs["cwd"] if "cwd" in kwargs else "."
             for line in open(os.path.join(cwd, ".timing")):
-                if "instructions" in line and not "not supported" in line:
+                if "instructions" in line and "not supported" not in line:
                     try:
                         m = line.split()
                         utime = int(m[0])
@@ -1728,7 +1728,7 @@ if Options.alternatives:
     # variable, we check to see if we're using an alternative that sets
     # it. We'll use the TestBase from the first matching alternative that
     # does so.
-    if not "BTEST_TEST_BASE" in os.environ:
+    if "BTEST_TEST_BASE" not in os.environ:
         for tag in Options.alternatives:
             base = getOption("BTEST_TEST_BASE", None, section="environment-%s" % tag)
             if base is None:
@@ -1961,4 +1961,3 @@ else:
         output("all %d tests successful" % total)
 
     sys.exit(0)
-
