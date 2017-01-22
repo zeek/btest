@@ -1,0 +1,23 @@
+progress ... 
+  - Foo 1
+  - Foo 2
+  - Foo 3
+progress ... ok
+all 1 tests successful
+---
+  % cat .stderr
+  [btest] -- Foo 1
+  [btest] -- Foo 2
+  [btest] -- Foo 3
+
+all 1 tests successful
+---
+progress ...
+  > /bin/bash %INPUT >&2
+  - Foo 1
+  - Foo 2
+  - Foo 3
+... progress ok
+all 1 tests successful
+---
+---

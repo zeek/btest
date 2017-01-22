@@ -835,6 +835,35 @@ situation:
     not considered a failure in this case. This script also collects
     the processes' stdout and stderr outputs for diagnostics output.
 
+
+.. _progress:
+
+Displaying Progress
+===================
+
+For long-running tests it can be helpful to display progress messages
+during theit execution so that one sees where the test is currently
+at. There's a helper script, `btest-progress`, to faciliate that. The
+script receives a custom message as its sole argument. When executed
+while a test is running, btest will display that message in real-time
+in its standard and verbose outputs.
+
+Example usage::
+
+        # @TEST-EXEC: bash %INPUT
+
+        btest-progress Stage 1
+        sleep 1
+        btest-progress Stage 2
+        sleep 1
+        btest-progress Stage 3
+        sleep 1
+
+When the tests execute, btest will then show these three messages
+successively. By default, ``btest-progress`` also prints the messages
+to the test's standard output. That can be suppressed by adding an
+option ``-q`` to the invocation.
+
 .. _timing:
 
 Timing Execution

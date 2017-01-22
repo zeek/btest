@@ -1,0 +1,36 @@
+#! /usr/bin/env bash
+
+function usage
+{
+    cat <<EOF
+usage: $(basename $0) [-q] <message>
+
+         -q: Do not print message to standard output.
+
+EOF
+    exit 1
+}
+
+### Main.
+
+quiet=0
+
+while getopts ":q" opt; do
+  case $opt in
+    q)
+      quiet=1
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+test $# != 0 || usage
+
+msg="$@"
+
+test "${quiet}" = 1 || echo "[btest] -- ${msg}"
+
+file=".progress.$(date +%s)"
+echo "$@" >${file}

@@ -25,6 +25,7 @@ import resource
 import struct
 import uuid
 import tempfile
+import threading
 from datetime import datetime
 
 try:
@@ -397,6 +398,10 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.testCommand(test, cmdline)
 
+    def testProgress(self, test, msg):
+        with self._lock:
+            self._output_handler.testProgress(test, msg)
+
     def testSucceeded(self, test):
         msg = "ok"
 
@@ -407,6 +412,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         with self._lock:
             self._output_handler.testSucceeded(test, msg)
+            self._output_handler.testFinished(test, msg)
             self._succeeded.value += 1
 
     def testFailed(self, test):
@@ -419,6 +425,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         with self._lock:
             self._output_handler.testFailed(test, msg)
+            self._output_handler.testFinished(test, msg)
             self._failed.value += 1
 
             if not test.known_failure:
@@ -523,6 +530,8 @@ class Test(object):
         self.utime_base = -1
         self.utime_perc = 0.0
         self.utime_exceeded = False
+        self.monitor = None
+        self.monitor_quit = None
 
     def displayName(self):
         name = self.name
@@ -730,6 +739,30 @@ class Test(object):
                 self.finish()
                 return
 
+        # Spawn thread that monitors for progress updates.
+        # Note: We do indeed spawn a thread here, not a process, so
+        # that we the callback can modify the test object to maintain
+        # state.
+        def monitor_cb():
+            path = os.path.join(self.tmpdir, ".progress.*")
+
+            while not self.monitor_quit.is_set():
+                for file in sorted(glob.glob(path)):
+                    try:
+                        msg = open(file).readline().strip()
+                        os.unlink(file)
+                        mgr.testProgress(self, msg)
+                    except IOError:
+                        pass
+
+                time.sleep(0.1)
+
+        self.monitor = threading.Thread(target=monitor_cb)
+        self.monitor_quit = threading.Event()
+        self.monitor.start()
+
+        # Run test's commands.
+
         failures = 0
 
         cmds = []
@@ -805,6 +838,10 @@ class Test(object):
         self.log.close()
         self.stdout.close()
         self.stderr.close()
+
+        if self.monitor:
+            self.monitor_quit.set()
+            self.monitor.join()
 
     def execute(self, cmd, apply_alternative=None):
         filter_cmd = None
@@ -1000,6 +1037,10 @@ class OutputHandler:
         """Called just before a command line is exected for a trace."""
         pass
 
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
+        pass
+
     def testSucceeded(self, test, msg):
         """Called when a test was successful."""
         pass
@@ -1010,6 +1051,13 @@ class OutputHandler:
 
     def testSkipped(self, test, msg):
         """Called when a test is skipped because its dependencies aren't met."""
+        pass
+
+    def testFinished(self, test, msg):
+        """
+        Called just after a test has finished being processed, independent of
+        success or failure. Not called for skipped tests.
+        """
         pass
 
     def finished(self):
@@ -1039,6 +1087,11 @@ class Forwarder(OutputHandler):
         for h in self._handlers:
             h.testCommand(test, cmdline)
 
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
+        for h in self._handlers:
+            h.testProgress(test, msg)
+
     def testSucceeded(self, test, msg):
         """Called when a test was successful."""
         for h in self._handlers:
@@ -1065,37 +1118,61 @@ class Standard(OutputHandler):
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, "%s ..." % test.displayName(), nl=False)
+        test._std_nl = False
 
     def testCommand(self, test, cmdline):
         pass
 
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
+        if not test._std_nl:
+            self.output(test, "")
+
+        self.output(test, "  - " + msg)
+        test._std_nl = True
+
     def testSucceeded(self, test, msg):
-        self.output(test, msg)
+        sys.stdout.flush()
+        self.finalMsg(test, msg)
 
     def testFailed(self, test, msg):
-        self.output(test, msg)
+        self.finalMsg(test, msg)
 
     def testSkipped(self, test, msg):
+        self.finalMsg(test, msg)
+
+    def finalMsg(self, test, msg):
+        if test._std_nl:
+            self.output(test, self.threadPrefix(), nl=False)
+            self.output(test, "%s ..." % test.displayName(), nl=False)
+
         self.output(test, msg)
 
 class Console(OutputHandler):
     """Output handler that writes compact progress report to the console."""
 
-    Green  = "\033[32m"
-    Red    = "\033[31m"
-    Yellow = "\033[33m"
-    Gray   = "\033[37m"
-    Normal = "\033[0m"
+    Green    = "\033[32m"
+    Red      = "\033[31m"
+    Yellow   = "\033[33m"
+    Gray     = "\033[37m"
+    DarkGray = "\033[1;30m"
+    Normal   = "\033[0m"
 
     def __init__(self, options):
         OutputHandler.__init__(self, options)
         self.sticky = False
 
     def testStart(self, test):
+        test.console_last_line = None
         self.consoleOutput(test, "", False)
 
     def testCommand(self, test, cmdline):
         pass
+
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
+        msg = " " + Console.DarkGray + "(%s)" % msg + Console.Normal
+        self.consoleAugment(test, msg)
 
     def testSucceeded(self, test, msg):
         if test.known_failure:
@@ -1117,6 +1194,9 @@ class Console(OutputHandler):
         msg = Console.Gray + msg + Console.Normal
         self.consoleOutput(test, msg, False)
 
+    def testFinished(self, test):
+        test.console_last_line = None
+
     def finished(self):
         sys.stdout.write(chr(27) + '[2K')
         # sys.stdout.write("\r[100%] ")
@@ -1129,11 +1209,24 @@ class Console(OutputHandler):
         if addl:
             line += " " + addl
 
+        test.console_last_line = line
+        self.consoleWrite(test, line, sticky)
+
+    def consoleAugment(self, test, msg):
+        try:
+            line = test.console_last_line
+        except AttributeError:
+            return
+
+        self.consoleWrite(test, line + msg, False)
+
+    def consoleWrite(self, test, line, sticky):
         sys.stdout.write(chr(27) + '[2K')
         sys.stdout.write("\r%s" % line.strip())
 
         if sticky:
             sys.stdout.write("\n")
+            test.console_last_line = None
 
         sys.stdout.flush()
 
@@ -1143,6 +1236,10 @@ class Brief(OutputHandler):
         pass
 
     def testCommand(self, test, cmdline):
+        pass
+
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
         pass
 
     def testSucceeded(self, test, msg):
@@ -1170,6 +1267,10 @@ class Verbose(OutputHandler):
 
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, "  > %s%s" % (cmdline.cmdline, part))
+
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
+        self.output(test, "  - " + msg)
 
     def testSucceeded(self, test, msg):
         self.output(test, self.threadPrefix(), nl=False)

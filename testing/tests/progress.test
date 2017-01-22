@@ -1,0 +1,20 @@
+# %TEST-EXEC: btest %INPUT >output 2>&1
+# %TEST-EXEC: echo --- >>output
+# %TEST-EXEC: btest -bD %INPUT >>output 2>&1
+# %TEST-EXEC: echo --- >>output
+# %TEST-EXEC: btest -v %INPUT >>output 2>&1
+# %TEST-EXEC: echo --- >>output
+# %TEST-EXEC: btest -q %INPUT >>output 2>&1
+# %TEST-EXEC: echo --- >>output
+# %TEST-EXEC: btest-diff output
+
+# @TEST-EXEC: /bin/bash %INPUT >&2
+
+btest-progress Foo 1
+sleep 1
+
+btest-progress Foo 2
+sleep 1
+
+btest-progress Foo 3
+sleep 1
