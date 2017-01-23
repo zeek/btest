@@ -3,6 +3,7 @@
 # %TEST-EXEC-FAIL: btest t7 t8 t9 >>out2 2>&1
 # %TEST-EXEC: btest-diff out1
 # %TEST-EXEC: btest-diff out2
+# %TEST-IGNORE:
 
 %TEST-START-FILE t1
 @TEST-EXEC: echo 1.1 >>../../out1

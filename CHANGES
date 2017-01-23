@@ -1,4 +1,23 @@
 
+0.56-4 | 2017-01-23 19:59:59 -0800
+
+  * New utility btest-progress to display progress messages while a
+    test is executing. These messages appear in real-time while the
+    rest is still running. When stdout is a tty, the progress messages
+    are incorporated into the colored one-line status message. By
+    default, btest-progress also prints the message to a test's
+    standard output. That can be suppressed by giving it an option -q.
+    (Robin Sommer)
+
+  * Experimental automatic generation of test reference documentation.
+    The new command-line option "-R <format>" prints out a list of all
+    tests in either Markdown (format 'md') or reStructuredText (format
+    'rst'). The list includes a documentation string with each test
+    that gets defined through a new "@TEST-DOC: <docstring>"
+    directive. This is experimental. (Robin Sommer)
+
+  * Fix pylint warnings. (Robin Sommer)
+
 0.56 | 2016-10-31 14:23:57 -0700
 
   * Release 0.56.
