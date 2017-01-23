@@ -1,0 +1,5 @@
+# %TEST-DOC: Tests the --documentation option and @TEST-DOC.
+# %TEST-EXEC: btest -R rst >rst
+# %TEST-EXEC: btest-diff rst
+# %TEST-EXEC: btest -R md >md
+# %TEST-EXEC: btest-diff md

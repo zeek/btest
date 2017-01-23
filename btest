@@ -526,6 +526,7 @@ class Test(object):
         self.cloned = False
         self.known_failure = False
         self.measure_time = False
+        self.doc = None
         self.utime = -1
         self.utime_base = -1
         self.utime_perc = 0.0
@@ -638,6 +639,9 @@ class Test(object):
         if "measure-time" in cmds:
             self.measure_time = True
 
+        if "doc" in cmds:
+            self.doc = cmds["doc"]
+
         return True
 
     # Copies all control information over to a new Test but replacing the test's
@@ -652,6 +656,7 @@ class Test(object):
         clone.cmdlines = self.cmdlines
         clone.known_failure = self.known_failure
         clone.measure_time = self.measure_time
+        clone.doc = self.doc
 
         assert(len(self.contents) == 1)
         clone.contents = [(self.contents[0][0], content)]
@@ -1756,6 +1761,41 @@ def jOption(default):
 
     return func
 
+# Output markup language documenting tests.
+def outputDocumentation(tests, format):
+    def indent(i):
+        return "    " * i
+
+    def doc(t):
+        return t.doc if t.doc else "No documentation."
+
+    sections = {}
+
+    for t in tests:
+        ids = t.name.split(".")
+        path = ".".join(ids[:-1])
+        s = sections.setdefault(path, [])
+        s.append(t)
+
+    for (s, tests) in sections.items():
+        if format == "rst":
+            print("%s" % s)
+            print("-" * len(s))
+            print()
+
+            for t in tests:
+                print("%s``%s``:" % (indent(1), t.name))
+                print("%s%s\n" % (indent(2), doc(t)))
+
+        if format == "md":
+            print("# %s" % s)
+            print()
+
+            for t in tests:
+                print("%s* `%s`: %s" % (indent(0), t.name, doc(t)))
+
+            print()
+
 ### Main
 
 optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
@@ -1795,6 +1835,8 @@ optparser.add_option("-S", "--sphinx", action="store_true", dest="sphinx", defau
                      help="indicates that we're running from inside Sphinx; for internal purposes")
 optparser.add_option("-T", "--update-times", action="store_true", dest="update_times", default=False,
                      help="create a new timing baseline for tests being measured")
+optparser.add_option("-R", "--documentation", action="store", type="choice", dest="doc", choices=("rst", "md"), metavar="format", default=None,
+                     help="Output documentation for tests, supported formats: rst, md")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -1966,8 +2008,9 @@ RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALT
 RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
 RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
 RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
+RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), False, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
@@ -2032,10 +2075,14 @@ if not tests:
     output("no tests to execute")
     sys.exit(0)
 
+tests = mergeTestParts(tests)
+
+if Options.doc:
+    outputDocumentation(tests, Options.doc)
+    sys.exit(0)
+
 mkdir(BaselineDir)
 mkdir(TmpDir)
-
-tests = mergeTestParts(tests)
 
 try:
     # Building our own path to avoid "error: AF_UNIX path too long" on

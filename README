@@ -263,6 +263,13 @@ and 1 otherwise.
         the next run then reads that file back in and limits execution
         to those tests found in there.
 
+    -R FORMAT, --documentation=FORMAT
+        Generates a reference of all tests and prints that to standard
+        output. The output can be of two types, specified by
+        ``FORMAT``: ``rst`` prints ReStructuredText, and ``md`` prints
+        MarkDown. In the output each test incudes the documentation
+        string that's defined for it through ``@TEST-DOC``.
+
     -t, --tmp-keep
         Does not delete any temporary files created for running the
         tests (including their outputs). By default, the temporary
@@ -728,6 +735,10 @@ supported:
     test commands in this file will be executed).  An alternative way to
     ignore files is by using the ``IgnoreFiles`` option in the btest
     configuration file.
+
+``@TEST-DOC <docstring>``
+    Associated a documentations string with the test. These strings
+    get included into the output of the ``--documentation`` option.
 
 .. _@TEST-GROUP:
 
