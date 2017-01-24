@@ -33,7 +33,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.56-4" # Automatically filled in.
+VERSION = "0.56-5" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -805,6 +805,7 @@ class Test(object):
 
                 if rc == 200:
                     # Abort all tests.
+                    self.monitor_quit.set()
                     sys.exit(1)
 
                 if rc != 100:
