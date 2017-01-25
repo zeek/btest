@@ -9,7 +9,7 @@
 # %TEST-EXEC: echo --- >>output
 # %TEST-EXEC: btest-diff output
 
-# @TEST-EXEC: /bin/bash %INPUT >&2
+# @TEST-EXEC: bash %INPUT >&2
 
 btest-progress Foo 1
 sleep 1
