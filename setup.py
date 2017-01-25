@@ -23,10 +23,23 @@ py_modules = [
 setup(name='btest',
       version="0.56-5", # Filled in automatically.
       description='A simple unit testing framework',
+      long_description='See https://github.com/bro/btest',
       author='Robin Sommer',
       author_email='robin@icir.org',
-      url='http://www.icir.org/robin/btest',
+      url='https://github.com/bro/btest',
       scripts=scripts,
       package_dir={"": "sphinx"},
-      py_modules=py_modules
+      py_modules=py_modules,
+      license='3-clause BSD License',
+      keywords='unit tests testing framework baselines',
+      classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: POSIX :: Linux',
+        'Operating System :: MacOS :: MacOS X',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Topic :: Utilities',
+      ],
      )
