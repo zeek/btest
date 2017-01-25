@@ -19,6 +19,7 @@ while getopts ":q" opt; do
   case $opt in
     q)
       quiet=1
+      shift
       ;;
     *)
       usage

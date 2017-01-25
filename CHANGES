@@ -1,4 +1,16 @@
 
+0.56-10 | 2017-01-25 13:04:07 -0800
+
+  * Fix a failing test on FreeBSD. (Daniel Thayer)
+
+  * Fix a bug in btest-progress when using the "-q" option. (Daniel
+    Thayer)
+
+  * Fix some trivial errors in documentation and Makefile. (Daniel
+    Thayer)
+
+  * Add 'upload' Makefile target to upload to PyPi. (Jon Siwek)
+
 0.56-5 | 2017-01-24 08:45:29 -0800
 
   * Bugfix for recent btest-progress changes. (Robin Sommer)
@@ -201,16 +213,16 @@
           output.
 
         - Fix to enable Pygments coloring in output.
-          
+
 0.5 | 2013-09-20 14:48:01 -0700
 
   * Fix the btest-rst-pipe script. (Daniel Thayer)
 
   * A set of of documentation fixes, clarifications, and extensions.
     (Daniel Thayer)
-    
+
   * A set of changes to Sphinx commands and directives. (Robin Sommer)
-    
+
     btest-rst-*:
         - Always show line numbers.
 
@@ -237,9 +249,9 @@
 0.4-60 | 2013-08-28 18:54:51 -0700
 
   * Fix typos and reST formatting in README (Daniel Thayer)
-    
+
   * Fix a couple of error messages. (Daniel Thayer)
-    
+
   * Fixed a reference to a non-existent variable which was causing the
     "-w" option to have no effect. (Daniel Thayer)
 
@@ -262,7 +274,7 @@
 
   * Improve cleanup of processes that don't terminate with
     btest-bg-wait. (Jon Siwek)
- 
+
 0.4-49 | 2013-08-13 18:43:03 -0700
 
   * Fixing test portability problems. (Daniel Thayer)
@@ -299,9 +311,9 @@
           now process it in two passes: one to save the test at parse
           time, and one later to execute once everything has been
           parsed.
-          
+
         * Adding Sphinx sandbox for testing.
-          
+
   * Fix for tests returning no output to render at all. (Robin Sommer)
 
 0.4-28 | 2013-07-17 21:56:18 -0700
@@ -330,9 +342,9 @@
     Sommer)
 
   * IgnoreDirs now also works for sub directories. (Robin Sommer)
-    
+
   * Documentation updates. (Robin Sommer)
-    
+
   * Adding "Initializer" option, which runs a command before each
     test. (Robin Sommer)
 
@@ -354,7 +366,7 @@
     that BTest runs without any alternative given. (Robin Sommer)
 
   * Fix for alternative names containing white spaces. (Robin Sommer)
-    
+
 0.4-14 | 2013-01-23 18:11:22 -0800
 
   * Fixing links in README and removing TODOs. (Robin Sommer)
@@ -367,7 +379,7 @@
 0.4-11 | 2013-01-21 17:50:40 -0800
 
   * Adding a new "alternative" concept that combines filters and
-    substitutions, and adds per-alternative environment variables. 
+    substitutions, and adds per-alternative environment variables.
     (Robin Sommer)
 
     Instead of defining filters and substitutions separately, one now
@@ -422,10 +434,10 @@
 
   * Clarify explanation about expansion of environment variables.
     (Daniel Thayer)
-    
+
   * Fix errors in README and btest help output; added documentation
     for the -q option. (Daniel Thayer)
-    
+
   * Fixed a bug in btest where it was looking for "filters-" (instead
     of "filter-") in the btest config file. (Daniel Thayer)
 
@@ -441,7 +453,7 @@
     document. See README for more information.
 
   * Fixing typos, plus an console output tweak. (Robin Sommer)
-    
+
   * Option -q now implies -b as well. (Robin Sommer)
 
 0.31-33 | 2012-05-13 17:08:15 -0700
@@ -488,7 +500,7 @@
     non-terminal, is switches back to the old style. (Robin Sommer)
 
   * New test command @TEST-NO-FILTER: <filter>
-    
+
     This allows to ignore a test when running a specific filter. (Robin Sommer)
 
   * Changing the way filters are activated.
@@ -513,7 +525,7 @@
     in btest.cfg. (Robin Sommer)
 
   * Adding a new "finalizer" option.
-    
+
     ``Finalizer``
         An executable that will be executed each time any test has
         succesfully run. It runs in the same directory as the test itself
@@ -537,7 +549,7 @@
     (Robin Sommer)
 
   * Adding parallel test execution to btest. (Robin Sommer)
-    
+
         - A new option "-j <n>" allows to run up to <n> tests in
           parallel.
 

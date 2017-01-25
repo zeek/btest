@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.56-5
+.. |version| replace:: 0.56-10
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -266,8 +266,8 @@ and 1 otherwise.
     -R FORMAT, --documentation=FORMAT
         Generates a reference of all tests and prints that to standard
         output. The output can be of two types, specified by
-        ``FORMAT``: ``rst`` prints ReStructuredText, and ``md`` prints
-        MarkDown. In the output each test incudes the documentation
+        ``FORMAT``: ``rst`` prints reStructuredText, and ``md`` prints
+        Markdown. In the output each test includes the documentation
         string that's defined for it through ``@TEST-DOC``.
 
     -t, --tmp-keep
@@ -737,7 +737,7 @@ supported:
     configuration file.
 
 ``@TEST-DOC <docstring>``
-    Associated a documentations string with the test. These strings
+    Associates a documentation string with the test. These strings
     get included into the output of the ``--documentation`` option.
 
 .. _@TEST-GROUP:
@@ -853,8 +853,8 @@ Displaying Progress
 ===================
 
 For long-running tests it can be helpful to display progress messages
-during theit execution so that one sees where the test is currently
-at. There's a helper script, `btest-progress`, to faciliate that. The
+during their execution so that one sees where the test is currently
+at. There's a helper script, `btest-progress`, to facilitate that. The
 script receives a custom message as its sole argument. When executed
 while a test is running, btest will display that message in real-time
 in its standard and verbose outputs.
