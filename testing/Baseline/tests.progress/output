@@ -7,7 +7,6 @@ all 1 tests successful
 ---
   % cat .stderr
   [btest] -- Foo 1
-  [btest] -- Foo 2
   [btest] -- Foo 3
 
 all 1 tests successful

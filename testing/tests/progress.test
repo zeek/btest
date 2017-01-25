@@ -14,7 +14,7 @@
 btest-progress Foo 1
 sleep 1
 
-btest-progress Foo 2
+btest-progress -q Foo 2
 sleep 1
 
 btest-progress Foo 3
