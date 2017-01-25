@@ -746,7 +746,7 @@ class Test(object):
 
         # Spawn thread that monitors for progress updates.
         # Note: We do indeed spawn a thread here, not a process, so
-        # that we the callback can modify the test object to maintain
+        # that the callback can modify the test object to maintain
         # state.
         def monitor_cb():
             path = os.path.join(self.tmpdir, ".progress.*")

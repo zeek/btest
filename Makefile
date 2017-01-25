@@ -9,7 +9,7 @@ dist:
 	python setup.py sdist -d build
 	@printf "Package: "; echo build/*.tar.gz
 
-.PHONY:
+.PHONY: upload
 upload: twine-check dist
 	twine upload -u bro build/btest-$(VERSION).tar.gz
 
