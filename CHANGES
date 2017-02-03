@@ -1,4 +1,8 @@
 
+0.56-11 | 2017-02-03 12:38:01 -0800
+
+  * Adding btest-progress to setup.py. (Robin Sommer)
+
 0.56-10 | 2017-01-25 13:04:07 -0800
 
   * Fix a failing test on FreeBSD. (Daniel Thayer)
