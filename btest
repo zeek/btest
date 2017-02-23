@@ -33,7 +33,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.56-11" # Automatically filled in.
+VERSION = "0.56-13" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -2088,7 +2088,20 @@ mkdir(TmpDir)
 try:
     # Building our own path to avoid "error: AF_UNIX path too long" on
     # some platforms. See BIT-862.
-    addr = os.path.join("%s", "btest-socket-%d") % (tempfile.gettempdir(), os.getpid())
+    sname = "btest-socket-%d" % os.getpid()
+    addr = os.path.join(tempfile.gettempdir(), sname)
+
+    # Check if the pathname is too long to fit in struct sockaddr_un (the
+    # maximum length is system-dependent, so here we just use 100, which seems
+    # a safe default choice).
+    if len(addr) > 100:
+        # Try relative path to TmpDir (which would usually be ".tmp").
+        addr = os.path.join(os.path.relpath(TmpDir), sname)
+
+        # If the path is still too long, then use the global tmp directory.
+        if len(addr) > 100:
+            addr = os.path.join("/tmp", sname)
+
     (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
 except KeyboardInterrupt:
