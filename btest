@@ -1224,6 +1224,9 @@ class Console(OutputHandler):
         except AttributeError:
             return
 
+        if line is None:
+            return
+
         self.consoleWrite(test, line + msg, False)
 
     def consoleWrite(self, test, line, sticky):
