@@ -1,24 +1,26 @@
-progress ... 
+progress-back-to-back ... 
   - Foo 1
   - Foo 2
   - Foo 3
-progress ... ok
+progress-back-to-back ... ok
 all 1 tests successful
 ---
   % cat .stderr
   [btest] -- Foo 1
   [btest] -- Foo 1
+  [btest] -- Foo 2
+  [btest] -- Foo 2
   [btest] -- Foo 3
   [btest] -- Foo 3
 
 all 1 tests successful
 ---
-progress ...
+progress-back-to-back ...
   > bash %INPUT >&2
   - Foo 1
   - Foo 2
   - Foo 3
-... progress ok
+... progress-back-to-back ok
 all 1 tests successful
 ---
 ---

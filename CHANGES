@@ -1,4 +1,13 @@
 
+0.56-16 | 2017-03-02 15:57:05 -0800
+
+  * Fixing missing output for back-to-back btest-progress calls.
+    Addresses BIT-1800. (Robin Sommer)
+
+  * Fix for augmented output to console. (Robin Sommer)
+
+  * Send btest-progress output to stderr as well. (Robin Sommer)
+
 0.56-13 | 2017-02-23 10:14:56 -0800
 
   * Prevent socket path length from exceeding system limits. Addresses

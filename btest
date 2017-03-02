@@ -33,7 +33,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.56-13" # Automatically filled in.
+VERSION = "0.56-16" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -403,6 +403,8 @@ class TestManager(multiprocessing.managers.SyncManager):
             self._output_handler.testProgress(test, msg)
 
     def testSucceeded(self, test):
+        test.parseProgress()
+
         msg = "ok"
 
         if test.known_failure:
@@ -416,6 +418,8 @@ class TestManager(multiprocessing.managers.SyncManager):
             self._succeeded.value += 1
 
     def testFailed(self, test):
+        test.parseProgress()
+
         msg = "failed"
 
         if test.known_failure:
@@ -749,17 +753,8 @@ class Test(object):
         # that the callback can modify the test object to maintain
         # state.
         def monitor_cb():
-            path = os.path.join(self.tmpdir, ".progress.*")
-
             while not self.monitor_quit.is_set():
-                for file in sorted(glob.glob(path)):
-                    try:
-                        msg = open(file).readline().strip()
-                        os.unlink(file)
-                        mgr.testProgress(self, msg)
-                    except IOError:
-                        pass
-
+                self.parseProgress()
                 time.sleep(0.1)
 
         self.monitor = threading.Thread(target=monitor_cb)
@@ -963,6 +958,19 @@ class Test(object):
             return " (%+.1f%%)" % self.utime_perc
         else:
             return ""
+
+    # Picks up any progress output that has a test has written out.
+    def parseProgress(self):
+        path = os.path.join(self.tmpdir, ".progress.*")
+        for file in sorted(glob.glob(path)):
+            try:
+                for line in open(file):
+                    msg = line.strip()
+                    self.mgr.testProgress(self, msg)
+
+                os.unlink(file)
+            except IOError:
+                pass
 
 ### Output handlers.
 

@@ -34,4 +34,4 @@ msg="$@"
 test "${quiet}" = 1 || (echo "[btest] -- ${msg}" | tee /dev/stderr)
 
 file=".progress.$(date +%s)"
-echo "$@" >${file}
+echo "$@" >>${file}
