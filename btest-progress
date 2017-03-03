@@ -5,7 +5,7 @@ function usage
     cat <<EOF
 usage: $(basename $0) [-q] <message>
 
-         -q: Do not print message to standard output.
+         -q: Do not print message to standard output or standard error.
 
 EOF
     exit 1
@@ -29,9 +29,9 @@ done
 
 test $# != 0 || usage
 
-msg="$@"
+msg="[btest] -- $@"
 
-test "${quiet}" = 1 || (echo "[btest] -- ${msg}" | tee /dev/stderr)
+test "${quiet}" = 1 || (echo "${msg}"; echo "${msg}" >&2)
 
 file=".progress.$(date +%s)"
 echo "$@" >>${file}

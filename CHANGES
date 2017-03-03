@@ -1,4 +1,9 @@
 
+0.56-19 | 2017-03-03 12:50:42 -0800
+
+  * Fix btest-progress output to stderr when run from btest. (Daniel
+    Thayer)
+
 0.56-17 | 2017-03-02 16:24:31 -0800
 
   * Cosmectics for progress output: Delete it before asking for
