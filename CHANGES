@@ -1,5 +1,8 @@
 
-0.56-16 | 2017-03-02 15:57:05 -0800
+0.56-17 | 2017-03-02 16:24:31 -0800
+
+  * Cosmectics for progress output: Delete it before asking for
+    baseline updates. (Robin Sommer)
 
   * Fixing missing output for back-to-back btest-progress calls.
     Addresses BIT-1800. (Robin Sommer)

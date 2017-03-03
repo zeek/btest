@@ -26,6 +26,7 @@ import struct
 import uuid
 import tempfile
 import threading
+import atexit
 from datetime import datetime
 
 try:
@@ -33,7 +34,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.56-16" # Automatically filled in.
+VERSION = "0.56-17" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -1165,20 +1166,27 @@ class Standard(OutputHandler):
 class Console(OutputHandler):
     """Output handler that writes compact progress report to the console."""
 
-    Green    = "\033[32m"
-    Red      = "\033[31m"
-    Yellow   = "\033[33m"
-    Gray     = "\033[37m"
-    DarkGray = "\033[1;30m"
-    Normal   = "\033[0m"
+    Green      = "\033[32m"
+    Red        = "\033[31m"
+    Yellow     = "\033[33m"
+    Gray       = "\033[37m"
+    DarkGray   = "\033[1;30m"
+    Normal     = "\033[0m"
+    CursorOff  = "\033[?25l"
+    CursorOn   = "\033[?25h"
+    DeleteLine = "\033[2K"
 
     def __init__(self, options):
         OutputHandler.__init__(self, options)
         self.sticky = False
 
+        # Ensure restoring cursor state at end.
+        atexit.register(lambda: sys.stdout.write(Console.CursorOn))
+
     def testStart(self, test):
         test.console_last_line = None
         self.consoleOutput(test, "", False)
+        sys.stdout.write(Console.CursorOff)
 
     def testCommand(self, test, cmdline):
         pass
@@ -1212,9 +1220,9 @@ class Console(OutputHandler):
         test.console_last_line = None
 
     def finished(self):
-        sys.stdout.write(chr(27) + '[2K')
-        # sys.stdout.write("\r[100%] ")
+        sys.stdout.write(Console.DeleteLine)
         sys.stdout.write("\r")
+        sys.stdout.write(Console.CursorOn)
         sys.stdout.flush()
 
     def consoleOutput(self, test, addl, sticky):
@@ -1227,15 +1235,9 @@ class Console(OutputHandler):
         self.consoleWrite(test, line, sticky)
 
     def consoleAugment(self, test, msg):
-        try:
-            line = test.console_last_line
-        except AttributeError:
-            return
-
-        if line is None:
-            return
-
-        self.consoleWrite(test, line + msg, False)
+        sys.stdout.write(" %s" % msg.strip())
+        sys.stdout.write("\r%s" % test.console_last_line)
+        sys.stdout.flush()
 
     def consoleWrite(self, test, line, sticky):
         sys.stdout.write(chr(27) + '[2K')
