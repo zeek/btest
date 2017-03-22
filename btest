@@ -34,7 +34,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.56-19" # Automatically filled in.
+VERSION = "0.56-20" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -970,7 +970,7 @@ class Test(object):
                     self.mgr.testProgress(self, msg)
 
                 os.unlink(file)
-            except IOError:
+            except (IOError, OSError):
                 pass
 
 ### Output handlers.

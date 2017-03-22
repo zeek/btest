@@ -1,4 +1,8 @@
 
+0.56-20 | 2017-03-21 17:56:10 -0700
+
+  * Catching exception that wasn't caught. (Robin Sommer)
+
 0.56-19 | 2017-03-03 12:50:42 -0800
 
   * Fix btest-progress output to stderr when run from btest. (Daniel
