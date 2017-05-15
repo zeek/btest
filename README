@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.56-21
+.. |version| replace:: 0.56-22
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests

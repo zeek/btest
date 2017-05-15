@@ -1,4 +1,8 @@
 
+0.56-22 | 2017-05-15 16:13:23 -0700
+
+  * Fixing broken version numbers. (Robin Sommer)
+
 0.56-21 | 2017-05-15 16:05:18 -0700
 
   * Catching CTRL-C and cleaning up. (Robin Sommer)
