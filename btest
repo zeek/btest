@@ -26,7 +26,7 @@ import struct
 import uuid
 import tempfile
 import threading
-import atexit
+import signal
 from datetime import datetime
 
 try:
@@ -34,7 +34,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.56-20" # Automatically filled in.
+VERSION = "release-21" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -313,6 +313,8 @@ class TestManager(multiprocessing.managers.SyncManager):
         return 100.0 * count / self._num_tests
 
     def threadRun(self, thread_num):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+
         all_tests = []
 
         while True:
@@ -324,16 +326,8 @@ class TestManager(multiprocessing.managers.SyncManager):
             all_tests += tests
 
             for t in tests:
-                try:
-                    t.run(self)
-                    self.testReplayOutput(t)
-                except KeyboardInterrupt:
-                    if Options.threads:
-                        # Caught by parent thread.
-                        return
-                    else:
-                        # Rethrow
-                        raise
+                t.run(self)
+                self.testReplayOutput(t)
 
             if Options.update_times:
                 self.saveTiming(all_tests)
@@ -1179,9 +1173,6 @@ class Console(OutputHandler):
     def __init__(self, options):
         OutputHandler.__init__(self, options)
         self.sticky = False
-
-        # Ensure restoring cursor state at end.
-        atexit.register(lambda: sys.stdout.write(Console.CursorOn))
 
     def testStart(self, test):
         test.console_last_line = None
@@ -2117,11 +2108,12 @@ try:
 
     (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
-except KeyboardInterrupt:
-    print("Aborted.", file=sys.stderr)
-    sys.exit(1)
+    output_handler.finished()
 
-output_handler.finished()
+except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
+    output_handler.finished()
+    print("Aborted.", file=sys.stderr)
+    os._exit(1)
 
 if failed > 0:
     skipped = (", %d skipped" % skipped) if skipped > 0 else ""
