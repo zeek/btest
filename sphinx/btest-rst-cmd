@@ -3,7 +3,7 @@
 # Executes a command and formats the command and its stdout in reST.
 #
 
-trap "rm -f $tmps; exit" INT TERM EXIT
+trap cleanup INT TERM EXIT
 
 function usage()
 {
@@ -40,6 +40,12 @@ for i in input:
 for i in input:
     print('      ' + i[n:], end='')
 "
+}
+
+function cleanup()
+{
+    rm -f $tmps
+    exit
 }
 
 stdout=`mktemp -t $(basename $0).XXXXXX`
