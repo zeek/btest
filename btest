@@ -1170,9 +1170,9 @@ class Console(OutputHandler):
     CursorOn   = "\033[?25h"
     DeleteLine = "\033[2K"
 
-    def __init__(self, options):
+    def __init__(self, options, sticky=False):
         OutputHandler.__init__(self, options)
-        self.sticky = False
+        self.sticky = sticky
 
     def testStart(self, test):
         test.console_last_line = None
@@ -1193,7 +1193,7 @@ class Console(OutputHandler):
         else:
             msg = Console.Green + msg + Console.Normal
 
-        self.consoleOutput(test, msg, False)
+        self.consoleOutput(test, msg, self.sticky)
 
     def testFailed(self, test, msg):
         if test.known_failure:
@@ -1205,7 +1205,7 @@ class Console(OutputHandler):
 
     def testSkipped(self, test, msg):
         msg = Console.Gray + msg + Console.Normal
-        self.consoleOutput(test, msg, False)
+        self.consoleOutput(test, msg, self.sticky)
 
     def testFinished(self, test):
         test.console_last_line = None
@@ -1831,7 +1831,7 @@ optparser.add_option("-g", "--groups", action="store", type="string", dest="grou
 optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
                      help="execute commands for tests that failed last time")
 optparser.add_option("-q", "--quiet", action="store_true", dest="quiet", default=False,
-                     help="suppress information output other than about failed tests")
+                     help="suppress information output other than about failed tests; implies --brief")
 optparser.add_option("-x", "--xml", action="store", type="string", dest="xmlfile", default="",
                      help="write a report of test results in JUnit XML format to file; if file exists, it is overwritten")
 optparser.add_option("-a", "--alternative", action="store", type="string", dest="alternatives", default=None,
@@ -1907,13 +1907,14 @@ output_handlers = []
 
 if Options.verbose:
     output_handlers += [Verbose(Options, )]
-
-elif Options.brief:
-    output_handlers += [Brief(Options, )]
-
-else:
-    if sys.stdout.isatty():
+elif sys.stdout.isatty():
+    if Options.brief:
         output_handlers += [Console(Options, )]
+    else:
+        output_handlers += [Console(Options, sticky=True)]
+else:
+    if Options.brief:
+        output_handlers += [Brief(Options, )]
     else:
         output_handlers += [Standard(Options, )]
 
