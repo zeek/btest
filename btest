@@ -1172,7 +1172,6 @@ class Console(OutputHandler):
 
     def __init__(self, options):
         OutputHandler.__init__(self, options)
-        self.sticky = False
 
     def testStart(self, test):
         test.console_last_line = None
@@ -1193,7 +1192,7 @@ class Console(OutputHandler):
         else:
             msg = Console.Green + msg + Console.Normal
 
-        self.consoleOutput(test, msg, False)
+        self.consoleOutput(test, msg, self.options().show_all)
 
     def testFailed(self, test, msg):
         if test.known_failure:
@@ -1205,7 +1204,7 @@ class Console(OutputHandler):
 
     def testSkipped(self, test, msg):
         msg = Console.Gray + msg + Console.Normal
-        self.consoleOutput(test, msg, False)
+        self.consoleOutput(test, msg, self.options().show_all)
 
     def testFinished(self, test):
         test.console_last_line = None
@@ -1842,6 +1841,8 @@ optparser.add_option("-T", "--update-times", action="store_true", dest="update_t
                      help="create a new timing baseline for tests being measured")
 optparser.add_option("-R", "--documentation", action="store", type="choice", dest="doc", choices=("rst", "md"), metavar="format", default=None,
                      help="Output documentation for tests, supported formats: rst, md")
+optparser.add_option("-A", "--show-all", action="store_true", default=False,
+                     help="For console output, show one-liners for passing/skipped tests in addition to any failing ones")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
