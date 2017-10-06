@@ -1,4 +1,16 @@
 
+0.57-5 | 2017-10-06 15:01:23 -0700
+
+  * Additional control over TTY-based output handling This adds
+    -A|--show-all, which makes console output preserve output lines
+    for passing/skipped tests.  (Christian Kreibich)
+
+  * Fix btest-rst-cmd script to remove tmp files. (Daniel Thayer)
+
+  * Added TMPDIR to btest.cfg so that temporary files are stored in a
+    local directory instead of a system-wide tmp directory. (Daniel
+    Thayer)
+
 0.57 | 2017-05-15 16:13:33 -0700
 
   * Release 0.57.
