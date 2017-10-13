@@ -1,0 +1,21 @@
+# %TEST-REQUIRES: ! script -q -c ls /dev/null
+#
+# @TEST-DOC The following pretends a TTY for two btest invocations, one
+# @TEST-DOC preserving all tests output, the other swallowing the successful
+# @TEST-DOC tests. With one failing test and one succeeding one, plus an
+# @TEST-DOC additional summary line, this makes two lines of output for the
+# @TEST-DOC first invocation and three for the second.
+#
+# %TEST-EXEC: script -q /dev/null btest t1 t2 | wc -l | awk '{ print $1 }' >output 2>&1
+# %TEST-EXEC: script -q /dev/null btest --show-all t1 t2 | wc -l | awk '{ print $1 }' >>output 2>&1
+# %TEST-EXEC: btest-diff output
+
+%TEST-START-FILE t1
+@TEST-EXEC: echo "A successful dummy test"
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE t2
+@TEST-EXEC: echo "A failing dummy test"
+@TEST-EXEC: exit 1
+%TEST-END-FILE
