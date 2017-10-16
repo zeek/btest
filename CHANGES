@@ -1,4 +1,9 @@
 
+0.57-7 | 2017-10-16 12:18:28 -0700
+
+  * Fix the console.test to work on FreeBSD and macOS. (Christian
+    Kreibich/Daniel Thayer)
+
 0.57-5 | 2017-10-06 15:01:23 -0700
 
   * Additional control over TTY-based output handling This adds
