@@ -1,13 +1,17 @@
 # %TEST-REQUIRES: which script
 #
+# This test doesn't work on OpenBSD, because the "script" command lacks the
+# necessary options.
+# %TEST-REQUIRES: test `uname` != "OpenBSD"
+#
 # @TEST-DOC The following pretends a TTY for two btest invocations, one
 # @TEST-DOC preserving all tests output, the other swallowing the successful
 # @TEST-DOC tests. With one failing test and one succeeding one, plus an
 # @TEST-DOC additional summary line, this makes two lines of output for the
 # @TEST-DOC first invocation and three for the second.
 #
-# %TEST-EXEC: script -qfc "btest t1 t2" /dev/null | wc -l >output 2>&1
-# %TEST-EXEC: script -qfc "btest --show-all t1 t2" /dev/null | wc -l >>output 2>&1
+# %TEST-EXEC: script-command "btest t1 t2" | wc -l | awk '{print $1}' >output 2>&1
+# %TEST-EXEC: script-command "btest --show-all t1 t2" | wc -l | awk '{print $1}' >>output 2>&1
 # %TEST-EXEC: btest-diff output
 
 %TEST-START-FILE t1
