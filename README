@@ -736,7 +736,7 @@ supported:
     ignore files is by using the ``IgnoreFiles`` option in the btest
     configuration file.
 
-``@TEST-DOC <docstring>``
+``@TEST-DOC: <docstring>``
     Associates a documentation string with the test. These strings
     get included into the output of the ``--documentation`` option.
 

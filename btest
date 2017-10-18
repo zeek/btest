@@ -525,7 +525,7 @@ class Test(object):
         self.cloned = False
         self.known_failure = False
         self.measure_time = False
-        self.doc = None
+        self.doc = []
         self.utime = -1
         self.utime_base = -1
         self.utime_perc = 0.0
@@ -678,6 +678,7 @@ class Test(object):
         self.requires += part.requires
         self.copy_files += part.copy_files
         self.contents += part.contents
+        self.doc += part.doc
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
 
@@ -1771,7 +1772,7 @@ def outputDocumentation(tests, format):
         return "    " * i
 
     def doc(t):
-        return t.doc if t.doc else "No documentation."
+        return t.doc if t.doc else ["No documentation."]
 
     sections = {}
 
@@ -1789,14 +1790,18 @@ def outputDocumentation(tests, format):
 
             for t in tests:
                 print("%s``%s``:" % (indent(1), t.name))
-                print("%s%s\n" % (indent(2), doc(t)))
+                for d in doc(t):
+                    print("%s%s" % (indent(2), d))
+                print()
 
         if format == "md":
             print("# %s" % s)
             print()
 
             for t in tests:
-                print("%s* `%s`: %s" % (indent(0), t.name, doc(t)))
+                print("* `%s`:" % t.name)
+                for d in doc(t):
+                    print("%s%s" % (indent(1), d))
 
             print()
 
@@ -2014,7 +2019,7 @@ RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALT
 RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
 RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
 RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
-RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), False, True, 1, -1)
+RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
 
 Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
 
