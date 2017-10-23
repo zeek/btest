@@ -205,6 +205,12 @@ and 1 otherwise.
         that refers to running with the standard setup, which can be used
         to run tests both with and without alternatives by giving both.
 
+    -A, --show-all
+        Shows an output line for all tests that were run (this includes tests
+        that passed, failed, or were skipped), rather than only failed tests.
+        Note that this option has no effect when btest's stdout is not a TTY
+        (because all tests are shown in that case).
+
     -b, --brief
         Does not output *anything* for tests which pass. If all tests
         pass, there will not be any output at all except final summary
@@ -736,7 +742,7 @@ supported:
     ignore files is by using the ``IgnoreFiles`` option in the btest
     configuration file.
 
-``@TEST-DOC <docstring>``
+``@TEST-DOC: <docstring>``
     Associates a documentation string with the test. These strings
     get included into the output of the ``--documentation`` option.
 

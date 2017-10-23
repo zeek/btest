@@ -1,5 +1,50 @@
-# %TEST-DOC: Tests the --documentation option and @TEST-DOC.
-# %TEST-EXEC: btest -R rst >rst
+# %TEST-DOC: Test the --documentation option and @TEST-DOC.
+# %TEST-EXEC: btest -R rst test test2 >rst
 # %TEST-EXEC: btest-diff rst
-# %TEST-EXEC: btest -R md >md
+# %TEST-EXEC: btest -R md test test2 >md
 # %TEST-EXEC: btest-diff md
+
+%TEST-START-FILE test/t1
+@TEST-DOC: This is a single-line TEST-DOC comment.
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE test/t2
+# This test does not have a TEST-DOC keyword.
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE test/t3
+@TEST-DOC: This is a multi-line TEST-DOC comment.
+@TEST-DOC: This is the 2nd line.
+@TEST-EXEC: exit 0
+@TEST-DOC: This is the 3rd line.
+%TEST-END-FILE
+
+%TEST-START-FILE test2/t1.test
+@TEST-DOC This comment will not appear in output (missing colon after TEST-DOC).
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE test2/t2.test
+# This test will not run due to TEST-REQUIRES.
+@TEST-REQUIRES: false
+@TEST-DOC: This is a skipped test.
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE test2/multi.test
+# Test if TEST-DOC works for a multi-part test.
+@TEST-DOC: 1st test part.
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE test2/multi.test#2
+@TEST-DOC: 2nd test part.
+@TEST-EXEC: exit 0
+%TEST-END-FILE
+
+%TEST-START-FILE test2/multi.test#3
+@TEST-DOC: 3rd test part.
+@TEST-EXEC: exit 0
+%TEST-END-FILE
