@@ -1,4 +1,18 @@
 
+0.57-13 | 2017-10-23 15:35:21 -0700
+
+  * Tweak -A|--show-all to use only coloring, not cursor navigation.
+    (Christian Kreibich)
+
+  * Fix the doc.test. (Daniel Thayer)
+
+  * Improve the console.test and document "--show-all" option. (Daniel
+    Thayer)
+
+  * Added documentation of the "--show-all" option. (Daniel Thayer)
+
+  * Allow multiple TEST-DOC keywords in a test file. (Daniel Thayer)
+
 0.57-7 | 2017-10-16 12:18:28 -0700
 
   * Fix the console.test to work on FreeBSD and macOS. (Christian

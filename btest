@@ -34,7 +34,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.57-7" # Automatically filled in.
+VERSION = "0.57-13" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -1159,80 +1159,122 @@ class Standard(OutputHandler):
         self.output(test, msg)
 
 class Console(OutputHandler):
-    """Output handler that writes compact progress report to the console."""
+    """
+    Output handler that writes colorful progress report to the console.
 
+    This handler works well in settings that can handle coloring but not
+    cursor placement commands (for example because moving to the beginning of
+    the line overwrites other surrounding output); it's what the
+    ``--show-all`` output uses. In contrast, the *CompactConsole* handler uses
+    cursor placement in addition for a more space-efficient output.
+    """
     Green      = "\033[32m"
     Red        = "\033[31m"
     Yellow     = "\033[33m"
     Gray       = "\033[37m"
     DarkGray   = "\033[1;30m"
     Normal     = "\033[0m"
+
+    def __init__(self, options):
+        OutputHandler.__init__(self, options)
+        self.show_all = True
+
+    def testStart(self, test):
+        msg = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
+        self._consoleOutput(test, msg, False)
+
+    def testProgress(self, test, msg):
+        """Called when a test signals having made progress."""
+        msg = self.DarkGray + "(%s)" % msg + self.Normal
+        self._consoleOutput(test, msg, True)
+
+    def testSucceeded(self, test, msg):
+        if test.known_failure:
+            msg = self.Yellow + msg + self.Normal
+        else:
+            msg = self.Green + msg + self.Normal
+
+        self._consoleOutput(test, msg, self.show_all)
+
+    def testFailed(self, test, msg):
+        if test.known_failure:
+            msg = self.Yellow + msg + self.Normal
+        else:
+            msg = self.Red + msg + self.Normal
+
+        self._consoleOutput(test, msg, True)
+
+    def testSkipped(self, test, msg):
+        msg = self.Gray + msg + self.Normal
+        self._consoleOutput(test, msg, self.show_all)
+
+    def finished(self):
+        sys.stdout.flush()
+
+    def _consoleOutput(self, test, msg, sticky):
+        self._consoleWrite(test, msg, sticky)
+
+    def _consoleWrite(self, test, msg, sticky):
+        sys.stdout.write(msg.strip() + " ")
+
+        if sticky:
+            sys.stdout.write("\n")
+
+        sys.stdout.flush()
+
+class CompactConsole(Console):
+    """
+    Output handler that writes compact, colorful progress report to
+    the console while also keeping the output compact by keeping
+    output only for failing tests.
+
+    This handler adds cursor mods and navigation to the coloring provided by
+    the Console class and hence needs settings that can handle both.
+    """
     CursorOff  = "\033[?25l"
     CursorOn   = "\033[?25h"
     DeleteLine = "\033[2K"
 
     def __init__(self, options):
-        OutputHandler.__init__(self, options)
+        Console.__init__(self, options)
+        self.show_all = False
 
     def testStart(self, test):
         test.console_last_line = None
-        self.consoleOutput(test, "", False)
-        sys.stdout.write(Console.CursorOff)
-
-    def testCommand(self, test, cmdline):
-        pass
+        self._consoleOutput(test, "", False)
+        sys.stdout.write(self.CursorOff)
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
-        msg = " " + Console.DarkGray + "(%s)" % msg + Console.Normal
-        self.consoleAugment(test, msg)
-
-    def testSucceeded(self, test, msg):
-        if test.known_failure:
-            msg = Console.Yellow + msg + Console.Normal
-        else:
-            msg = Console.Green + msg + Console.Normal
-
-        self.consoleOutput(test, msg, self.options().show_all)
-
-    def testFailed(self, test, msg):
-        if test.known_failure:
-            msg = Console.Yellow + msg + Console.Normal
-        else:
-            msg = Console.Red + msg + Console.Normal
-
-        self.consoleOutput(test, msg, True)
-
-    def testSkipped(self, test, msg):
-        msg = Console.Gray + msg + Console.Normal
-        self.consoleOutput(test, msg, self.options().show_all)
+        msg = " " + self.DarkGray + "(%s)" % msg + self.Normal
+        self._consoleAugment(test, msg)
 
     def testFinished(self, test):
         test.console_last_line = None
 
     def finished(self):
-        sys.stdout.write(Console.DeleteLine)
+        sys.stdout.write(self.DeleteLine)
         sys.stdout.write("\r")
-        sys.stdout.write(Console.CursorOn)
+        sys.stdout.write(self.CursorOn)
         sys.stdout.flush()
 
-    def consoleOutput(self, test, addl, sticky):
+    def _consoleOutput(self, test, msg, sticky):
         line = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
 
-        if addl:
-            line += " " + addl
+        if msg:
+            line += " " + msg
 
         test.console_last_line = line
-        self.consoleWrite(test, line, sticky)
+        self._consoleWrite(test, line, sticky)
 
-    def consoleAugment(self, test, msg):
+    def _consoleAugment(self, test, msg):
         sys.stdout.write(" %s" % msg.strip())
         sys.stdout.write("\r%s" % test.console_last_line)
         sys.stdout.flush()
 
-    def consoleWrite(self, test, line, sticky):
+    def _consoleWrite(self, test, msg, sticky):
         sys.stdout.write(chr(27) + '[2K')
-        sys.stdout.write("\r%s" % line.strip())
+        sys.stdout.write("\r%s" % msg.strip())
 
         if sticky:
             sys.stdout.write("\n")
@@ -1919,7 +1961,10 @@ elif Options.brief:
 
 else:
     if sys.stdout.isatty():
-        output_handlers += [Console(Options, )]
+        if Options.show_all:
+            output_handlers += [Console(Options, )]
+        else:
+            output_handlers += [CompactConsole(Options, )]
     else:
         output_handlers += [Standard(Options, )]
 
