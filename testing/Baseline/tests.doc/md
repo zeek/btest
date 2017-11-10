@@ -1,8 +1,3 @@
-# misc
-
-* `misc.requires`:
-    This is a skipped test.
-
 # alternatives
 
 * `alternatives.default`:
@@ -11,17 +6,22 @@
     This test runs only for the given alternative, but it will always
     appear in the documentation output.
 
+# misc
+
+* `misc.requires`:
+    This is a skipped test.
+
+# misc.subdir
+
+* `misc.subdir.subtest`:
+    This test is in a subdirectory.
+
 # multipart
 
 * `multipart.multi`:
     1st test part.
     2nd test part.
     3rd test part.
-
-# misc.subdir
-
-* `misc.subdir.subtest`:
-    This test is in a subdirectory.
 
 # testdoc
 

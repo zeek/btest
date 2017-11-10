@@ -1816,15 +1816,22 @@ def outputDocumentation(tests, format):
     def doc(t):
         return t.doc if t.doc else ["No documentation."]
 
+    # The "sectionlist" ensures that sections are output in same order as
+    # they appear in the "tests" list.
+    sectionlist = []
     sections = {}
 
     for t in tests:
         ids = t.name.split(".")
         path = ".".join(ids[:-1])
+        if path not in sectionlist:
+            sectionlist.append(path)
         s = sections.setdefault(path, [])
         s.append(t)
 
-    for (s, tests) in sections.items():
+    for s in sectionlist:
+        tests = sections[s]
+
         if format == "rst":
             print("%s" % s)
             print("-" * len(s))
