@@ -1,28 +1,47 @@
-test
+misc
 ----
 
-    ``test.t1``:
-        This is a single-line TEST-DOC comment.
+    ``misc.requires``:
+        This is a skipped test.
 
-    ``test.t2``:
-        No documentation.
+alternatives
+------------
 
-    ``test.t3``:
-        This is a multi-line TEST-DOC comment.
-        This is the 2nd line.
-        This is the 3rd line.
+    ``alternatives.default``:
+        This test runs if no alternative is given.
 
-test2
------
+    ``alternatives.myalternate``:
+        This test runs only for the given alternative, but it will always
+        appear in the documentation output.
 
-    ``test2.multi``:
+multipart
+---------
+
+    ``multipart.multi``:
         1st test part.
         2nd test part.
         3rd test part.
 
-    ``test2.t1``:
+misc.subdir
+-----------
+
+    ``misc.subdir.subtest``:
+        This test is in a subdirectory.
+
+testdoc
+-------
+
+    ``testdoc.badtestdoc``:
         No documentation.
 
-    ``test2.t2``:
-        This is a skipped test.
+    ``testdoc.multiline``:
+        This is a multi-line TEST-DOC comment.
+        This is the 2nd line.
+        This is the 3rd line.
+
+    ``testdoc.singleline``:
+        This is a single-line TEST-DOC comment.
+
+    ``testdoc.testdocmissing``:
+        No documentation.
 
