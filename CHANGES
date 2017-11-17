@@ -1,4 +1,10 @@
 
+0.57-16 | 2017-11-17 15:03:16 -0800
+
+  * Fix "btest -R" to preserve sorted output ordering. (Daniel Thayer)
+
+  * Add more tests to "doc.test". (Daniel Thayer)
+
 0.57-13 | 2017-10-23 15:35:21 -0700
 
   * Tweak -A|--show-all to use only coloring, not cursor navigation.
