@@ -1,4 +1,12 @@
 
+0.57-19 | 2018-01-19 15:14:02 -0800
+
+  * Fix a bug when setting base dir using a relative path. Addresses
+    BIT-1892. (Daniel Thayer)
+
+  * Improve testing of setting a non-default base directory. (Daniel
+    Thayer)
+
 0.57-16 | 2017-11-17 15:03:16 -0800
 
   * Fix "btest -R" to preserve sorted output ordering. (Daniel Thayer)
