@@ -1631,7 +1631,6 @@ def findTests(paths, expand_globs=False):
 
     for path in expanded:
         rpath = os.path.relpath(path, TestBase)
-        path = os.path.join(TestBase, path)
 
         if os.path.isdir(path) and os.path.basename(path) in ignore_dirs:
             continue
@@ -1916,7 +1915,7 @@ if not dirname:
 
 # If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
 # If not, we'll use the current directory.
-TestBase = os.environ.get("BTEST_TEST_BASE", dirname)
+TestBase = os.path.abspath(os.environ.get("BTEST_TEST_BASE", dirname))
 defaults["testbase"] = TestBase
 
 # Parse our config
@@ -1937,7 +1936,7 @@ if Options.alternatives:
             if base is None:
                 continue
 
-            TestBase = base
+            TestBase = os.path.abspath(base)
             defaults["testbase"] = TestBase
 
             # At this point, our defaults have changed, so we
