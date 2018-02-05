@@ -1,4 +1,8 @@
 
+0.57-21 | 2018-02-05 15:05:43 -0800
+
+  * Add a .travis.yml file. (Daniel Thayer)
+
 0.57-19 | 2018-01-19 15:14:02 -0800
 
   * Fix a bug when setting base dir using a relative path. Addresses
