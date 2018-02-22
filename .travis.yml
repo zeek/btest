@@ -6,6 +6,15 @@ python:
   - "3.5"
   - "3.6"
 
+branches:
+  only:
+  - master
+
+notifications:
+  email:
+    recipients:
+    - bro-commits-internal@bro.org
+
 script: make test
 
 after_failure: cat testing/diag.log
