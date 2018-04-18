@@ -27,6 +27,7 @@ import uuid
 import tempfile
 import threading
 import signal
+import atexit
 from datetime import datetime
 
 try:
@@ -34,7 +35,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.57-23" # Automatically filled in.
+VERSION = "0.57-24" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -1233,11 +1234,16 @@ class CompactConsole(Console):
     """
     CursorOff  = "\033[?25l"
     CursorOn   = "\033[?25h"
-    DeleteLine = "\033[2K"
+    EraseToEndOfLine = "\033[2K"
 
     def __init__(self, options):
         Console.__init__(self, options)
         self.show_all = False
+
+        def cleanup():
+            sys.stdout.write(self.CursorOn)
+
+        atexit.register(cleanup)
 
     def testStart(self, test):
         test.console_last_line = None
@@ -1253,7 +1259,7 @@ class CompactConsole(Console):
         test.console_last_line = None
 
     def finished(self):
-        sys.stdout.write(self.DeleteLine)
+        sys.stdout.write(self.EraseToEndOfLine)
         sys.stdout.write("\r")
         sys.stdout.write(self.CursorOn)
         sys.stdout.flush()
@@ -1268,6 +1274,7 @@ class CompactConsole(Console):
         self._consoleWrite(test, line, sticky)
 
     def _consoleAugment(self, test, msg):
+        sys.stdout.write(self.EraseToEndOfLine)
         sys.stdout.write(" %s" % msg.strip())
         sys.stdout.write("\r%s" % test.console_last_line)
         sys.stdout.flush()
