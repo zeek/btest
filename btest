@@ -1744,45 +1744,55 @@ def readTestFile(filename):
 
     state = "test"
 
-    for line in input:
+    try:
+        for line in input:
 
-        if state == "test":
-            m = RE_START_FILE.search(line)
-            if m:
-                state = "file"
-                file = (m.group(1), [])
-                continue
+            if state == "test":
+                m = RE_START_FILE.search(line)
+                if m:
+                    state = "file"
+                    file = (m.group(1), [])
+                    continue
 
-            m = RE_END_FILE.search(line)
-            if m:
-                error("%s: unexpected %sEND-FILE" % (filename, CommandPrefix))
+                m = RE_END_FILE.search(line)
+                if m:
+                    error("%s: unexpected %sEND-FILE" % (filename, CommandPrefix))
 
-            m = RE_START_NEXT_TEST.search(line)
-            if not m:
-                content += [line]
-                continue
+                m = RE_START_NEXT_TEST.search(line)
+                if not m:
+                    content += [line]
+                    continue
 
-            t = newTest(content, previous)
-            if not t:
-                return []
+                t = newTest(content, previous)
+                if not t:
+                    return []
 
-            tests += [t]
+                tests += [t]
 
-            previous = t
-            content = []
+                previous = t
+                content = []
 
-        elif state == "file":
-            m = RE_END_FILE.search(line)
-            if m:
-                state = "test"
-                files += [file]
-                file = (None, [])
-                continue
+            elif state == "file":
+                m = RE_END_FILE.search(line)
+                if m:
+                    state = "test"
+                    files += [file]
+                    file = (None, [])
+                    continue
 
-            file = (file[0], file[1] + [line])
+                file = (file[0], file[1] + [line])
 
-        else:
-            error("internal: unknown state %s" % state)
+            else:
+                error("internal: unknown state %s" % state)
+
+    except UnicodeDecodeError as e:
+        # This error is caused by either a test file with an invalid UTF-8 byte
+        # sequence, or if python makes the wrong assumption about the encoding
+        # of a test file (this can happen if a test file has valid UTF-8 but
+        # none of the locale environment variables LANG, LC_CTYPE, or LC_ALL,
+        # were defined prior to running btest).  However, if all test files
+        # are ASCII, then this error should never occur.
+        error("unicode decode error in file %s: %s" % (filename, e))
 
     if state == "file":
         files += [file]
