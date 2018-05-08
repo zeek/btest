@@ -1744,7 +1744,18 @@ def readTestFile(filename):
 
     state = "test"
 
-    for line in input:
+    try:
+        lines = [line for line in input]
+    except UnicodeDecodeError as e:
+        # This error is caused by either a test file with an invalid UTF-8 byte
+        # sequence, or if python makes the wrong assumption about the encoding
+        # of a test file (this can happen if a test file has valid UTF-8 but
+        # none of the locale environment variables LANG, LC_CTYPE, or LC_ALL,
+        # were defined prior to running btest).  However, if all test files
+        # are ASCII, then this error should never occur.
+        error("unicode decode error in file %s: %s" % (filename, e))
+
+    for line in lines:
 
         if state == "test":
             m = RE_START_FILE.search(line)
