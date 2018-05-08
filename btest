@@ -3,6 +3,7 @@
 # Main test driver.
 
 from __future__ import print_function
+import io
 import os
 import os.path
 import sys
@@ -28,6 +29,7 @@ import tempfile
 import threading
 import signal
 import atexit
+import locale
 from datetime import datetime
 
 try:
@@ -35,7 +37,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.57-24" # Automatically filled in.
+VERSION = "0.57-28" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -96,6 +98,12 @@ def which(cmd):
 
 def platform():
     return os.uname()[0]
+
+def getDefaultBtestEncoding():
+    if locale.getdefaultlocale()[1] is None:
+        return 'utf-8'
+
+    return locale.getpreferredencoding()
 
 # Get the value of the specified option in the specified section (or
 # section "btest" if not specified), or return the specified default value
@@ -728,9 +736,14 @@ class Test(object):
 
         for (file, content) in self.contents:
             localfile = os.path.join(self.tmpdir, os.path.basename(file))
-            out = open(localfile, "w")
-            for line in content:
-                out.write(line)
+            out = io.open(localfile, "w", encoding=getDefaultBtestEncoding())
+
+            try:
+                for line in content:
+                    out.write(line)
+            except UnicodeEncodeError as e:
+                error("unicode encode error in file %s: %s" % (localfile, e))
+
             out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w")
@@ -1731,7 +1744,7 @@ def readTestFile(filename):
         return []
 
     try:
-        input = open(filename)
+        input = io.open(filename, encoding=getDefaultBtestEncoding())
     except IOError as e:
         error("cannot read test file: %s" % e)
 
