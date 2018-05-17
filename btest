@@ -755,6 +755,8 @@ class Test(object):
 
             if not success:
                 self.mgr.testSkipped(self)
+                if not Options.tmps:
+                    self.rmTmp()
                 self.finish()
                 return
 
