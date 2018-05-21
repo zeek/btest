@@ -37,7 +37,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.57-28" # Automatically filled in.
+VERSION = "0.57-32" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -2205,13 +2205,19 @@ except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
     print("Aborted.", file=sys.stderr)
     os._exit(1)
 
-if failed > 0:
-    skipped = (", %d skipped" % skipped) if skipped > 0 else ""
+skip = (", %d skipped" % skipped) if skipped > 0 else ""
 
+if failed > 0:
     if not Options.quiet:
-        output("%d of %d test%s failed%s" % (failed, total, "s" if total > 1 else "", skipped))
+        output("%d of %d test%s failed%s" % (failed, total, "s" if total > 1 else "", skip))
 
     sys.exit(1)
+
+elif skipped > 0:
+    if not Options.quiet:
+        output("%d test%s successful%s" % (succeeded, "s" if succeeded != 1 else "", skip))
+
+    sys.exit(0)
 
 else:
     if not Options.quiet:

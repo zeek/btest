@@ -1,4 +1,11 @@
 
+0.57-32 | 2018-05-21 22:31:42 +0000
+
+  * Show number of skipped tests even when none fail. (Daniel Thayer)
+
+  * Delete a test's temporary directory if skipped, unless the user
+    wants these. (Corelight)
+
 0.57-28 | 2018-05-08 10:03:20 -0500
 
   * BIT-1735: open btest files as utf-8 if locale has no default encoding
