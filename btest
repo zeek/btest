@@ -324,71 +324,72 @@ class TestManager(multiprocessing.managers.SyncManager):
     def threadRun(self, thread_num):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        all_tests = []
+        tests = self._produceTests(thread_num)
+
+        for test in tests:
+            test.run(self)
+            self.testReplayOutput(test)
+
+        if Options.update_times:
+            self.saveTiming(tests)
+
+    def _produceTests(self, thread_num):
+        tests = []
 
         while True:
-            tests = self.nextTests(thread_num)
-            if tests is None:
-                # No more work for us.
-                return
+            # Identify next relevant test, whittling down the input
+            # tests list at the same time.
+            test = self._getNextTest(thread_num)
+            if not test:
+                break
 
-            all_tests += tests
+            # Derive actual test(s) from the test that's up next,
+            # depending on configured alternatives.
+            if Options.alternatives:
+                for alternative in Options.alternatives:
 
-            for t in tests:
-                t.run(self)
-                self.testReplayOutput(t)
-
-            if Options.update_times:
-                self.saveTiming(all_tests)
-
-    def nextTests(self, thread_num):
-        with self._lock:
-            for i in range(len(self._tests)):
-                t = self._tests[i]
-
-                if not t:
-                    continue
-
-                if Options.threads and t.serialize:
-                    if hash(t.serialize) % Options.threads != thread_num:
-                        # Not ours.
+                    if alternative in test.ignore_alternatives:
                         continue
 
-                # We'll execute it, delete from queue.
-                del self._tests[i]
+                    if test.include_alternatives and alternative not in test.include_alternatives:
+                        continue
 
-                if Options.alternatives:
-                    tests = []
+                    alternative_test = copy.deepcopy(test)
 
-                    for alternative in Options.alternatives:
+                    if alternative == "-":
+                        alternative = ""
 
-                        if alternative in t.ignore_alternatives:
-                            continue
-
-                        if t.include_alternatives and alternative not in t.include_alternatives:
-                            continue
-
-                        alternative_test = copy.deepcopy(t)
-
-                        if alternative == "-":
-                            alternative = ""
-
-                        alternative_test.setAlternative(alternative)
-                        tests += [alternative_test]
-
+                    alternative_test.setAlternative(alternative)
+                    tests.append(alternative_test)
+            else:
+                if test.include_alternatives and "default" not in test.include_alternatives:
+                    pass
+                elif "default" in test.ignore_alternatives:
+                    pass
                 else:
-                    if t.include_alternatives and "default" not in t.include_alternatives:
-                        tests = []
+                    tests.append(test)
 
-                    elif "default" in t.ignore_alternatives:
-                        tests = []
+        # Establish the next-pointers for all but the last resulting test:
+        for idx in range(1, len(tests)):
+            tests[idx-1].ntest = tests[idx]
 
-                    else:
-                        tests = [t]
+        return tests
 
-                return tests
+    def _getNextTest(self, thread_num):
+        with self._lock:
+            for i in range(len(self._tests)):
+                test = self._tests[i]
+                if not test:
+                    continue
 
-        # No more tests for us.
+                if (Options.threads and test.serialize and
+                    hash(test.serialize) % Options.threads != thread_num):
+                    # Not ours.
+                    continue
+
+                del self._tests[i]
+                return test
+
         return None
 
     def lock(self):
@@ -541,6 +542,7 @@ class Test(object):
         self.utime_exceeded = False
         self.monitor = None
         self.monitor_quit = None
+        self.ntest = None # Next test we will be executing
 
     def displayName(self):
         name = self.name
@@ -952,6 +954,14 @@ class Test(object):
         env["TEST_VERBOSE"] = self.verbose
         env["TEST_PART"] = str(cmd.part)
         env["TEST_BASE"] = TestBase
+
+        # For next-test names, prevent unintended export of an
+        # existing variable -- this happens in btest's own testsuite.
+        if "TEST_NAME_NEXT" in env:
+            del env["TEST_NAME_NEXT"]
+
+        if self.ntest is not None:
+            env["TEST_NAME_NEXT"] = self.ntest.name
 
         for (key, val) in addl.items():
             env[key.upper()] = val
