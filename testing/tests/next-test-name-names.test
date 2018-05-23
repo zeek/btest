@@ -1,0 +1,14 @@
+# %TEST-EXEC: btest test-a test-b test-c
+# %TEST-EXEC: btest-diff output
+
+# %TEST-START-FILE test-a
+@TEST-EXEC: echo "$TEST_NAME -> $TEST_NAME_NEXT" >>../../output
+# %TEST-END-FILE
+
+# %TEST-START-FILE test-b
+@TEST-EXEC: echo "$TEST_NAME -> $TEST_NAME_NEXT" >>../../output
+# %TEST-END-FILE
+
+# %TEST-START-FILE test-c
+@TEST-EXEC: echo "$TEST_NAME -> $TEST_NAME_NEXT" >>../../output
+# %TEST-END-FILE
