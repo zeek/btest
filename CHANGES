@@ -1,4 +1,8 @@
 
+0.58 | 2018-05-21 22:32:21 +0000
+
+  * Release 0.58.
+
 0.57-32 | 2018-05-21 22:31:42 +0000
 
   * Show number of skipped tests even when none fail. (Daniel Thayer)
