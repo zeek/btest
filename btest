@@ -282,10 +282,26 @@ class TestManager(multiprocessing.managers.SyncManager):
         self._failed_tests = self.list([])
         self._num_tests = len(self._tests)
         self._timing = self.loadTiming()
+
         port_range = getOption("PortRange", "1024-65535")
         port_range_lo = int(port_range.split("-")[0])
         port_range_hi = int(port_range.split("-")[1])
-        self._ports = self.list([p for p in range(port_range_lo, port_range_hi)])
+
+        if port_range_lo > port_range_hi:
+            error("invalid PortRange value: {0}".format(port_range))
+
+        max_test_ports = 0
+        test_with_most_ports = None
+
+        for t in self._tests:
+            if len(t.ports) > max_test_ports:
+                max_test_ports = len(t.ports)
+                test_with_most_ports = t
+
+        if max_test_ports > port_range_hi - port_range_lo + 1:
+            error("PortRange {0} cannot satisfy requirement of {1} ports in test {2}".format(port_range, max_test_ports, test_with_most_ports.name))
+
+        self._ports = self.list([p for p in range(port_range_lo, port_range_hi + 1)])
 
         num_threads = Options.threads
 
@@ -402,6 +418,11 @@ class TestManager(multiprocessing.managers.SyncManager):
 
     def getAvailablePorts(self, count):
         with self._lock:
+
+            if count > len(self._ports):
+                return []
+
+            first_port = -1
             rval = []
 
             for i in range(count):
@@ -413,11 +434,28 @@ class TestManager(multiprocessing.managers.SyncManager):
                         return []
 
                     next_port = self._ports[0]
+
+                    if next_port == first_port:
+                        # Looped over port pool once, bail out.
+                        for s in rval:
+                            s.close()
+                            self._ports.append(s.getsockname()[1])
+
+                        return []
+
+                    if first_port == -1:
+                        first_port = next_port
+
                     del self._ports[0]
 
                     try:
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        # Setting REUSEADDR would allow ports to be recycled
+                        # more quickly, but on macOS, seems to also have the
+                        # effect of allowing multiple sockets to bind to the
+                        # same port, event if REUSEPORT is off.
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
                         sock.bind(('', next_port))
                     except:
                         self._ports.append(next_port)
@@ -739,16 +777,24 @@ class Test(object):
         if not count:
             return []
 
+        attempts = 5
+
         while True:
             rval = mgr.getAvailablePorts(count)
 
             if rval:
                 return rval
 
-            warning("failed to retrieve {0} ports for test {1}, will try again".format(
-                count, self.name))
+            attempts -= 1
 
-            time.sleep(5)
+            if attempts == 0:
+                error("failed to obtain {0} ports for test {1}".format(
+                    count, self.name))
+
+            warning("failed to obtain {0} ports for test {1}, will try {2} more times".format(
+                count, self.name, attempts))
+
+            time.sleep(15)
 
     def run(self, mgr):
         bound_sockets = self.getPorts(mgr, len(self.ports))

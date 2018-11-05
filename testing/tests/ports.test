@@ -1,6 +1,6 @@
 
 # %TEST-EXEC: btest -t %INPUT
-# %TEST-EXEC: test 3 -eq `wc -l .tmp/ports/output | cut -d" " -f1`
+# %TEST-EXEC: test 3 -eq `wc -l .tmp/ports/output | awk '{print $1}'`
 
 @TEST-PORT: MYPORT1
 @TEST-PORT: MYPORT2
