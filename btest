@@ -30,6 +30,7 @@ import threading
 import signal
 import atexit
 import locale
+import errno
 from datetime import datetime
 
 try:
@@ -234,14 +235,13 @@ def runSubprocess(*args, **kwargs):
     try:
         q = multiprocessing.Queue()
         p = multiprocessing.Process(target=child, args=(q,))
+        p.daemon = True
         p.start()
         result = q.get()
         p.join()
 
     except KeyboardInterrupt:
-        # Bailout here directly as otherwise we'll a bunch of errors
-        # from all the childs.
-        os._exit(1)
+        sys.exit(1)
 
     return result
 
@@ -265,6 +265,24 @@ class Alternative:
         self.substitutions = {}
         self.envs = {}
 
+# Wraps a multiprocessing RLock to catch to IOErrors caused by abnormal
+# process termination.
+class Lock:
+    def __init__(self, mgr):
+        self._lock = mgr.RLock()
+
+    def __enter__(self):
+        try:
+            return self._lock.acquire()
+        except IOError as e:
+            if e.errno in [errno.EPIPE, errno.ECONNRESET]:
+                sys.exit(1)
+            else:
+                raise
+
+    def __exit__(self, type, value, traceback):
+        return self._lock.release()
+
 # Main class distributing the work across threads.
 class TestManager(multiprocessing.managers.SyncManager):
     def __init__(self, *args, **kwargs):
@@ -274,7 +292,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         self.start()
 
         self._output_handler = output_handler
-        self._lock = self.RLock()
+        self._lock = Lock(self)
         self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
         self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
         self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
@@ -317,8 +335,11 @@ class TestManager(multiprocessing.managers.SyncManager):
                 t.join()
 
         else:
-            # No threads, just run all directly.
-            self.threadRun(0)
+            # No threads, just run one directly. We still spawn a subprocess
+            # to get unified termination behaviour.
+            t = multiprocessing.Process(name="#0", target=lambda: self.threadRun(0))
+            t.start()
+            t.join()
 
         # Record failed tests if not updating.
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
@@ -1210,7 +1231,7 @@ class OutputHandler:
         """
         pass
 
-    def finished(self):
+    def finished(self, aborted=False):
         """Called when all tests have been executed."""
         pass
 
@@ -1260,9 +1281,9 @@ class Forwarder(OutputHandler):
         for h in self._handlers:
             h.replayOutput(test)
 
-    def finished(self):
+    def finished(self, aborted=False):
         for h in self._handlers:
-            h.finished()
+            h.finished(aborted)
 
 class Standard(OutputHandler):
     def testStart(self, test):
@@ -1348,7 +1369,7 @@ class Console(OutputHandler):
         msg = self.Gray + msg + self.Normal
         self._consoleOutput(test, msg, self.show_all)
 
-    def finished(self):
+    def finished(self, aborted=False):
         sys.stdout.flush()
 
     def _consoleOutput(self, test, msg, sticky):
@@ -1397,9 +1418,13 @@ class CompactConsole(Console):
     def testFinished(self, test):
         test.console_last_line = None
 
-    def finished(self):
-        sys.stdout.write(self.EraseToEndOfLine)
-        sys.stdout.write("\r")
+    def finished(self, aborted=False):
+        if aborted:
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(self.EraseToEndOfLine)
+            sys.stdout.write("\r")
+
         sys.stdout.write(self.CursorOn)
         sys.stdout.flush()
 
@@ -1688,7 +1713,7 @@ class XMLReport(OutputHandler):
         e.appendChild(text_node)
         test_case.appendChild(e)
 
-    def finished(self):
+    def finished(self, aborted=False):
         self._testsuite.setAttribute("time", str(time.time() - self._start))
         self._testsuite.setAttribute("tests", str(self._num_tests))
         self._testsuite.setAttribute("failures", str(self._num_failures))
@@ -2326,9 +2351,9 @@ try:
     output_handler.finished()
 
 except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
-    output_handler.finished()
-    print("Aborted.", file=sys.stderr)
-    os._exit(1)
+    output_handler.finished(True)
+    print("Aborting ...", file=sys.stderr)
+    sys.exit(1)
 
 skip = (", %d skipped" % skipped) if skipped > 0 else ""
 
