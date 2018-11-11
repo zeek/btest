@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<testsuite errors="0" failures="1" XXX tests="3" XXX XXX>
+<testsuite errors="0" failures="1" XXX skipped="0" tests="3" XXX XXX>
 <testcase classname="t1" name="t1" XXX/>
 <testcase classname="t2" name="t2" XXX>
 <failure type="fail">

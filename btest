@@ -265,7 +265,7 @@ class Alternative:
         self.substitutions = {}
         self.envs = {}
 
-# Wraps a multiprocessing RLock to catch to IOErrors caused by abnormal
+# Wraps multiprocessing's RLocks to catch  IOErrors caused by abnormal
 # process termination.
 class Lock:
     def __init__(self, mgr):
@@ -321,6 +321,8 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         self._ports = self.list([p for p in range(port_range_lo, port_range_hi + 1)])
 
+        output_handler.init(self)
+
         num_threads = Options.threads
 
         if num_threads:
@@ -353,6 +355,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
             state.close()
 
+        output_handler.finished()
         return (self._succeeded.value, self._failed.value, self._skipped.value)
 
     def percentage(self):
@@ -1171,8 +1174,8 @@ class OutputHandler:
                 print(msg, end=" ", file=file)
 
     def output(self, test, msg, nl=True, file=None):
-        """Output one line of output to user. In non-threaded mode, this will
-        be printed out directly to stderr. In threaded-mode, this will be
+        """Output one line of output to user. In non-parallel mode, this will
+        be printed out directly to stderr. In parallel mode, this will be
         buffered until the test has finished; then all output is printed as a
         block.
 
@@ -1200,6 +1203,10 @@ class OutputHandler:
         self._buffered_output[test.name] = []
 
     # Methods to override.
+    def init(self, mgr):
+        """Called before any test runs"""
+        pass
+
     def testStart(self, test):
         """Called just before a test begins."""
         pass
@@ -1247,6 +1254,10 @@ class Forwarder(OutputHandler):
     def __init__(self, options, handlers):
         OutputHandler.__init__(self, options)
         self._handlers = handlers
+
+    def init(self, mgr):
+        for h in self._handlers:
+            h.init(mgr)
 
     def testStart(self, test):
         """Called just before a test begins."""
@@ -1642,40 +1653,22 @@ class XMLReport(OutputHandler):
         """
         OutputHandler.__init__(self, options)
         self._file = file
-        self._doc = xml.dom.minidom.Document()
-        self._testsuite = self._doc.createElement("testsuite")
-        self._doc.appendChild(self._testsuite)
-
-        self._testsuite.setAttribute("timestamp", datetime.now().isoformat())
-        self._testsuite.setAttribute("hostname", socket.gethostname())
-
         self._start = time.time()
-        self._num_tests = 0
-        self._num_failures = 0
+        self._timestamp = datetime.now().isoformat()
+
+    def init(self, mgr):
+        # Create state that's shared between processes.
+        self._counters = mgr.Namespace()
+        self._counters.num_tests = 0
+        self._counters.num_failures = 0
+        self._counters.num_skipped = 0
+        self._cases = mgr.list()
 
     def testStart(self, test):
-        self._num_tests += 1
+        self._counters.num_tests += 1
 
     def testCommand(self, test, cmdline):
         pass
-
-    def makeTestCaseElement(self, test):
-        parts = test.displayName().split('.')
-        if len(parts) > 1:
-            classname = ".".join(parts[:-1])
-            name = parts[-1]
-        else:
-            classname = parts[0]
-            name = parts[0]
-
-        e = self._doc.createElement("testcase")
-        e.setAttribute("classname", classname)
-        e.setAttribute("name", name)
-        dur = time.time() - test.start
-        e.setAttribute("time", str(dur))
-        self._testsuite.appendChild(e)
-
-        return e
 
     def getContext(self, test, context_file):
         context = ""
@@ -1693,33 +1686,71 @@ class XMLReport(OutputHandler):
 
         return context
 
+    def addTestCase(self, test, element=None, element_type=None, element_text=None):
+        parts = test.displayName().split('.')
+        if len(parts) > 1:
+            classname = ".".join(parts[:-1])
+            name = parts[-1]
+        else:
+            classname = parts[0]
+            name = parts[0]
+
+        c = {
+            "classname": classname,
+            "name": name,
+            "duration": time.time() - test.start,
+            "element": element,
+            "element_type": element_type,
+            "element_text": element_text
+        }
+
+        self._cases.append(c)
+
+    def addFailure(self, test):
+        c = mgr.Namespace()
+        c.text = self.getContext(test, ".stderr")
+        self._counters.failures.append(c)
+
     def testSucceeded(self, test, msg):
-        self.makeTestCaseElement(test)
+        self.addTestCase(test)
 
     def testFailed(self, test, msg):
-        self._num_failures += 1
-        test_case = self.makeTestCaseElement(test)
-        e = self._doc.createElement("failure")
-        e.setAttribute("type", "fail")
-        text_node = self._doc.createTextNode(self.getContext(test, ".stderr"))
-        e.appendChild(text_node)
-        test_case.appendChild(e)
+        self._counters.num_failures += 1
+        self.addTestCase(test, element="failure", element_type="fail", element_text=self.getContext(test, ".stderr"))
 
     def testSkipped(self, test, msg):
-        test_case = self.makeTestCaseElement(test)
-        e = self._doc.createElement("skipped")
-        e.setAttribute("type", "skip")
-        text_node = self._doc.createTextNode(self.getContext(test, ".stderr"))
-        e.appendChild(text_node)
-        test_case.appendChild(e)
+        self._counters.num_skipped += 1
+        self.addTestCase(test, element="skiped", element_type="skip", element_text=self.getContext(test, ".stderr"))
 
     def finished(self, aborted=False):
-        self._testsuite.setAttribute("time", str(time.time() - self._start))
-        self._testsuite.setAttribute("tests", str(self._num_tests))
-        self._testsuite.setAttribute("failures", str(self._num_failures))
-        self._testsuite.setAttribute("errors", str(0))
+        doc = xml.dom.minidom.Document()
+        testsuite = doc.createElement("testsuite")
+        doc.appendChild(testsuite)
+        testsuite.setAttribute("timestamp", self._timestamp)
+        testsuite.setAttribute("hostname", socket.gethostname())
 
-        print(self._doc.toprettyxml(indent="    "), file=self._file)
+        for c in self._cases:
+            test_case = doc.createElement("testcase")
+            test_case.setAttribute("classname", c["classname"])
+            test_case.setAttribute("name", c["name"])
+            test_case.setAttribute("time", str(c["duration"]))
+
+            if c["element"]:
+                e = doc.createElement(c["element"])
+                e.setAttribute("type", c["element_type"])
+                text_node = doc.createTextNode(c["element_text"])
+                e.appendChild(text_node)
+                test_case.appendChild(e)
+
+            testsuite.appendChild(test_case)
+
+        testsuite.setAttribute("time", str(time.time() - self._start))
+        testsuite.setAttribute("tests", str(self._counters.num_tests))
+        testsuite.setAttribute("failures", str(self._counters.num_failures))
+        testsuite.setAttribute("skipped", str(self._counters.num_skipped))
+        testsuite.setAttribute("errors", str(0))
+
+        print(doc.toprettyxml(indent="    "), file=self._file)
 
 ### Timing measurements.
 
@@ -2348,7 +2379,6 @@ try:
 
     (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
-    output_handler.finished()
 
 except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
     output_handler.finished(True)
