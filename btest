@@ -448,14 +448,19 @@ class TestManager(multiprocessing.managers.SyncManager):
 
                     del self._ports[0]
 
-                    try:
-                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        # Setting REUSEADDR would allow ports to be recycled
-                        # more quickly, but on macOS, seems to also have the
-                        # effect of allowing multiple sockets to bind to the
-                        # same port, event if REUSEPORT is off.
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                    # Setting REUSEADDR would allow ports to be recycled
+                    # more quickly, but on macOS, seems to also have the
+                    # effect of allowing multiple sockets to bind to the
+                    # same port, even if REUSEPORT is off, so just try to
+                    # ensure both are off.
+                    if hasattr(socket, 'SO_REUSEADDR'):
                         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+                    if hasattr(socket, 'SO_REUSEPORT'):
                         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+
+                    try:
                         sock.bind(('', next_port))
                     except:
                         self._ports.append(next_port)
