@@ -1,4 +1,13 @@
 
+0.58-4 | 2018-11-29 16:55:33 -0600
+
+  * Add TEST-PORT command and PortRange option (Jon Siwek, Corelight)
+
+    These control assignment of TCP ports to environment variables for
+    use during test execution.  Helps in writing unit tests that can be
+    run concurrently or just in reducing the risk of a unit test failing
+    due to a port already being used by some external process.
+
 0.58 | 2018-05-21 22:32:21 +0000
 
   * Release 0.58.

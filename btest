@@ -37,7 +37,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.58" # Automatically filled in.
+VERSION = "0.58-4" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -283,6 +283,26 @@ class TestManager(multiprocessing.managers.SyncManager):
         self._num_tests = len(self._tests)
         self._timing = self.loadTiming()
 
+        port_range = getOption("PortRange", "1024-65535")
+        port_range_lo = int(port_range.split("-")[0])
+        port_range_hi = int(port_range.split("-")[1])
+
+        if port_range_lo > port_range_hi:
+            error("invalid PortRange value: {0}".format(port_range))
+
+        max_test_ports = 0
+        test_with_most_ports = None
+
+        for t in self._tests:
+            if len(t.ports) > max_test_ports:
+                max_test_ports = len(t.ports)
+                test_with_most_ports = t
+
+        if max_test_ports > port_range_hi - port_range_lo + 1:
+            error("PortRange {0} cannot satisfy requirement of {1} ports in test {2}".format(port_range, max_test_ports, test_with_most_ports.name))
+
+        self._ports = self.list([p for p in range(port_range_lo, port_range_hi + 1)])
+
         num_threads = Options.threads
 
         if num_threads:
@@ -390,6 +410,67 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         # No more tests for us.
         return None
+
+    def returnPorts(self, ports):
+        with self._lock:
+            for p in ports:
+                self._ports.append(p)
+
+    def getAvailablePorts(self, count):
+        with self._lock:
+
+            if count > len(self._ports):
+                return []
+
+            first_port = -1
+            rval = []
+
+            for i in range(count):
+                while True:
+                    if len(self._ports) == 0:
+                        for s in rval:
+                            s.close()
+                            self._ports.append(s.getsockname()[1])
+                        return []
+
+                    next_port = self._ports[0]
+
+                    if next_port == first_port:
+                        # Looped over port pool once, bail out.
+                        for s in rval:
+                            s.close()
+                            self._ports.append(s.getsockname()[1])
+
+                        return []
+
+                    if first_port == -1:
+                        first_port = next_port
+
+                    del self._ports[0]
+
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                    # Setting REUSEADDR would allow ports to be recycled
+                    # more quickly, but on macOS, seems to also have the
+                    # effect of allowing multiple sockets to bind to the
+                    # same port, even if REUSEPORT is off, so just try to
+                    # ensure both are off.
+                    if hasattr(socket, 'SO_REUSEADDR'):
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+                    if hasattr(socket, 'SO_REUSEPORT'):
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+
+                    try:
+                        sock.bind(('', next_port))
+                    except:
+                        self._ports.append(next_port)
+                        continue
+                    else:
+                        break
+
+                rval.append(sock)
+
+            return rval
 
     def lock(self):
         return self._lock
@@ -517,6 +598,7 @@ class Test(object):
         self.part = -1
         self.number = 1
         self.serialize = []
+        self.ports = set()
         self.groups = set()
         self.cmdlines = []
         self.tmpdir = None
@@ -624,6 +706,9 @@ class Test(object):
         if "serialize" in cmds:
             self.serialize = cmds["serialize"]
 
+        if "port" in cmds:
+            self.ports |= set(cmd.strip() for cmd in cmds['port'])
+
         if "group" in cmds:
             self.groups |= set(cmd.strip() for cmd in cmds["group"])
 
@@ -659,7 +744,8 @@ class Test(object):
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
-        clone.serialize = clone.serialize
+        clone.serialize = self.serialize
+        clone.ports = self.ports
         clone.groups = self.groups
         clone.cmdlines = self.cmdlines
         clone.known_failure = self.known_failure
@@ -679,6 +765,7 @@ class Test(object):
             error("cannot use @TEST-START-NEXT with tests split across parts (%s)" % self.basename)
 
         self.serialize += part.serialize
+        self.ports |= part.ports
         self.groups |= part.groups
         self.cmdlines += part.cmdlines
         self.ignore_alternatives += part.ignore_alternatives
@@ -691,7 +778,36 @@ class Test(object):
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
 
+    def getPorts(self, mgr, count):
+        if not count:
+            return []
+
+        attempts = 5
+
+        while True:
+            rval = mgr.getAvailablePorts(count)
+
+            if rval:
+                return rval
+
+            attempts -= 1
+
+            if attempts == 0:
+                error("failed to obtain {0} ports for test {1}".format(
+                    count, self.name))
+
+            warning("failed to obtain {0} ports for test {1}, will try {2} more times".format(
+                count, self.name, attempts))
+
+            time.sleep(15)
+
     def run(self, mgr):
+        bound_sockets = self.getPorts(mgr, len(self.ports))
+        self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
+
+        for bs in bound_sockets:
+            bs.close()
+
         self.start = time.time()
         self.mgr = mgr
         mgr.testStart(self)
@@ -842,6 +958,11 @@ class Test(object):
         self.finish()
 
     def finish(self):
+        if self.bound_ports:
+            self.mgr.returnPorts([p for p in self.bound_ports])
+
+        self.bound_ports = []
+
         try:
             # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
             os.rmdir(self.baseline)
@@ -955,6 +1076,9 @@ class Test(object):
 
         for (key, val) in addl.items():
             env[key.upper()] = val
+
+        for idx, key in enumerate(sorted(self.ports)):
+            env[key] = str(self.bound_ports[idx]) + "/tcp"
 
         return env
 
@@ -2098,6 +2222,7 @@ RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-F
 RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
 RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
 RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
+RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
 RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
 RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
 RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
@@ -2105,7 +2230,7 @@ RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-F
 RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
 RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
+Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_ALTERNATIVE, RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
