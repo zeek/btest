@@ -22,12 +22,12 @@ py_modules = [
 ]
 
 setup(name='btest',
-      version="0.58-4", # Filled in automatically.
+      version="0.58-5", # Filled in automatically.
       description='A simple unit testing framework',
-      long_description='See https://github.com/bro/btest',
+      long_description='See https://github.com/zeek/btest',
       author='Robin Sommer',
       author_email='robin@icir.org',
-      url='https://github.com/bro/btest',
+      url='https://github.com/zeek/btest',
       scripts=scripts,
       package_dir={"": "sphinx"},
       py_modules=py_modules,
