@@ -10,6 +10,7 @@ scripts = [
     "btest-bg-wait",
     "btest-diff",
     "btest-setsid",
+    "btest-sh",
     "btest-progress",
     "sphinx/btest-diff-rst",
     "sphinx/btest-rst-cmd",

@@ -31,6 +31,7 @@ import signal
 import atexit
 import locale
 import errno
+import contextlib
 from datetime import datetime
 
 try:
@@ -49,6 +50,17 @@ try:
     ConfigDefault = os.environ["BTEST_CFG"]
 except KeyError:
     ConfigDefault = "btest.cfg"
+
+@contextlib.contextmanager
+def handleSignal(sig, handler):
+    old = signal.signal(sig, handler)
+    try:
+        yield
+    finally:
+        signal.signal(sig, old)
+
+def ignoreSignal(sig):
+    return handleSignal(sig, signal.SIG_IGN)
 
 def output(msg, nl=True, file=None):
     if not file:
@@ -216,29 +228,55 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
 # and returns a 2-tuple (success, rc) where *success* is a boolean
 # indicating if the command executed, and *rc* is its exit code if it did.
 def runSubprocess(*args, **kwargs):
+    if type(args) == str:
+        cmdline = args
+    else:
+        cmdline = " ".join(args)
+
+    if kwargs.get("shell", False):
+        cmdline = [BTestSH, cmdline]
+        del kwargs["shell"]
+
     def child(q):
+        p = subprocess.Popen(cmdline, **kwargs)
+        q.put(p.pid)
         try:
-            subprocess.check_call(*args, **kwargs)
-            success = True
-            rc = 0
-
-        except subprocess.CalledProcessError as e:
-            success = False
-            rc = e.returncode
-
-        except KeyboardInterrupt:
+            rc = p.wait()
+            success = (rc == 0)
+        except:  # Including KeyboardInterrupt, wait handled that.
+            p.kill()
             success = False
             rc = 0
 
         q.put([success, rc])
 
+    pid = None
+
+    def sigterm(p):
+        def _(signum, frame):
+            x = pid
+            if not x:
+                x = q.get()
+
+            os.kill(x, signal.SIGTERM)
+
+            if p.pid:
+                p.join()
+
+            os._exit(99)
+        return _
+
     try:
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=child, args=(q,))
-        p.daemon = True
-        p.start()
-        result = q.get()
-        p.join()
+        with ignoreSignal(signal.SIGINT):
+            q = multiprocessing.Queue()
+            p = multiprocessing.Process(target=child, args=(q,))
+            p.daemon = False
+
+            with handleSignal(signal.SIGTERM, sigterm(p)):
+                p.start()
+                pid = q.get()
+                result = q.get()
+                p.join()
 
     except KeyboardInterrupt:
         sys.exit(1)
@@ -265,7 +303,7 @@ class Alternative:
         self.substitutions = {}
         self.envs = {}
 
-# Wraps multiprocessing's RLocks to catch  IOErrors caused by abnormal
+# Wraps multiprocessing's RLocks to catch IOErrors caused by abnormal
 # process termination.
 class Lock:
     def __init__(self, mgr):
@@ -289,6 +327,11 @@ class TestManager(multiprocessing.managers.SyncManager):
         super(TestManager, self).__init__(*args, **kwargs)
 
     def run(self, tests, output_handler):
+        def sigint(signum, frame):
+            raise KeyboardInterrupt()
+
+        signal.signal(signal.SIGINT, sigint)
+
         self.start()
 
         self._output_handler = output_handler
@@ -323,25 +366,40 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         output_handler.init(self)
 
-        num_threads = Options.threads
+        if Options.threads > 0:
+            num_threads = Options.threads
+        else:
+            num_threads = 1
 
-        if num_threads:
-            threads = []
+        threads = []
 
+        try:
             for i in range(num_threads):
                 t = multiprocessing.Process(name="#%d" % (i+1), target=lambda: self.threadRun(i))
-                t.start()
-                threads += [t]
+                threads.append(t)
+                with ignoreSignal(signal.SIGINT):
+                    t.start()
 
             for t in threads:
                 t.join()
 
-        else:
-            # No threads, just run one directly. We still spawn a subprocess
-            # to get unified termination behaviour.
-            t = multiprocessing.Process(name="#0", target=lambda: self.threadRun(0))
-            t.start()
-            t.join()
+        except (KeyboardInterrupt, IOError, EOFError): # Ctrl-C can lead to broken pipe.
+            output_handler.finished(True)
+            print("Aborting ...", file=sys.stderr)
+
+            for t in threads:
+                t.terminate()
+
+            for t in threads:
+                t.join()
+
+            try:
+                # Clean up socket manually, it may be left over.
+                os.unlink(self.address)
+            except:
+                pass
+
+            sys.exit(1)
 
         # Record failed tests if not updating.
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
@@ -1081,7 +1139,8 @@ class Test(object):
                 os.remove(self.tmpdir)
 
             if os.path.isdir(self.tmpdir):
-                subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir, shell=True)
+                with open(os.devnull, "w") as devnull: # Use instead of subprocess.DEVNULL for Python 2.x
+                    subprocess.call("rm -rf %s" % self.tmpdir, shell=True, stderr=devnull)
 
         except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
@@ -1781,7 +1840,9 @@ class LinuxTimer(TimerBase):
             return False
 
         # Make sure it works.
-        (success, rc) = runSubprocess("%s stat -o /dev/null true 2>/dev/null" % self.perf, shell=True)
+        with open(os.devnull, "w") as devnull: # Use instead of subprocess.DEVNULL for Python 2.x
+            (success, rc) = runSubprocess("%s stat -o /dev/null true" % self.perf, shell=True, stderr=devnull)
+
         return success and rc == 0
 
     def timeSubprocess(self, *args, **kwargs):
@@ -2131,6 +2192,9 @@ if not dirname:
 TestBase = os.path.abspath(os.environ.get("BTEST_TEST_BASE", dirname))
 defaults["testbase"] = TestBase
 
+BTestSH = os.path.join(os.path.dirname(os.path.abspath(os.path.realpath(sys.argv[0]))), "btest-sh")
+assert os.path.exists(BTestSH)
+
 # Parse our config
 Config = getcfgparser(defaults)
 Config.read(Options.config)
@@ -2360,29 +2424,27 @@ if Options.doc:
 mkdir(BaselineDir)
 mkdir(TmpDir)
 
-try:
-    # Building our own path to avoid "error: AF_UNIX path too long" on
-    # some platforms. See BIT-862.
-    sname = "btest-socket-%d" % os.getpid()
-    addr = os.path.join(tempfile.gettempdir(), sname)
+# Building our own path to avoid "error: AF_UNIX path too long" on
+# some platforms. See BIT-862.
+sname = "btest-socket-%d" % os.getpid()
+addr = os.path.join(tempfile.gettempdir(), sname)
 
-    # Check if the pathname is too long to fit in struct sockaddr_un (the
-    # maximum length is system-dependent, so here we just use 100, which seems
-    # a safe default choice).
+# Check if the pathname is too long to fit in struct sockaddr_un (the
+# maximum length is system-dependent, so here we just use 100, which seems
+# a safe default choice).
+if len(addr) > 100:
+    # Try relative path to TmpDir (which would usually be ".tmp").
+    addr = os.path.join(os.path.relpath(TmpDir), sname)
+
+    # If the path is still too long, then use the global tmp directory.
     if len(addr) > 100:
-        # Try relative path to TmpDir (which would usually be ".tmp").
-        addr = os.path.join(os.path.relpath(TmpDir), sname)
+        addr = os.path.join("/tmp", sname)
 
-        # If the path is still too long, then use the global tmp directory.
-        if len(addr) > 100:
-            addr = os.path.join("/tmp", sname)
-
+try:
     (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
-
-except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
-    output_handler.finished(True)
-    print("Aborting ...", file=sys.stderr)
+except KeyboardInterrupt:
+    output("Aborted")
     sys.exit(1)
 
 skip = (", %d skipped" % skipped) if skipped > 0 else ""

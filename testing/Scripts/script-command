@@ -3,8 +3,10 @@
 
 if ! script -q -c ls /dev/null >/dev/null 2>&1; then
     # FreeBSD and macOS
-    script -q /dev/null $@
+    script -q /dev/null $@ &
+    wait
 else
     # Linux
-    script -qfc "$@" /dev/null
+    script -qfc "$@" /dev/null &
+    wait
 fi

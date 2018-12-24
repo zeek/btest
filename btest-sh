@@ -1,0 +1,24 @@
+#! /usr/bin/env bash
+#
+# Wrapper around a new bash process to forward SIGTERM to child processes.
+# Adapted from https://unix.stackexchange.com/a/444676.
+
+function sigterm {
+    if [ "${child}" != "" ]; then
+        kill -TERM "${child}" 2>/dev/null
+    else
+        need_term=1
+    fi
+}
+
+trap sigterm TERM INT
+eval "($@) &"
+child=$!
+
+if [ "${need_term}" != "" ]; then
+    kill -TERM "${child}" 2>/dev/null
+fi
+
+wait ${child}
+trap - TERM INT
+wait ${child}

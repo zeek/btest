@@ -1,0 +1,42 @@
+# %TEST-EXEC: chmod +x run
+# %TEST-EXEC: ./run >out1 2>&1
+# %TEST-EXEC: cat out2.tmp | grep -v Terminated >out2
+# %TEST-EXEC: btest-diff out1
+# %TEST-EXEC: btest-diff out2
+
+%TEST-START-FILE run
+
+function x {
+    if [ "$pid" != "" ]; then
+        kill -INT $pid 2>/dev/null
+    fi
+}
+
+trap x EXIT
+
+btest t1 &
+pid=$!
+sleep 2
+kill -INT $pid
+wait $pid
+true
+
+%TEST-END-FILE
+
+%TEST-START-FILE t1
+# @TEST-EXEC: chmod +x %INPUT
+# @TEST-EXEC: bash %INPUT >../../out2.tmp 2>&1
+
+function x {
+    echo exit1
+    sleep 2
+    echo exit2
+}
+
+trap x EXIT
+
+echo starting
+sleep 500
+echo should-not-be-reached
+
+%TEST-END-FILE
