@@ -31,6 +31,7 @@ import signal
 import atexit
 import locale
 from datetime import datetime
+import platform as pform
 
 try:
     import ConfigParser as configparser
@@ -97,7 +98,7 @@ def which(cmd):
     return None
 
 def platform():
-    return os.uname()[0]
+    return pform.system()
 
 def getDefaultBtestEncoding():
     if locale.getdefaultlocale()[1] is None:
