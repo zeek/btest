@@ -1,4 +1,9 @@
 
+0.58-7 | 2019-05-24 16:16:07 +0000
+
+  * Use more portable platform.system() for determining platform name.
+    (woot4moo)
+
 0.58-5 | 2018-12-07 16:32:52 -0600
 
   * Update github/download link (Jon Siwek, Corelight)

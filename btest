@@ -31,13 +31,14 @@ import signal
 import atexit
 import locale
 from datetime import datetime
+import platform as pform
 
 try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
 
-VERSION = "0.58-5" # Automatically filled in.
+VERSION = "0.58-7" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -97,7 +98,7 @@ def which(cmd):
     return None
 
 def platform():
-    return os.uname()[0]
+    return pform.system()
 
 def getDefaultBtestEncoding():
     if locale.getdefaultlocale()[1] is None:
