@@ -1,4 +1,8 @@
 
+0.58-9 | 2019-06-17 20:17:32 -0700
+
+  * Update Travis config for bro to zeek renaming (Daniel Thayer)
+
 0.58-7 | 2019-05-24 16:16:07 +0000
 
   * Use more portable platform.system() for determining platform name.
