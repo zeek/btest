@@ -673,7 +673,10 @@ class Test(object):
         # Make sure all non-optional commands are there.
         for (tag, regexp, multiple, optional, group1, group2) in Commands:
             if not optional and tag not in cmds:
-                error("%s: mandatory %s command not found." % (file, tag))
+                if tag == "exec":
+                    error("%s: mandatory keyword '@TEST-EXEC' or '@TEST-EXEC-FAIL' is missing." % file)
+                else:
+                    error("%s: mandatory %s command not found." % (file, tag))
 
         basename = file
 
