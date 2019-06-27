@@ -1,4 +1,9 @@
 
+0.58-11 | 2019-06-27 16:54:17 +0000
+
+  * Adding clarity to difficult to understand error message. (Sam
+    Zaydel, Corelight)
+
 0.58-9 | 2019-06-17 20:17:32 -0700
 
   * Update Travis config for bro to zeek renaming (Daniel Thayer)
