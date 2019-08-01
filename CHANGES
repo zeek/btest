@@ -1,4 +1,8 @@
 
+0.58-12 | 2019-08-01 12:02:01 -0700
+
+  * Drop use of Python 2.6 for Travis CI tests (Jon Siwek, Corelight)
+
 0.58-11 | 2019-06-27 16:54:17 +0000
 
   * Adding clarity to difficult to understand error message. (Sam
