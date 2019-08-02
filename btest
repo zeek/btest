@@ -1787,6 +1787,14 @@ class XMLReport(OutputHandler):
         e.appendChild(text_node)
         test_case.appendChild(e)
 
+    def testUnstable(self,test,msg):
+        test_case = self.makeTestCaseElement(test)
+        e = self._doc.createElement("unstable")
+        e.setAttribute("type", "unstable")
+        text_node = self._doc.createTextNode(self.getContext(test, ".stderr"))
+        e.appendChild(text_node)
+        test_case.appendChild(e)
+
     def testSkipped(self, test, msg):
         test_case = self.makeTestCaseElement(test)
         e = self._doc.createElement("skipped")
