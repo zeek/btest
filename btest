@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
 #
 # Main test driver.
 
@@ -258,6 +258,9 @@ def getcfgparser(defaults):
 
     return cfg
 
+def getCmdLineFromDict (d):
+    return CmdLine(d["cmdline"], d["expect_success"], d["part"], d["file"])
+
 # Description of an alternative configuration.
 class Alternative:
     def __init__(self, name):
@@ -278,6 +281,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         self._lock = self.RLock()
         self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
         self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
+        self._unstable = multiprocessing.sharedctypes.RawValue('i', 0)
         self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
         self._tests = self.list(tests)
         self._failed_tests = self.list([])
@@ -333,7 +337,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
             state.close()
 
-        return (self._succeeded.value, self._failed.value, self._skipped.value)
+        return (self._succeeded.value, self._failed.value, self._skipped.value, self._unstable.value)
 
     def percentage(self):
         if not self._num_tests:
@@ -361,6 +365,10 @@ class TestManager(multiprocessing.managers.SyncManager):
 
             if Options.update_times:
                 self.saveTiming(all_tests)
+
+    def rerun (self, test):
+        test.retry()
+        self._tests += [test]
 
     def nextTests(self, thread_num):
         with self._lock:
@@ -499,9 +507,17 @@ class TestManager(multiprocessing.managers.SyncManager):
         msg += test.timePostfix()
 
         with self._lock:
-            self._output_handler.testSucceeded(test, msg)
+
+            if test.reruns == 0:
+                self._succeeded.value += 1
+                self._output_handler.testSucceeded(test, msg)
+            else:
+                self._failed.value -= 1
+                self._unstable.value += 1
+                msg = "unstable"
+                self._output_handler.testUnstable(test,msg)
+
             self._output_handler.testFinished(test, msg)
-            self._succeeded.value += 1
 
     def testFailed(self, test):
         test.parseProgress()
@@ -516,10 +532,13 @@ class TestManager(multiprocessing.managers.SyncManager):
         with self._lock:
             self._output_handler.testFailed(test, msg)
             self._output_handler.testFinished(test, msg)
-            self._failed.value += 1
+            if test.reruns == 0: self._failed.value += 1
 
             if not test.known_failure:
                 self._failed_tests += [test.name]
+
+                if test.reruns < Options.retries:
+                    self.rerun(test)
 
     def testSkipped(self, test):
         msg = "not available, skipped"
@@ -592,10 +611,14 @@ class CmdLine:
 
 # One test.
 class Test(object):
-    def __init__(self, file):
-        self.dir = os.path.abspath(os.path.dirname(file))
+    def __init__(self, file = None, directory = None): # Allow dir to be directly defined
+
+        if file is not None: self.dir = os.path.abspath(os.path.dirname(file))
+        else: self.dir = directory
+
         self.name = None
         self.basename = None
+        self.tmpname = None
         self.part = -1
         self.number = 1
         self.serialize = []
@@ -624,6 +647,46 @@ class Test(object):
         self.utime_exceeded = False
         self.monitor = None
         self.monitor_quit = None
+        self.reruns = 0
+
+    def __getstate__ (self):
+
+        if self.reruns == 0: #Indicates the Object is being pickled prior to being run for the first time
+            return self.__dict__
+
+        # Pickling to rerun
+        keys_to_include = ("dir","name","tmpname","part","basename","contents","serialize","ports","groups","copy_files","include_alternatives","ignore_alternatives","known_failure","measure_time","doc","reruns")
+        d = {}
+
+        for key in keys_to_include:
+            d[key] = self.__dict__[key]
+
+        d["cmdlines"] = []
+        for cmdline in self.cmdlines:
+            d["cmdlines"].append(cmdline.__dict__)
+
+        d["requires"] = []
+        for cmdline in self.requires: d["requires"].append(cmdline.__dict__)
+
+        return d
+
+    def __setstate__ (self, d):
+
+        # Indicates the Object is being Unpickled for a first time run
+        if d["reruns"] == 0:
+            self.__dict__ = d
+
+        # Unpickling to rerun
+        else:
+            self.__init__(directory = d["dir"])
+            for key in d.keys():
+                self.__dict__[key] = d[key]
+
+            for i in range(len(self.cmdlines)):
+                self.cmdlines[i] = getCmdLineFromDict(self.cmdlines[i])
+
+            for i in range(len(self.requires)):
+                self.requires[i] = getCmdLineFromDict(self.requires[i])
 
     def displayName(self):
         name = self.name
@@ -697,6 +760,7 @@ class Test(object):
         self.name = name
         self.part = part
         self.basename = name
+        self.tmpname = name
         self.contents += [(file, content)]
 
         for (cmd, success) in cmds["exec"]:
@@ -748,6 +812,8 @@ class Test(object):
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
+        clone.tmpname = self.tmpname
+        clone.reruns = self.reruns
         clone.serialize = self.serialize
         clone.ports = self.ports
         clone.groups = self.groups
@@ -816,7 +882,7 @@ class Test(object):
         self.mgr = mgr
         mgr.testStart(self)
 
-        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
+        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.tmpname))
         self.diag = os.path.join(self.tmpdir, ".diag")
         self.verbose = os.path.join(self.tmpdir, ".verbose")
         self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
@@ -956,7 +1022,7 @@ class Test(object):
             else:
                 self.mgr.testSucceeded(self)
 
-            if not Options.tmps:
+            if not Options.tmps and self.reruns == 0:
                 self.rmTmp()
 
         self.finish()
@@ -1031,7 +1097,7 @@ class Test(object):
 
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
-        print("%s (expect %s)" % (cmdline, ("failure", "success")[cmd.expect_success]), file=self.log)
+        print("%s (expect %s)" % (cmdline, ("failure", "success")[cmd.expect_success]),file=self.log)
 
         env = self.prepareEnv(cmd, addl_envs)
         measure_time = self.measure_time and (Options.update_times or self.utime_base >= 0)
@@ -1111,6 +1177,11 @@ class Test(object):
                 os.unlink(file)
             except (IOError, OSError):
                 pass
+
+    # Sets up Object for a retry
+    def retry(self):
+        self.reruns += 1
+        self.tmpname = self.name + "-retry" + str(self.reruns)
 
 ### Output handlers.
 
@@ -1214,6 +1285,10 @@ class OutputHandler:
         """
         pass
 
+    def testUnstable(self,test,msg):
+        """Called when a test failed the first time but succeeded in retries"""
+        pass
+
     def finished(self):
         """Called when all tests have been executed."""
         pass
@@ -1255,6 +1330,11 @@ class Forwarder(OutputHandler):
         """Called when a test failed."""
         for h in self._handlers:
             h.testFailed(test, msg)
+
+    def testUnstable(self, test, msg):
+        """Called when a test failed."""
+        for h in self._handlers:
+            h.testUnstable(test, msg)
 
     def testSkipped(self, test, msg):
         for h in self._handlers:
@@ -1302,6 +1382,9 @@ class Standard(OutputHandler):
 
         self.output(test, msg)
 
+    def testUnstable(self,test,msg):
+        self.finalMsg(test,msg)
+
 class Console(OutputHandler):
     """
     Output handler that writes colorful progress report to the console.
@@ -1346,6 +1429,10 @@ class Console(OutputHandler):
         else:
             msg = self.Red + msg + self.Normal
 
+        self._consoleOutput(test, msg, True)
+
+    def testUnstable (self, test, msg):
+        msg = self.Yellow + msg + self.Normal
         self._consoleOutput(test, msg, True)
 
     def testSkipped(self, test, msg):
@@ -1451,6 +1538,10 @@ class Brief(OutputHandler):
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, "%s ... %s" % (test.displayName(), msg))
 
+    def testUnstable (self, test, msg):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, "%s ... %s" % (test.displayName(), msg))
+
     def testSkipped(self, test, msg):
         pass
 
@@ -1480,6 +1571,11 @@ class Verbose(OutputHandler):
         self.output(test, "... %s %s" % (test.displayName(), msg))
 
     def testFailed(self, test, msg):
+        self.output(test, self.threadPrefix(), nl=False)
+        self.showTestVerbose(test)
+        self.output(test, "... %s %s" % (test.displayName(), msg))
+
+    def testUnstable(self, test, msg):
         self.output(test, self.threadPrefix(), nl=False)
         self.showTestVerbose(test)
         self.output(test, "... %s %s" % (test.displayName(), msg))
@@ -1549,6 +1645,10 @@ class Diag(OutputHandler):
         if not test.known_failure:
             self.showDiag(test)
 
+    def testUnstable(self, test, msg):
+        if self._file:
+            self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
+
     def testSkipped(self, test, msg):
         if self._file:
             self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
@@ -1607,6 +1707,9 @@ class SphinxOutput(OutputHandler):
                 for line in open(f):
                     print("   %s" % line.strip(), file=out)
                 print(file=out)
+
+    def testUnstable(self, test, msg):
+        pass
 
     def testSkipped(self, test, msg):
         pass
@@ -2057,6 +2160,8 @@ optparser.add_option("-R", "--documentation", action="store", type="choice", des
                      help="Output documentation for tests, supported formats: rst, md")
 optparser.add_option("-A", "--show-all", action="store_true", default=False,
                      help="For console output, show one-liners for passing/skipped tests in addition to any failing ones")
+optparser.add_option("-z", "--retries", action="store", dest="retries", type="int", default=0,
+                     help="Retry failed tests these many number of times to determine if tests are unstable")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -2325,7 +2430,7 @@ try:
         if len(addr) > 100:
             addr = os.path.join("/tmp", sname)
 
-    (succeeded, failed, skipped) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
+    (succeeded, failed, skipped, unstable) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
     output_handler.finished()
 
@@ -2335,16 +2440,17 @@ except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
     os._exit(1)
 
 skip = (", %d skipped" % skipped) if skipped > 0 else ""
+unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""
 
 if failed > 0:
     if not Options.quiet:
-        output("%d of %d test%s failed%s" % (failed, total, "s" if total > 1 else "", skip))
+        output("%d of %d test%s failed%s%s" % (failed, total, "s" if total > 1 else "", skip, unstablestr))
 
     sys.exit(1)
 
-elif skipped > 0:
+elif skipped > 0 or unstable > 0:
     if not Options.quiet:
-        output("%d test%s successful%s" % (succeeded, "s" if succeeded != 1 else "", skip))
+        output("%d test%s successful%s%s" % (succeeded, "s" if succeeded != 1 else "", skip, unstablestr))
 
     sys.exit(0)
 
