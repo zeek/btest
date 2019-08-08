@@ -1,5 +1,5 @@
 # %TEST-EXEC: chmod +x test-canonifier
-# %TEST-EXEC: btest -d %INPUT -t
+# %TEST-EXEC: btest -d %INPUT
 
 %TEST-START-FILE Baseline/canonifier/output
 ABC 123 DEF
