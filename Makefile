@@ -11,7 +11,7 @@ dist:
 
 .PHONY: upload
 upload: twine-check dist
-	twine upload -u bro build/btest-$(VERSION).tar.gz
+	twine upload -u zeek build/btest-$(VERSION).tar.gz
 
 .PHONY: test
 test:

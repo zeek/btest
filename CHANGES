@@ -1,4 +1,8 @@
 
+0.59-1 | 2019-08-09 09:11:32 -0700
+
+  * Update username in `make upload` target (Jon Siwek, Corelight)
+
 0.59 | 2019-08-01 12:04:06 -0700
 
   * Release 0.59.
