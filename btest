@@ -258,9 +258,6 @@ def getcfgparser(defaults):
 
     return cfg
 
-def getCmdLineFromDict (d):
-    return CmdLine(d["cmdline"], d["expect_success"], d["part"], d["file"])
-
 # Description of an alternative configuration.
 class Alternative:
     def __init__(self, name):
