@@ -368,7 +368,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
     def rerun (self, test):
         test.retry()
-        self._tests += [test]
+        self._tests += [test.clone(test.contents[0][1])]
 
     def nextTests(self, thread_num):
         with self._lock:
@@ -618,7 +618,6 @@ class Test(object):
 
         self.name = None
         self.basename = None
-        self.tmpname = None
         self.part = -1
         self.number = 1
         self.serialize = []
@@ -648,45 +647,6 @@ class Test(object):
         self.monitor = None
         self.monitor_quit = None
         self.reruns = 0
-
-    def __getstate__ (self):
-
-        if self.reruns == 0: #Indicates the Object is being pickled prior to being run for the first time
-            return self.__dict__
-
-        # Pickling to rerun
-        keys_to_include = ("dir","name","tmpname","part","basename","contents","serialize","ports","groups","copy_files","include_alternatives","ignore_alternatives","known_failure","measure_time","doc","reruns")
-        d = {}
-
-        for key in keys_to_include:
-            d[key] = self.__dict__[key]
-
-        d["cmdlines"] = []
-        for cmdline in self.cmdlines:
-            d["cmdlines"].append(cmdline.__dict__)
-
-        d["requires"] = []
-        for cmdline in self.requires: d["requires"].append(cmdline.__dict__)
-
-        return d
-
-    def __setstate__ (self, d):
-
-        # Indicates the Object is being Unpickled for a first time run
-        if d["reruns"] == 0:
-            self.__dict__ = d
-
-        # Unpickling to rerun
-        else:
-            self.__init__(directory = d["dir"])
-            for key in d.keys():
-                self.__dict__[key] = d[key]
-
-            for i in range(len(self.cmdlines)):
-                self.cmdlines[i] = getCmdLineFromDict(self.cmdlines[i])
-
-            for i in range(len(self.requires)):
-                self.requires[i] = getCmdLineFromDict(self.requires[i])
 
     def displayName(self):
         name = self.name
@@ -760,7 +720,6 @@ class Test(object):
         self.name = name
         self.part = part
         self.basename = name
-        self.tmpname = name
         self.contents += [(file, content)]
 
         for (cmd, success) in cmds["exec"]:
@@ -812,7 +771,6 @@ class Test(object):
         clone.number = self.number + 1
         clone.basename = self.basename
         clone.name = "%s-%d" % (self.basename, clone.number)
-        clone.tmpname = self.tmpname
         clone.reruns = self.reruns
         clone.serialize = self.serialize
         clone.ports = self.ports
@@ -882,7 +840,7 @@ class Test(object):
         self.mgr = mgr
         mgr.testStart(self)
 
-        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.tmpname))
+        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
         self.diag = os.path.join(self.tmpdir, ".diag")
         self.verbose = os.path.join(self.tmpdir, ".verbose")
         self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
@@ -1181,7 +1139,6 @@ class Test(object):
     # Sets up Object for a retry
     def retry(self):
         self.reruns += 1
-        self.tmpname = self.name + "-retry" + str(self.reruns)
 
 ### Output handlers.
 
