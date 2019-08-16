@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.59-1
+.. |version| replace:: 0.59-8
 
 ============================================
 BTest - A Simple Driver for Basic Unit Tests
@@ -311,6 +311,10 @@ and 1 otherwise.
     -x FILE, --xml=FILE
         Records test results in JUnit XML format to the given file.
         If the file exists already, it is overwritten.
+
+    -z RETRIES, --retries=RETRIES
+       Retry any failed tests up to this many times to determine if
+       they are unstable.
 
 .. _configuration file:
 
