@@ -2,7 +2,7 @@
 
 function usage
 {
-    cat <<EOF
+    cat <<EOF >&2
 usage: $(basename $0) [-q] [-T] <message>
 
          -q: Do not print message to standard output or standard error.
