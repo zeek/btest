@@ -7,7 +7,7 @@
 # %TEST-EXEC: echo --- >>output
 # %TEST-EXEC: btest -q %INPUT >>output 2>&1
 # %TEST-EXEC: echo --- >>output
-# %TEST-EXEC: btest-diff output
+# %TEST-EXEC: TEST_DIFF_CANONIFIER=%DIR/../Scripts/strip-iso8601-date btest-diff output
 
 # @TEST-EXEC: bash %INPUT >&2
 
@@ -18,4 +18,7 @@ btest-progress -q Foo 2
 sleep 1
 
 btest-progress Foo 3
+sleep 1
+
+btest-progress -T Foo 4
 sleep 1
