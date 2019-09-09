@@ -2,16 +2,19 @@ progress-back-to-back ...
   - Foo 1
   - Foo 2
   - Foo 3
+  - Foo 4
 progress-back-to-back ... ok
 all 1 tests successful
 ---
   % cat .stderr
   [btest] -- Foo 1
-  [btest] -- Foo 1
+  [btest] -- Foo 1 -- 2019-08-27T04:12:51.015Z
   [btest] -- Foo 2
-  [btest] -- Foo 2
+  [btest] -- Foo 2 -- 2019-08-27T04:12:51.024Z
   [btest] -- Foo 3
-  [btest] -- Foo 3
+  [btest] -- Foo 3 -- 2019-08-27T04:12:51.034Z
+  [btest] -- Foo 4
+  [btest] -- Foo 4 -- 2019-08-27T04:12:51.042Z
 
 all 1 tests successful
 ---
@@ -20,6 +23,7 @@ progress-back-to-back ...
   - Foo 1
   - Foo 2
   - Foo 3
+  - Foo 4
 ... progress-back-to-back ok
 all 1 tests successful
 ---

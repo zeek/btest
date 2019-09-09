@@ -1,4 +1,11 @@
 
+0.59-12 | 2019-09-09 11:30:26 +0000
+
+  * Add timestamps to "btest-progress" output. They are added to
+    stderr only, so that they will get recorded but not displayed
+    during execution. The new option -T suppresses the timestamp. (DJ
+    Gregor, Corelight)
+
 0.59-8 | 2019-08-16 16:15:41 +0000
 
   * New option -z <RETRIES> to retry any failed tests a few times to
