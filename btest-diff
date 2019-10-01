@@ -12,6 +12,7 @@
 #   TEST_DIFF_CANONIFIER
 #   TEST_DIFF_BRIEF
 #   TEST_DIFF_FILE_MAX_LINES
+#   TEST_DIFF_IGNORE_ADDED_LINES
 
 # Maximum number of lines to show from mismatching input file by default.
 MAX_LINES=100
@@ -94,7 +95,15 @@ if [ -e $TEST_BASELINE/$canon ]; then
 
    if [ $error -eq 0 ]; then
        echo "== Diff ===============================" >>$TEST_DIAGNOSTICS
-       diff -au $@ $diff1 $diff2 >>$TEST_DIAGNOSTICS
+       if [ -n $TEST_DIFF_IGNORE_ADDED_LINES ]; then
+           diff -au $@ $diff1 $diff2 | awk 'BEGIN { p = 0 ; m = 0}
+	/^\- / {m++}
+	/^\+ / {p++}
+	END { if(p>0) {printf("btest-diff: detected lines in output missing from baseline!\n"); }
+	      if(m>0) { exit(1) } else { exit(0) } }' >>$TEST_DIAGNOSTICS
+       else
+           diff -au $@ $diff1 $diff2 >>$TEST_DIAGNOSTICS
+       fi
        result=$?
    fi
 else
