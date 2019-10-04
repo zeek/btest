@@ -95,7 +95,7 @@ if [ -e $TEST_BASELINE/$canon ]; then
 
    if [ $error -eq 0 ]; then
        echo "== Diff ===============================" >>$TEST_DIAGNOSTICS
-       if [ -n $TEST_DIFF_IGNORE_ADDED_LINES ]; then
+       if [ -n "$TEST_DIFF_IGNORE_ADDED_LINES" ]; then
            diff -au $@ $diff1 $diff2 | awk 'BEGIN { p = 0 ; m = 0}
 	/^\- / {m++}
 	/^\+ / {p++}
