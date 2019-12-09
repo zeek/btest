@@ -274,6 +274,7 @@ class TestManager(multiprocessing.managers.SyncManager):
     def run(self, tests, output_handler):
         self.start()
 
+        output_handler.prepare(self)
         self._output_handler = output_handler
         self._lock = self.RLock()
         self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
@@ -1158,6 +1159,11 @@ class OutputHandler:
         self._buffered_output = {}
         self._options = options
 
+    def prepare(self, mgr):
+        """The TestManager calls this with itself as an argument just before
+        it starts running tests."""
+        pass
+
     def options(self):
         """Returns the current optparser instance."""
         return self._options
@@ -1262,6 +1268,11 @@ class Forwarder(OutputHandler):
     def __init__(self, options, handlers):
         OutputHandler.__init__(self, options)
         self._handlers = handlers
+
+    def prepare(self, mgr):
+        """Called just before test manager starts running tests."""
+        for h in self._handlers:
+            h.prepare(mgr)
 
     def testStart(self, test):
         """Called just before a test begins."""
@@ -1672,7 +1683,13 @@ class SphinxOutput(OutputHandler):
         pass
 
 class XMLReport(OutputHandler):
-    def __init__(self, options, file=None):
+
+    RESULT_PASS = "pass"
+    RESULT_FAIL = "failure"
+    RESULT_SKIP = "skipped"
+    RESULT_UNSTABLE = "unstable"
+
+    def __init__(self, options, xmlfile):
         """Output handler for producing an XML report of test results.
 
         options: An optparser with the global options.
@@ -1680,26 +1697,21 @@ class XMLReport(OutputHandler):
         file: Output into given file
         """
         OutputHandler.__init__(self, options)
-        self._file = file
-        self._doc = xml.dom.minidom.Document()
-        self._testsuite = self._doc.createElement("testsuite")
-        self._doc.appendChild(self._testsuite)
-
-        self._testsuite.setAttribute("timestamp", datetime.now().isoformat())
-        self._testsuite.setAttribute("hostname", socket.gethostname())
-
+        self._file = xmlfile
         self._start = time.time()
-        self._num_tests = 0
-        self._num_failures = 0
+        self._timestamp = datetime.now().isoformat()
+
+    def prepare(self, mgr):
+        self._results = mgr.list([])
 
     def testStart(self, test):
-        self._num_tests += 1
+        pass
 
     def testCommand(self, test, cmdline):
         pass
 
-    def makeTestCaseElement(self, test):
-        parts = test.displayName().split('.')
+    def makeTestCaseElement(self, doc, testsuite, name, duration):
+        parts = name.split('.')
         if len(parts) > 1:
             classname = ".".join(parts[:-1])
             name = parts[-1]
@@ -1707,12 +1719,11 @@ class XMLReport(OutputHandler):
             classname = parts[0]
             name = parts[0]
 
-        e = self._doc.createElement("testcase")
+        e = doc.createElement("testcase")
         e.setAttribute("classname", classname)
         e.setAttribute("name", name)
-        dur = time.time() - test.start
-        e.setAttribute("time", str(dur))
-        self._testsuite.appendChild(e)
+        e.setAttribute("time", str(duration))
+        testsuite.appendChild(e)
 
         return e
 
@@ -1732,41 +1743,65 @@ class XMLReport(OutputHandler):
 
         return context
 
+    def addTestResult(self, test, status):
+        context = ""
+
+        if status != self.RESULT_PASS:
+            context = self.getContext(test, ".stderr")
+
+        res = {"name": test.displayName(),
+               "status": status,
+               "context": context,
+               "duration": time.time() - test.start,
+               }
+
+        self._results.append(res)
+
     def testSucceeded(self, test, msg):
-        self.makeTestCaseElement(test)
+        self.addTestResult(test, self.RESULT_PASS)
 
     def testFailed(self, test, msg):
-        self._num_failures += 1
-        test_case = self.makeTestCaseElement(test)
-        e = self._doc.createElement("failure")
-        e.setAttribute("type", "fail")
-        text_node = self._doc.createTextNode(self.getContext(test, ".stderr"))
-        e.appendChild(text_node)
-        test_case.appendChild(e)
+        self.addTestResult(test, self.RESULT_FAIL)
 
     def testUnstable(self,test,msg):
-        test_case = self.makeTestCaseElement(test)
-        e = self._doc.createElement("unstable")
-        e.setAttribute("type", "unstable")
-        text_node = self._doc.createTextNode(self.getContext(test, ".stderr"))
-        e.appendChild(text_node)
-        test_case.appendChild(e)
+        self.addTestResult(test, self.RESULT_UNSTABLE)
 
     def testSkipped(self, test, msg):
-        test_case = self.makeTestCaseElement(test)
-        e = self._doc.createElement("skipped")
-        e.setAttribute("type", "skip")
-        text_node = self._doc.createTextNode(self.getContext(test, ".stderr"))
-        e.appendChild(text_node)
-        test_case.appendChild(e)
+        self.addTestResult(test, self.RESULT_SKIP)
 
     def finished(self):
-        self._testsuite.setAttribute("time", str(time.time() - self._start))
-        self._testsuite.setAttribute("tests", str(self._num_tests))
-        self._testsuite.setAttribute("failures", str(self._num_failures))
-        self._testsuite.setAttribute("errors", str(0))
+        num_tests = 0
+        num_failures = 0
+        doc = xml.dom.minidom.Document()
+        testsuite = doc.createElement("testsuite")
+        doc.appendChild(testsuite)
 
-        print(self._doc.toprettyxml(indent="    "), file=self._file)
+        for res in self._results:
+            test_case = self.makeTestCaseElement(doc, testsuite,
+                                                 res["name"], res["duration"])
+
+            if res["status"] != self.RESULT_PASS:
+                e = doc.createElement(res["status"])
+                e.setAttribute("type", res["status"])
+                text_node = doc.createTextNode(res["context"])
+                e.appendChild(text_node)
+                test_case.appendChild(e)
+
+                if res["status"] == self.RESULT_FAIL:
+                    num_failures += 1
+
+            num_tests += 1
+
+        testsuite.setAttribute("time", str(time.time() - self._start))
+        testsuite.setAttribute("tests", str(num_tests))
+        testsuite.setAttribute("failures", str(num_failures))
+        testsuite.setAttribute("errors", str(0))
+
+        testsuite.setAttribute("timestamp", self._timestamp)
+        testsuite.setAttribute("hostname", socket.gethostname())
+
+        print(doc.toprettyxml(indent="    "), file=self._file)
+        self._file.close()
 
 ### Timing measurements.
 
