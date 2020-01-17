@@ -1,4 +1,4 @@
-# %TEST-EXEC-FAIL: btest %INPUT test2 >output 2>&1
+# %TEST-EXEC-FAIL: btest -D %INPUT test2 >output 2>&1
 # %TEST-EXEC: btest-diff output
 
 @TEST-EXEC: echo Hello, World!

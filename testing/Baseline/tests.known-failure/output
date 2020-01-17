@@ -1,3 +1,9 @@
 known-failure ... failed (expected)
+  % 'exit 1' failed unexpectedly (exit code 1)
+  % cat .stderr
+
 test2 ... failed
+  % 'exit 1' failed unexpectedly (exit code 1)
+  % cat .stderr
+
 2 of 2 tests failed (with 1 expected to fail)

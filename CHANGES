@@ -1,4 +1,16 @@
 
+0.6 | 2020-01-17 09:12:14 +0000
+
+  * Show diagnostics for expected failures when --diagnostics-all is
+    used. (Robin Sommer, Corelight)
+
+  * Fix btest exit code to indicate success if only tests are failing
+    that are expected to. (Robin Sommer, Corelight)
+
+  * Extend XML test case to cover -j flag. (Jon Siwek, Corelight)
+
+  * Fix XML output option -x to work with -j. (Jon Siwek, Corelight)
+
 0.59-12 | 2019-09-09 11:30:26 +0000
 
   * Add timestamps to "btest-progress" output. They are added to

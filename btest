@@ -38,7 +38,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.59-12" # Automatically filled in.
+VERSION = "0.6" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -1616,7 +1616,7 @@ class Diag(OutputHandler):
         if self._file:
             self.output(test, "%s ... %s" % (test.displayName(), msg), True, self._file)
 
-        if not test.known_failure:
+        if (not test.known_failure) or self._all:
             self.showDiag(test)
 
     def testUnstable(self, test, msg):
