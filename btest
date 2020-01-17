@@ -279,6 +279,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         self._lock = self.RLock()
         self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
         self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
+        self._failed_expected = multiprocessing.sharedctypes.RawValue('i', 0)
         self._unstable = multiprocessing.sharedctypes.RawValue('i', 0)
         self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
         self._tests = self.list(tests)
@@ -335,7 +336,7 @@ class TestManager(multiprocessing.managers.SyncManager):
 
             state.close()
 
-        return (self._succeeded.value, self._failed.value, self._skipped.value, self._unstable.value)
+        return (self._succeeded.value, self._failed.value, self._skipped.value, self._unstable.value, self._failed_expected.value)
 
     def percentage(self):
         if not self._num_tests:
@@ -510,6 +511,9 @@ class TestManager(multiprocessing.managers.SyncManager):
                 self._output_handler.testSucceeded(test, msg)
             else:
                 self._failed.value -= 1
+                if test.known_failure:
+                    self._failed_expected.value -= 1
+
                 self._unstable.value += 1
                 msg += " on retry, unstable"
                 self._output_handler.testUnstable(test,msg)
@@ -536,7 +540,9 @@ class TestManager(multiprocessing.managers.SyncManager):
             if test.reruns == 0:
                 self._failed.value += 1
 
-                if not test.known_failure:
+                if test.known_failure:
+                    self._failed_expected.value += 1
+                else:
                     self._failed_tests += [test.name]
 
             if test.reruns < Options.retries and not test.known_failure:
@@ -2430,7 +2436,7 @@ try:
         if len(addr) > 100:
             addr = os.path.join("/tmp", sname)
 
-    (succeeded, failed, skipped, unstable) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
+    (succeeded, failed, skipped, unstable, failed_expected) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
     output_handler.finished()
 
@@ -2441,12 +2447,16 @@ except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
 
 skip = (", %d skipped" % skipped) if skipped > 0 else ""
 unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""
+failed_expectedstr = (" (with %d expected to fail)" % failed_expected) if failed_expected > 0 else ""
 
 if failed > 0:
     if not Options.quiet:
-        output("%d of %d test%s failed%s%s" % (failed, total, "s" if total > 1 else "", skip, unstablestr))
+        output("%d of %d test%s failed%s%s%s" % (failed, total, "s" if total > 1 else "", failed_expectedstr, skip, unstablestr))
 
-    sys.exit(1)
+    if failed == failed_expected:
+        sys.exit(0)
+    else:
+        sys.exit(1)
 
 elif skipped > 0 or unstable > 0:
     if not Options.quiet:
