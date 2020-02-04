@@ -365,9 +365,9 @@ class TestManager(multiprocessing.managers.SyncManager):
             if Options.update_times:
                 self.saveTiming(all_tests)
 
-    def rerun (self, test):
+    def rerun(self, test):
         test.reruns += 1
-        self._tests += [test.clone()]
+        self._tests += [test.clone(increment=False)]
 
     def nextTests(self, thread_num):
         with self._lock:
@@ -515,7 +515,7 @@ class TestManager(multiprocessing.managers.SyncManager):
                     self._failed_expected.value -= 1
 
                 self._unstable.value += 1
-                msg += " on retry, unstable"
+                msg += " on retry #{0}, unstable".format(test.reruns)
                 self._output_handler.testUnstable(test,msg)
 
             self._output_handler.testFinished(test, msg)
@@ -526,7 +526,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         msg = "failed"
 
         if test.reruns > 0:
-            msg += " on retry"
+            msg += " on retry #{0}".format(test.reruns)
 
         if test.known_failure:
             msg += " (expected)"
@@ -774,11 +774,16 @@ class Test(object):
 
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
-    def clone(self, content=None):
+    def clone(self, content=None, increment=True):
         clone = Test("")
-        clone.number = self.number + 1
+        clone.number = self.number
         clone.basename = self.basename
-        clone.name = "%s-%d" % (self.basename, clone.number)
+        clone.name = self.basename
+
+        if increment:
+            clone.number = self.number + 1
+            clone.name = "%s-%d" % (self.basename, clone.number)
+
         clone.reruns = self.reruns
         clone.serialize = self.serialize
         clone.ports = self.ports
