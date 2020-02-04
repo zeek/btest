@@ -799,6 +799,7 @@ class Test(object):
         else:
             clone.contents = self.contents
 
+        clone.files = self.files
         self.cloned = True
 
         return clone

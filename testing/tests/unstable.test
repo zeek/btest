@@ -3,13 +3,26 @@
 
 %TEST-START-FILE Baseline/test1/output
 ran
+more
 ran
+more
 ran
+more
 ran
+more
 %TEST-END-FILE
 
 %TEST-START-FILE test1
-@TEST-EXEC: echo ran >> ../../persist
+@TEST-START-FILE single-output1
+ran
+@TEST-END-FILE
+
+@TEST-START-FILE single-output2
+more
+@TEST-END-FILE
+
+@TEST-EXEC: cat single-output1 >> ../../persist
+@TEST-EXEC: cat single-output2 >> ../../persist
 @TEST-EXEC: cat ../../persist > output
 @TEST-EXEC: btest-diff output
 %TEST-END-FILE
