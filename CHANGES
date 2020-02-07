@@ -1,4 +1,12 @@
 
+0.6-4 | 2020-02-07 10:18:14 +0000
+
+  * Change --retries option to not increment test name on retries.
+    (Jon Siwek, Corelight)
+
+  * Fix retrying tests that use additional files. (Jon Siwek,
+    Corelight)
+
 0.60 | 2020-01-17 09:13:56 +0000
 
   * Show diagnostics for expected failures when --diagnostics-all is

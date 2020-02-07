@@ -1,5 +1,5 @@
 test1 ... failed
-test1-2 ... failed on retry
-test1-3 ... failed on retry
-test1-4 ... ok on retry, unstable
+test1 ... failed on retry #1
+test1 ... failed on retry #2
+test1 ... ok on retry #3, unstable
 0 tests successful, 1 unstable
