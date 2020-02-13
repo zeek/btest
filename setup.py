@@ -23,7 +23,7 @@ py_modules = [
 
 setup(name='btest',
       version="0.61", # Filled in automatically.
-      description='A simple unit testing framework',
+      description='A powerful system testing framework',
       long_description='See https://github.com/zeek/btest',
       author='Robin Sommer',
       author_email='robin@icir.org',
@@ -32,7 +32,7 @@ setup(name='btest',
       package_dir={"": "sphinx"},
       py_modules=py_modules,
       license='3-clause BSD License',
-      keywords='unit tests testing framework baselines',
+      keywords='system tests testing framework baselines',
       classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
