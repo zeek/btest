@@ -1,4 +1,9 @@
 
+0.61-2 | 2020-02-13 18:53:41 +0000
+
+  * Provide a more apt description for btest. (Christopher M. Hobbs,
+    Corelight)
+
 0.61 | 2020-02-07 10:19:25 +0000
 
   * Release 0.61.
