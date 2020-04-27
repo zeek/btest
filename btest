@@ -1311,14 +1311,18 @@ class Forwarder(OutputHandler):
         for h in self._handlers:
             h.testFailed(test, msg)
 
+    def testSkipped(self, test, msg):
+        for h in self._handlers:
+            h.testSkipped(test, msg)
+
+    def testFinished(self, test, msg):
+        for h in self._handlers:
+            h.testFinished(test, msg)
+
     def testUnstable(self, test, msg):
         """Called when a test failed initially but succeeded in a retry."""
         for h in self._handlers:
             h.testUnstable(test, msg)
-
-    def testSkipped(self, test, msg):
-        for h in self._handlers:
-            h.testSkipped(test, msg)
 
     def replayOutput(self, test):
         for h in self._handlers:
