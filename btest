@@ -1465,7 +1465,7 @@ class CompactConsole(Console):
         msg = " " + self.DarkGray + "(%s)" % msg + self.Normal
         self._consoleAugment(test, msg)
 
-    def testFinished(self, test):
+    def testFinished(self, test, msg):
         test.console_last_line = None
 
     def finished(self):
