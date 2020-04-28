@@ -288,6 +288,12 @@ and 1 otherwise.
         the timing measurements are recorded as the new baseline instead
         of being compared to a previous baseline.
 
+    --trace-file=TRACEFILE
+        Record test execution timings in Chrome tracing format to the given
+        file. If the file exists already, it is overwritten. The file can be
+        loaded in Chrome-based browsers at `<about:tracing>`_, or converted to
+        standalone HTML with `trace2html <https://pypi.org/project/trace2html/>`_.
+
     -U, --update-baseline
         Records a new baseline for all ``btest-diff`` commands found
         in any of the specified tests. To do this, all tests are run
