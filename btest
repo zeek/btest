@@ -15,6 +15,7 @@ import tempfile
 import subprocess
 import copy
 import glob
+import json
 import fnmatch
 import time
 import multiprocessing
@@ -38,7 +39,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.61-2" # Automatically filled in.
+VERSION = "0.61-8" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -1311,14 +1312,18 @@ class Forwarder(OutputHandler):
         for h in self._handlers:
             h.testFailed(test, msg)
 
+    def testSkipped(self, test, msg):
+        for h in self._handlers:
+            h.testSkipped(test, msg)
+
+    def testFinished(self, test, msg):
+        for h in self._handlers:
+            h.testFinished(test, msg)
+
     def testUnstable(self, test, msg):
         """Called when a test failed initially but succeeded in a retry."""
         for h in self._handlers:
             h.testUnstable(test, msg)
-
-    def testSkipped(self, test, msg):
-        for h in self._handlers:
-            h.testSkipped(test, msg)
 
     def replayOutput(self, test):
         for h in self._handlers:
@@ -1465,7 +1470,7 @@ class CompactConsole(Console):
         msg = " " + self.DarkGray + "(%s)" % msg + self.Normal
         self._consoleAugment(test, msg)
 
-    def testFinished(self, test):
+    def testFinished(self, test, msg):
         test.console_last_line = None
 
     def finished(self):
@@ -1813,6 +1818,34 @@ class XMLReport(OutputHandler):
         testsuite.setAttribute("hostname", socket.gethostname())
 
         print(doc.toprettyxml(indent="    "), file=self._file)
+        self._file.close()
+
+class ChromeTracing(OutputHandler):
+    """Output in Chrome tracing format.
+
+    Output files can be loaded into Chrome browser under about:tracing, or
+    converted to standalone HTML files with `trace2html`.
+    """
+    def __init__(self, options, tracefile):
+        OutputHandler.__init__(self, options)
+        self._file = tracefile
+
+    def prepare(self, mgr):
+        self._results = mgr.list([])
+
+    def testFinished(self, test, _):
+        self._results.append({
+                "name": test.name,
+                "ts": test.start * 1e6,
+                "tid": multiprocessing.current_process().pid,
+                "pid": 1,
+                "ph": "X",
+                "cat": "test",
+                "dur": (time.time() - test.start) * 1e6,
+        })
+
+    def finished(self):
+        print(json.dumps(list(self._results)), file=self._file)
         self._file.close()
 
 ### Timing measurements.
@@ -2174,6 +2207,8 @@ optparser.add_option("-A", "--show-all", action="store_true", default=False,
                      help="For console output, show one-liners for passing/skipped tests in addition to any failing ones")
 optparser.add_option("-z", "--retries", action="store", dest="retries", type="int", default=0,
                      help="Retry failed tests this many times to determine if they are unstable")
+optparser.add_option("--trace-file", action="store", dest="tracefile", default="",
+                     help="write Chrome tracing file to file; if file exists, it is overwritten")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -2276,6 +2311,14 @@ if Options.xmlfile:
 
     except IOError as e:
         print("cannot open %s: %s" % (Options.xmlfile, e), file=sys.stderr)
+
+if Options.tracefile:
+    try:
+        tracefile = open(Options.tracefile, "w", 1)
+        output_handlers += [ChromeTracing(Options, tracefile)]
+
+    except IOError as e:
+        print("cannot open %s: %s" % (Options.tracefile, e), file=sys.stderr)
 
 output_handler = Forwarder(Options, output_handlers)
 

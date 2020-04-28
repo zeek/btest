@@ -1,4 +1,9 @@
 
+0.61-8 | 2020-04-28 10:00:41 +0000
+
+  * Add `--trace-file` option for recording Chrome trace file.
+    (Benjamin Bannier, Corelight)
+
 0.61-2 | 2020-02-13 18:53:41 +0000
 
   * Provide a more apt description for btest. (Christopher M. Hobbs,
