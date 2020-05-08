@@ -1,4 +1,10 @@
 
+0.61-10 | 2020-05-08 15:05:46 +0000
+
+  * Catch keyboard interrupt to abort orderly and immediately. The
+    existing workers will still run to completion in the background.
+    (Benjamin Bannier, Corelight)
+
 0.61-8 | 2020-04-28 10:00:41 +0000
 
   * Add `--trace-file` option for recording Chrome trace file.

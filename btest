@@ -39,7 +39,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.61-8" # Automatically filled in.
+VERSION = "0.61-10" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -313,13 +313,19 @@ class TestManager(multiprocessing.managers.SyncManager):
         if num_threads:
             threads = []
 
-            for i in range(num_threads):
-                t = multiprocessing.Process(name="#%d" % (i+1), target=lambda: self.threadRun(i))
-                t.start()
-                threads += [t]
+            try:
+                for i in range(num_threads):
+                    t = multiprocessing.Process(name="#%d" % (i+1), target=lambda: self.threadRun(i))
+                    t.start()
+                    threads += [t]
 
-            for t in threads:
-                t.join()
+                for t in threads:
+                    t.join()
+
+            except KeyboardInterrupt:
+                for t in threads:
+                    t.terminate()
+                    t.join()
 
         else:
             # No threads, just run all directly.
