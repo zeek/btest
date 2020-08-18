@@ -807,6 +807,7 @@ class Test(object):
             clone.contents = self.contents
 
         clone.files = self.files
+        clone.dir = self.dir
         self.cloned = True
 
         return clone

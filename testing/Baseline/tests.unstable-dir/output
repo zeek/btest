@@ -1,0 +1,5 @@
+mydir.test1 ... failed
+mydir.test1 ... failed on retry #1
+mydir.test1 ... failed on retry #2
+mydir.test1 ... ok on retry #3, unstable
+0 tests successful, 1 unstable
