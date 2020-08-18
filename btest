@@ -1815,13 +1815,20 @@ class XMLReport(OutputHandler):
 
             num_tests += 1
 
-        testsuite.setAttribute("time", str(time.time() - self._start))
-        testsuite.setAttribute("tests", str(num_tests))
-        testsuite.setAttribute("failures", str(num_failures))
+        # These attributes are set in sorted order so that resulting XML output
+        # is stable across Python versions.  Before Python 3.8, attributes
+        # appear in sorted order.  After Python 3.8, attributes appear in
+        # order specified by the user.  Would be best to use an XML canonifier
+        # method here and Python 3.8+ does provide one, except earlier versions
+        # would need to rely on a third-party lib to do the same. References:
+        #   https://bugs.python.org/issue34160
+        #   https://mail.python.org/pipermail/python-dev/2019-March/156709.html
         testsuite.setAttribute("errors", str(0))
-
-        testsuite.setAttribute("timestamp", self._timestamp)
+        testsuite.setAttribute("failures", str(num_failures))
         testsuite.setAttribute("hostname", socket.gethostname())
+        testsuite.setAttribute("tests", str(num_tests))
+        testsuite.setAttribute("time", str(time.time() - self._start))
+        testsuite.setAttribute("timestamp", self._timestamp)
 
         print(doc.toprettyxml(indent="    "), file=self._file)
         self._file.close()
