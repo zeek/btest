@@ -1,4 +1,15 @@
 
+0.62-5 | 2020-08-25 07:57:23 +0000
+
+  * GH-11: Fix %DIR not being set correctly in cloned tests. (Jon
+    Siwek, Corelight)
+
+  * Sort XML attributes for more output stability across Python
+    versions. (Jon Siwek, Corelight)
+
+  * Use Sphinx logging API directly for compatibility with Sphinx
+    2.0+. (Jon Siwek, Corelight)
+
 0.62 | 2020-05-08 15:07:11 +0000
 
   * Release 0.62.

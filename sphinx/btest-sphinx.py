@@ -11,6 +11,8 @@ from docutils.transforms import TransformError, Transform
 from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
 from sphinx.errors import SphinxError
 from sphinx.directives.code import LiteralInclude
+from sphinx.util import logging
+logger = logging.getLogger(__name__)
 
 Initialized = False
 App = None
@@ -77,7 +79,7 @@ class Test(object):
         if self.has_run:
             return
 
-        App.builder.info("running test %s ..." % darkgreen(self.path))
+        logger.info("running test %s ..." % darkgreen(self.path))
 
         self.rst_output = os.path.join(BTestTmp, "%s" % self.tag)
         os.environ["BTEST_RST_OUTPUT"] = self.rst_output
@@ -90,7 +92,7 @@ class Test(object):
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
             # it doesn't pickle.
-            App.builder.warn(red("BTest error: %s" % e))
+            logger.warning(red("BTest error: %s" % e))
 
     def cleanTmps(self):
         subprocess.call("rm %s#* 2>/dev/null" % self.rst_output, shell=True)
