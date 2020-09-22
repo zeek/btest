@@ -2178,6 +2178,15 @@ def outputDocumentation(tests, format):
 
 ### Main
 
+if __name__ == '__main__':
+    # Python 3.8+ on macOS no longer uses "fork" as the default start-method
+    # See https://github.com/zeek/btest/issues/26
+    pyver_maj = sys.version_info[0]
+    pyver_min = sys.version_info[1]
+
+    if (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
+        multiprocessing.set_start_method('fork')
+
 optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
 optparser.add_option("-U", "--update-baseline", action="store_const", dest="mode", const="UPDATE",
                      help="create a new baseline from the tests' output")
