@@ -13,6 +13,25 @@
 #   TEST_DIFF_BRIEF
 #   TEST_DIFF_FILE_MAX_LINES
 #
+# This script has the following exit codes:
+#
+# When TEST_MODE is TEST:
+# 0 - Comparison succeeded, files are the same
+# 1 - Problems with input file/args or running TEST_DIFF_CANONIFIER, or file contents differ
+# 2 - Other diffing trouble (inherited from diff)
+# 100 - No baseline to compare to available
+#
+# When TEST_MODE is UPDATE:
+# 0 - Baseline updated
+# 1 - Problems with input file/args or running TEST_DIFF_CANONIFIER
+#
+# When TEST_MODE is UPDATE_INTERACTIVE:
+# 0 - Baseline updated, or nothing to update
+# 1 - Problems with input file/args or running TEST_DIFF_CANONIFIER, or user skips a deviating baseline
+# 200 - User asks to abort after a deviating baseline
+#
+# Otherwise: exits with 1
+
 # It's okay to check $? explicitly:
 # shellcheck disable=SC2181
 
