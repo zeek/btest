@@ -1,4 +1,25 @@
 
+0.62-12 | 2020-10-09 07:30:24 +0000
+
+  * Canonify outputs when updating baselines via btest-diff.
+    (Christian Kreibich, Corelight)
+
+    This leverages the same canonicalization btest-diff already
+    applies during test output comparison against baselines also when
+    updating those baselines (usually via btest -U/-u). This removes a
+    bunch of noise from the baselines, including personal home
+    directories, timestamps, etc.
+
+    Since btest-diff doesn't know whether the baseline has undergone
+    this canonicalization, it continues to canonicalize the baseline
+    prior to diffing. To track whether it has canonicalized a baseline
+    when updating, btest-diff now also prepends a header to the
+    generated baseline that warns users about the fact that it is
+    auto-generated. The presence of this header doubles as a marker
+    for canonicalization.
+
+  * Clean up btest-diff's shell code. (Christian Kreibich, Corelight)
+
 0.62-7 | 2020-09-24 07:47:26 -0700
 
   * GH-26: Explicitly use multiprocessing "fork" start-method (Jon Siwek, Corelight)
