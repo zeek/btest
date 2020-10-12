@@ -241,7 +241,7 @@ def runSubprocess(*args, **kwargs):
         p.join()
 
     except KeyboardInterrupt:
-        # Bailout here directly as otherwise we'll a bunch of errors
+        # Bail out here directly as otherwise we'd get a bunch of errors.
         # from all the childs.
         os._exit(1)
 
@@ -266,6 +266,11 @@ class Alternative:
         self.filters = {}
         self.substitutions = {}
         self.envs = {}
+
+# Exception class thrown to signal manager to abort processing.
+# The message passed to the constructor will be printed to the console.
+class Abort(Exception):
+    pass
 
 # Main class distributing the work across threads.
 class TestManager(multiprocessing.managers.SyncManager):
@@ -331,6 +336,12 @@ class TestManager(multiprocessing.managers.SyncManager):
             # No threads, just run all directly.
             self.threadRun(0)
 
+        if Options.abort_on_failure and self._failed.value > 0:
+            # Signal abort. In parallel mode, the child processes will
+            # already have finished because the join() above will have
+            # still be executed.
+            raise Abort("Aborted after first failure.")
+
         # Record failed tests if not updating.
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
             try:
@@ -378,6 +389,11 @@ class TestManager(multiprocessing.managers.SyncManager):
 
     def nextTests(self, thread_num):
         with self._lock:
+            if Options.abort_on_failure and self._failed.value > 0:
+                # Don't hand out any more tests if we are to be abort after
+                # first failure. Doing so will let all the processes terminate.
+                return None
+
             for i in range(len(self._tests)):
                 t = self._tests[i]
 
@@ -2232,6 +2248,8 @@ optparser.add_option("-z", "--retries", action="store", dest="retries", type="in
                      help="Retry failed tests this many times to determine if they are unstable")
 optparser.add_option("--trace-file", action="store", dest="tracefile", default="",
                      help="write Chrome tracing file to file; if file exists, it is overwritten")
+optparser.add_option("-F", "--abort-on-failure", action="store_true", dest="abort_on_failure",
+                     help="terminate after first test failure")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -2511,6 +2529,11 @@ try:
     (succeeded, failed, skipped, unstable, failed_expected) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
     output_handler.finished()
+
+except Abort as e:
+    output_handler.finished()
+    print(e.message, file=sys.stderr)
+    os._exit(1)
 
 except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
     output_handler.finished()
