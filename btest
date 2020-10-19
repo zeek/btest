@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import atexit
 import copy
+import distutils.version
 import fnmatch
 import glob
 import io
@@ -2266,6 +2267,17 @@ defaults["testbase"] = TestBase
 # Parse our config
 Config = getcfgparser(defaults)
 Config.read(Options.config)
+
+if getOption("MinVersion", None) is not None:
+    # Built-in distutils has version comparison support. This has
+    # deficiencies but suffices for our numbering purposes. In
+    # particular, it orders our post-release-steps scheme correctly,
+    # i.e. 1.2-23 > 1.2.
+    v_now = distutils.version.LooseVersion(VERSION)
+    v_min = distutils.version.LooseVersion(getOption("MinVersion", None))
+    if v_now < v_min:
+        error("%s requires at least btest %s, this is %s. Please upgrade."
+              % (Options.config, v_min, v_now))
 
 if Options.alternatives:
     # Preprocess to split into list.
