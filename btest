@@ -3,36 +3,36 @@
 # Main test driver.
 
 from __future__ import print_function
-import io
-import os
-import os.path
-import sys
-import shutil
-import fnmatch
-import optparse
-import re
-import tempfile
-import subprocess
+
+import atexit
 import copy
-import glob
-import json
 import fnmatch
-import time
+import glob
+import io
+import json
+import locale
 import multiprocessing
 import multiprocessing.managers
 import multiprocessing.sharedctypes
-import xml.dom.minidom
-import socket
+import optparse
+import os
+import os.path
+import platform as pform
+import re
 import resource
+import shutil
+import signal
+import socket
 import struct
-import uuid
+import subprocess
+import sys
 import tempfile
 import threading
-import signal
-import atexit
-import locale
+import time
+import uuid
+import xml.dom.minidom
+
 from datetime import datetime
-import platform as pform
 
 try:
     import ConfigParser as configparser
