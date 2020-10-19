@@ -7,16 +7,14 @@
 BTest - A Generic Driver for Powerful System Tests
 ==================================================
 
-.. rst-class:: opening
-
-    The ``btest`` is a powerful framework for writing system
-    tests. Freely borrowing some ideas from other packages, it's main
-    objective is to provide an easy-to-use, straightforward driver for
-    a suite of shell-based tests. Each test consists of a set of
-    command lines that will be executed, and success is determined
-    based on their exit codes. ``btest`` comes with some additional
-    tools that can be used within such tests to compare output against
-    a previously established baseline.
+The ``btest`` is a powerful framework for writing system tests. Freely
+borrowing some ideas from other packages, it's main objective is to
+provide an easy-to-use, straightforward driver for a suite of
+shell-based tests. Each test consists of a set of command lines that
+will be executed, and success is determined based on their exit
+codes. ``btest`` comes with some additional tools that can be used
+within such tests to compare output against a previously established
+baseline.
 
 .. contents::
 
@@ -26,7 +24,7 @@ Download
 You can find the latest BTest release for download at
 https://www.zeek.org/download.
 
-BTest's git repository is located at https://github.com/zeek/btest
+BTest's git repository is located at https://github.com/zeek/btest.
 
 This document describes BTest |version|. See the ``CHANGES``
 file for version history.
@@ -37,17 +35,17 @@ Prerequisites
 
 BTest has the following prerequisites:
 
-  - Python version >= 2.6.
+- Python version >= 2.6.
 
-  - Bash (note that on FreeBSD, bash is not installed by default).
+- Bash (note that on FreeBSD, bash is not installed by default).
 
 BTest has the following optional prerequisites to enable additional
 functionality:
 
-  - Sphinx.
+- Sphinx.
 
-  - perf (Linux only).  Note that on Debian/Ubuntu, you also need to install
-    the "linux-tools" package.
+- perf (Linux only).  Note that on Debian/Ubuntu, you also need to install
+  the "linux-tools" package.
 
 Installation
 ============
@@ -191,136 +189,136 @@ tests to perform. It is however possible to exclude specific files and
 directories by specifying a suitable `configuration file`_.
 
 ``btest`` returns exit code 0 if all tests have successfully passed,
-and 1 otherwise.
+and 1 otherwise. Exit code 1 can also result in case of other errors.
 
 ``btest`` accepts the following options:
 
-    -a ALTERNATIVE, --alternative=ALTERNATIVE
-        Activates an alternative_ configuration defined in the
-        configuration file. Multiple alternatives can be given as a
-        comma-separated list (in this case, all specified tests are run
-        once for each specified alternative). If ``ALTERNATIVE`` is ``-``
-        that refers to running with the standard setup, which can be used
-        to run tests both with and without alternatives by giving both.
+-a ALTERNATIVE, --alternative=ALTERNATIVE
+    Activates an alternative_ configuration defined in the
+    configuration file. Multiple alternatives can be given as a
+    comma-separated list (in this case, all specified tests are run
+    once for each specified alternative). If ``ALTERNATIVE`` is ``-``
+    that refers to running with the standard setup, which can be used
+    to run tests both with and without alternatives by giving both.
 
-    -A, --show-all
-        Shows an output line for all tests that were run (this includes tests
-        that passed, failed, or were skipped), rather than only failed tests.
-        Note that this option has no effect when btest's stdout is not a TTY
-        (because all tests are shown in that case).
+-A, --show-all
+    Shows an output line for all tests that were run (this includes tests
+    that passed, failed, or were skipped), rather than only failed tests.
+    Note that this option has no effect when btest's stdout is not a TTY
+    (because all tests are shown in that case).
+  
+-b, --brief
+    Does not output *anything* for tests which pass. If all tests
+    pass, there will not be any output at all except final summary
+    information.
 
-    -b, --brief
-        Does not output *anything* for tests which pass. If all tests
-        pass, there will not be any output at all except final summary
-        information.
+-c CONFIG, --config=CONFIG
+    Specifies an alternative `configuration file`_ to use. If not
+    specified, the default is to use a file called ``btest.cfg``
+    if found in the current directory. An alternative way to specify
+    a different config file is with the ``BTEST_CFG`` environment
+    variable (however, the command-line option overrides ``BTEST_CFG``).
 
-    -c CONFIG, --config=CONFIG
-        Specifies an alternative `configuration file`_ to use. If not
-        specified, the default is to use a file called ``btest.cfg``
-        if found in the current directory. An alternative way to specify
-        a different config file is with the ``BTEST_CFG`` environment
-        variable (however, the command-line option overrides ``BTEST_CFG``).
+-d, --diagnostics
+    Reports diagnostics for all failed tests. The diagnostics
+    include the command line that failed, its output to standard
+    error, and potential additional information recorded by the
+    command line for diagnostic purposes (see `@TEST-EXEC`_
+    below). In the case of ``btest-diff``, the latter is the
+    ``diff`` between baseline and actual output.
 
-    -d, --diagnostics
-        Reports diagnostics for all failed tests. The diagnostics
-        include the command line that failed, its output to standard
-        error, and potential additional information recorded by the
-        command line for diagnostic purposes (see `@TEST-EXEC`_
-        below). In the case of ``btest-diff``, the latter is the
-        ``diff`` between baseline and actual output.
+-D, --diagnostics-all
+    Reports diagnostics for all tests, including those which pass.
 
-    -D, --diagnostics-all
-        Reports diagnostics for all tests, including those which pass.
+-f DIAGFILE, --file-diagnostics=DIAGFILE
+    Writes diagnostics for all failed tests into the given file.
+    If the file already exists, it will be overwritten.
 
-    -f DIAGFILE, --file-diagnostics=DIAGFILE
-        Writes diagnostics for all failed tests into the given file.
-        If the file already exists, it will be overwritten.
+-g GROUPS, --groups=GROUPS
+    Runs only tests assigned to the given test groups, see
+    `@TEST-GROUP`_. Multiple groups can be given as a
+    comma-separated list. Specifying groups with a leading ``-``
+    leads to all tests to run that are *not* not part of them.
+    Specifying a sole ``-`` as a group name selects all tests that
+    do not belong to any group. (Note that if you combine these
+    variants to create ambigious situations, it's left
+    undefined which tests will end up running).
 
-    -g GROUPS, --groups=GROUPS
-        Runs only tests assigned to the given test groups, see
-        `@TEST-GROUP`_. Multiple groups can be given as a
-        comma-separated list. Specifying groups with a leading ``-``
-        leads to all tests to run that are *not* not part of them.
-        Specifying a sole ``-`` as a group name selects all tests that
-        do not belong to any group. (Note that if you combine these
-        variants to create ambigious situations, it's left
-        undefined which tests will end up running).
+-j THREADS, --jobs=THREADS
+    Runs up to the given number of tests in parallel. If no number
+    is given, BTest substitutes the number of available CPU cores
+    as reported by the OS.
 
-    -j THREADS, --jobs=THREADS
-        Runs up to the given number of tests in parallel. If no number
-        is given, BTest substitutes the number of available CPU cores
-        as reported by the OS.
+    By default, BTest assumes that all tests can be executed
+    concurrently without further constraints. One can however
+    ensure serialization of subsets by assigning them to the same
+    serialization set, see `@TEST-SERIALIZE`_.
 
-        By default, BTest assumes that all tests can be executed
-        concurrently without further constraints. One can however
-        ensure serialization of subsets by assigning them to the same
-        serialization set, see `@TEST-SERIALIZE`_.
+-q, --quiet
+    Suppress information output other than about failed tests.
+    If all tests pass, there will not be any output at all.
 
-    -q, --quiet
-        Suppress information output other than about failed tests.
-        If all tests pass, there will not be any output at all.
+-r, --rerun
+    Runs only tests that failed last time. After each execution
+    (except when updating baselines), BTest generates a state file
+    that records the tests that have failed. Using this option on
+    the next run then reads that file back in and limits execution
+    to those tests found in there.
 
-    -r, --rerun
-        Runs only tests that failed last time. After each execution
-        (except when updating baselines), BTest generates a state file
-        that records the tests that have failed. Using this option on
-        the next run then reads that file back in and limits execution
-        to those tests found in there.
+-R FORMAT, --documentation=FORMAT
+    Generates a reference of all tests and prints that to standard
+    output. The output can be of two types, specified by
+    ``FORMAT``: ``rst`` prints reStructuredText, and ``md`` prints
+    Markdown. In the output each test includes the documentation
+    string that's defined for it through ``@TEST-DOC``.
 
-    -R FORMAT, --documentation=FORMAT
-        Generates a reference of all tests and prints that to standard
-        output. The output can be of two types, specified by
-        ``FORMAT``: ``rst`` prints reStructuredText, and ``md`` prints
-        Markdown. In the output each test includes the documentation
-        string that's defined for it through ``@TEST-DOC``.
+-t, --tmp-keep
+    Does not delete any temporary files created for running the
+    tests (including their outputs). By default, the temporary
+    files for a test will be located in ``.tmp/<test>/``, where
+    ``<test>`` is the relative path of the test file with all slashes
+    replaced with dots and the file extension removed (e.g., the files
+    for ``example/t3.sh`` will be in ``.tmp/example.t3``).
 
-    -t, --tmp-keep
-        Does not delete any temporary files created for running the
-        tests (including their outputs). By default, the temporary
-        files for a test will be located in ``.tmp/<test>/``, where
-        ``<test>`` is the relative path of the test file with all slashes
-        replaced with dots and the file extension removed (e.g., the files
-        for ``example/t3.sh`` will be in ``.tmp/example.t3``).
+-T, --update-times
+    Record new `timing`_ baselines for the current host for tests that
+    have `@TEST-MEASURE-TIME`_. Tests are run as normal except that
+    the timing measurements are recorded as the new baseline instead
+    of being compared to a previous baseline.
 
-    -T, --update-times
-        Record new `timing`_ baselines for the current host for tests that
-        have `@TEST-MEASURE-TIME`_. Tests are run as normal except that
-        the timing measurements are recorded as the new baseline instead
-        of being compared to a previous baseline.
+--trace-file=TRACEFILE
+    Record test execution timings in Chrome tracing format to the given
+    file. If the file exists already, it is overwritten. The file can be
+    loaded in Chrome-based browsers at `<about:tracing>`_, or converted to
+    standalone HTML with `trace2html <https://pypi.org/project/trace2html/>`_.
 
-    --trace-file=TRACEFILE
-        Record test execution timings in Chrome tracing format to the given
-        file. If the file exists already, it is overwritten. The file can be
-        loaded in Chrome-based browsers at `<about:tracing>`_, or converted to
-        standalone HTML with `trace2html <https://pypi.org/project/trace2html/>`_.
+-U, --update-baseline
+    Records a new baseline for all ``btest-diff`` commands found
+    in any of the specified tests. To do this, all tests are run
+    as normal except that when ``btest-diff`` is executed, it
+    does not compute a diff but instead considers the given file
+    to be authoritative and records it as the version to compare
+    with in future runs.
 
-    -U, --update-baseline
-        Records a new baseline for all ``btest-diff`` commands found
-        in any of the specified tests. To do this, all tests are run
-        as normal except that when ``btest-diff`` is executed, it
-        does not compute a diff but instead considers the given file
-        to be authoritative and records it as the version to compare
-        with in future runs.
+-u, --update-interactive
+    Each time a ``btest-diff`` command fails in any tests that are
+    run, btest will stop and ask whether or not the user wants to
+    record a new baseline.
 
-    -u, --update-interactive
-        Each time a ``btest-diff`` command fails in any tests that are
-        run, btest will stop and ask whether or not the user wants to
-        record a new baseline.
+-v, --verbose
+    Shows all test command lines as they are executed.
 
-    -v, --verbose
-        Shows all test command lines as they are executed.
+-w, --wait
+    Interactively waits for ``<enter>`` after showing diagnostics
+    for a test.
 
-    -w, --wait
-        Interactively waits for ``<enter>`` after showing diagnostics
-        for a test.
+-x FILE, --xml=FILE
+    Records test results in JUnit XML format to the given file.
+    If the file exists already, it is overwritten.
 
-    -x FILE, --xml=FILE
-        Records test results in JUnit XML format to the given file.
-        If the file exists already, it is overwritten.
-
-    -z RETRIES, --retries=RETRIES
-       Retry any failed tests up to this many times to determine if
-       they are unstable.
+-z RETRIES, --retries=RETRIES
+     Retry any failed tests up to this many times to determine if
+     they are unstable.
 
 .. _configuration file:
 
@@ -471,13 +469,13 @@ BTest can run a set of tests with different settings than it would
 normally use by specifying an *alternative* configuration. Currently,
 three things can be adjusted:
 
-    - Further environment variables can be set that will then be
-      available to all the commands that a test executes.
+- Further environment variables can be set that will then be
+  available to all the commands that a test executes.
 
-    - *Filters* can modify an input file before a test uses it.
+- *Filters* can modify an input file before a test uses it.
 
-    - *Substitutions* can modify command lines executed as part of a
-      test.
+- *Substitutions* can modify command lines executed as part of a
+  test.
 
 We discuss the three separately in the following. All of them are
 defined by adding sections ``[<type>-<name>]`` where ``<type>``
@@ -529,8 +527,8 @@ Once the filter is activated by running ``btest`` with
 output).  In the simplest case, the filter could be a no-op in the
 form ``cp $1 $2``.
 
-.. note::
-    There are a few limitations to the filter concept currently:
+
+    **NOTE:** There are a few limitations to the filter concept currently:
 
     * Filters are *always* fed with ``%INPUT`` as their first
       argument. We should add a way to filter other files as well.
@@ -597,52 +595,52 @@ supported:
     configuration file, there are further ones that are passed into
     the commands:
 
-        ``TEST_DIAGNOSTICS``
-            A file where further diagnostic information can be saved
-            in case a command fails (this is also where ``btest-diff``
-            stores its diff). If this file exists, then the
-            ``--diagnostics-all`` or ``--diagnostics`` options will show
-            this file (for the latter option, only if a command fails).
+    ``TEST_DIAGNOSTICS``
+        A file where further diagnostic information can be saved
+        in case a command fails (this is also where ``btest-diff``
+        stores its diff). If this file exists, then the
+        ``--diagnostics-all`` or ``--diagnostics`` options will show
+        this file (for the latter option, only if a command fails).
 
-        ``TEST_MODE``
-            This is normally set to ``TEST``, but will be ``UPDATE``
-            if ``btest`` is run with ``--update-baseline``, or
-            ``UPDATE_INTERACTIVE`` if run with ``--update-interactive``.
+    ``TEST_MODE``
+        This is normally set to ``TEST``, but will be ``UPDATE``
+        if ``btest`` is run with ``--update-baseline``, or
+        ``UPDATE_INTERACTIVE`` if run with ``--update-interactive``.
 
-        ``TEST_BASELINE``
-            The name of a directory where the command can save permanent
-            information across ``btest`` runs. (This is where
-            ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
+    ``TEST_BASELINE``
+        The name of a directory where the command can save permanent
+        information across ``btest`` runs. (This is where
+        ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
 
-        ``TEST_NAME``
-            The name of the currently executing test.
+    ``TEST_NAME``
+        The name of the currently executing test.
 
-        ``TEST_VERBOSE``
-            The path of a file where the test can record further
-            information about its execution that will be included with
-            btest's ``--verbose`` output. This is for further tracking
-            the execution of commands and should generally generate
-            output that follows a line-based structure.
+    ``TEST_VERBOSE``
+        The path of a file where the test can record further
+        information about its execution that will be included with
+        btest's ``--verbose`` output. This is for further tracking
+        the execution of commands and should generally generate
+        output that follows a line-based structure.
 
-        ``TEST_BASE``
-            The btest base directory, i.e., the directory where
-            ``btest.cfg`` is located.
+    ``TEST_BASE``
+        The btest base directory, i.e., the directory where
+        ``btest.cfg`` is located.
 
-        ``TEST_PART``
-            The test part number (see `parts`_ for more about test parts).
+    ``TEST_PART``
+        The test part number (see `parts`_ for more about test parts).
 
-    .. note::
+          **NOTE:** 
 
-        If a command returns the special exit code 100, the test is
-        considered failed, however subsequent test commands within the
-        current test are still run. ``btest-diff`` uses this special
-        exit code to indicate that no baseline has yet been established.
+          If a command returns the special exit code 100, the test is
+          considered failed, however subsequent test commands within the
+          current test are still run. ``btest-diff`` uses this special
+          exit code to indicate that no baseline has yet been established.
 
-        If a command returns the special exit code 200, the test is
-        considered failed and all further tests are aborted.
-        ``btest-diff`` uses this special exit code when btest is run
-        with the ``--update-interactive`` option and the user chooses to
-        abort the tests when prompted to record a new baseline.
+          If a command returns the special exit code 200, the test is
+          considered failed and all further tests are aborted.
+          ``btest-diff`` uses this special exit code when btest is run
+          with the ``--update-interactive`` option and the user chooses to
+          abort the tests when prompted to record a new baseline.
 
 
 ``@TEST-EXEC-FAIL: <cmdline>``
@@ -1045,70 +1043,66 @@ The following Sphinx support scripts come with ``btest``:
 
 ``btest-rst-cmd [options] <cmdline>``
 
-    By default, this executes ``<cmdline>`` and includes both the
-    command line itself and its standard output into the generated
-    documentation (but only if the command line succeeds).
-    See above for an example.
+By default, this executes ``<cmdline>`` and includes both the
+command line itself and its standard output into the generated
+documentation (but only if the command line succeeds).
+See above for an example.
 
-    This script provides the following options:
+This script provides the following options:
 
-        -c ALTERNATIVE_CMDLINE
-            Show ``ALTERNATIVE_CMDLINE`` in the generated
-            documentation instead of the one actually executed. (It
-            still runs the ``<cmdline>`` given outside the option.)
+-c ALTERNATIVE_CMDLINE
+    Show ``ALTERNATIVE_CMDLINE`` in the generated
+    documentation instead of the one actually executed. (It
+    still runs the ``<cmdline>`` given outside the option.)
 
-        -d
-            Do not actually execute ``<cmdline>``; just format it for
-            the generated documentation and include no further output.
+-d
+    Do not actually execute ``<cmdline>``; just format it for
+    the generated documentation and include no further output.
 
-        -f FILTER_CMD
-            Pipe the command line's output through ``FILTER_CMD``
-            before including. If ``-r`` is given, it filters the
-            file's content instead of stdout.
+-f FILTER_CMD
+    Pipe the command line's output through ``FILTER_CMD``
+    before including. If ``-r`` is given, it filters the
+    file's content instead of stdout.
 
-        -o
-            Do not include the executed command into the generated
-            documentation, just its output.
+-o
+    Do not include the executed command into the generated
+    documentation, just its output.
 
-        -r FILE
-            Insert ``FILE`` into output instead of stdout. The ``FILE`` must
-            be created by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
+-r FILE
+    Insert ``FILE`` into output instead of stdout. The ``FILE`` must
+    be created by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
 
-        -n N
-            Include only ``N`` lines of output, adding a ``[...]`` marker if
-            there's more.
+-n N
+    Include only ``N`` lines of output, adding a ``[...]`` marker if
+    there's more.
 
 
 ``btest-rst-include [options] <file>``
 
-    Includes ``<file>`` inside a code block.  The ``<file>`` must be created
-    by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
+Includes ``<file>`` inside a code block.  The ``<file>`` must be created
+by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
 
-    This script provides the following options:
+This script provides the following options:
 
-        -n N
-            Include only ``N`` lines of output, adding a ``[...]`` marker if
-            there's more.
+-n N
+    Include only ``N`` lines of output, adding a ``[...]`` marker if
+    there's more.
 
 
 ``btest-rst-pipe <cmdline>``
 
-    Executes ``<cmdline>``, includes its standard output inside a code
-    block (but only if the command line succeeds). Note that
-    this script does not include the command line itself into the code
-    block, just the output.
+Executes ``<cmdline>``, includes its standard output inside a code
+block (but only if the command line succeeds). Note that
+this script does not include the command line itself into the code
+block, just the output.
 
-.. note::
+    **NOTE:** All these scripts can be run directly from the command
+    line to show the reST code they generate.
 
-    All these scripts can be run directly from the command line to show
-    the reST code they generate.
-
-.. note::
-
-    ``btest-rst-cmd`` can do everything the other scripts provide if
-    you give it the right options. In fact, the other scripts are
-    provided just for convenience and leverage ``btest-rst-cmd``
-    internally.
+    **NOTE:** ``btest-rst-cmd`` can do everything the other scripts
+    provide if you give it the right options. In fact, the other
+    scripts are provided just for convenience and leverage
+    ``btest-rst-cmd`` internally.
 
 Including Literal Text
 ----------------------
@@ -1134,5 +1128,5 @@ first need to run ``btest -u`` to establish the initial baseline).
 License
 =======
 
-btest is open-source under a BSD licence.
+BTest is open-source under a BSD licence.
 
