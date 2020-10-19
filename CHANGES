@@ -1,4 +1,8 @@
 
+0.62.1 | 2020-09-24 07:47:39 -0700
+
+  * Release 0.62.1.
+
 0.62-7 | 2020-09-24 07:47:26 -0700
 
   * GH-26: Explicitly use multiprocessing "fork" start-method (Jon Siwek, Corelight)
