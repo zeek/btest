@@ -157,7 +157,7 @@ if [ -e "$TEST_BASELINE/$canon" ]; then
         # It's an older uncanonicalized baseline, so canonicalize
         # it now prior to comparison. Future updates via btest
         # -U/-u will then store it canonicalized.
-        eval "$TEST_DIFF_CANONIFIER" "$input" <"$TEST_BASELINE/$canon" >"$canon_baseline"
+        eval "$TEST_DIFF_CANONIFIER" "$TEST_BASELINE/$canon" <"$TEST_BASELINE/$canon" >"$canon_baseline"
         if [ $? -ne 0 ]; then
             echo "== Error ==============================" >>$TEST_DIAGNOSTICS
             echo "btest-diff: TEST_DIFF_CANONIFIER failed on file '$TEST_BASELINE/$canon'" >>$TEST_DIAGNOSTICS
