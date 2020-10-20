@@ -341,7 +341,8 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
      Retry any failed tests up to this many times to determine if
      they are unstable.
 
-.. _configuration file:
+.. _configuration file: configuration_
+.. _configuration:
 
 Configuration
 -------------
@@ -489,7 +490,8 @@ Furthermore, by setting ``PATH`` to include the ``btest``
 distribution directory, one could skip the installation of the
 ``btest`` package.
 
-.. _alternative:
+.. _alternative: alternatives_
+.. _alternatives:
 
 Alternatives
 ~~~~~~~~~~~~
@@ -830,7 +832,8 @@ supported:
     Multiple ``@TEST-START-NEXT`` can be used to create more than
     two tests per file.
 
-.. _parts:
+.. _parts: `splitting tests into parts`_
+.. _splitting tests into parts:
 
 Splitting Tests into Parts
 ==========================
@@ -962,7 +965,8 @@ successively. By default, ``btest-progress`` also prints the messages
 to the test's standard output and standard error. That can be suppressed by
 adding an option ``-q`` to the invocation.
 
-.. _timing:
+.. _timing: `timing execution`_
+.. _timing execution:
 
 Timing Execution
 ================
