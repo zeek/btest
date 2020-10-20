@@ -1,4 +1,8 @@
 
+0.64 | 2020-10-20 13:32:11 +0000
+
+  * Fix canonification problem. (Robin Sommer, Corelight)
+
 0.63 | 2020-10-20 08:32:28 +0000
 
   * Add support for minimum BTest version requirement in the config
