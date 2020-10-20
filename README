@@ -61,8 +61,11 @@ and there are a number of further helper scripts that we discuss below
 (including ``btest-diff``, which is a tool for comparing output to a
 previously established baseline).
 
-Writing a Simple Test
-=====================
+Writing a Test
+==============
+
+First Steps
+-----------
 
 In the most simple case, ``btest`` simply executes a set of command
 lines, each of which must be prefixed with ``@TEST-EXEC:``
@@ -100,19 +103,31 @@ say we want to verify a shell script::
     > btest examples/t3.sh
     examples.t3 ... ok
 
-Here, ``btest`` is executing (something similar to) ``sh
+Here, ``btest`` executes (something similar to) ``sh
 examples/t3.sh``, and then checks the return value as usual. The
 example also shows that the ``@TEST-EXEC`` prefix can appear
 anywhere, in particular inside the comment section of another
 language.
 
-Now, let's say we want to check the output of a program, making sure
-that it matches what we expect. For that, we first add a command
-line to the test that produces the output we want to check, and then
-run ``btest-diff`` to make sure it matches a previously recorded
-baseline. ``btest-diff`` is itself just a script that returns
-success if the output is as expected, and failure otherwise. In the
-following example, we use an awk script as a fancy way to print all
+Using Baselines
+---------------
+
+Now, let's say we want to verify the output of a program, making sure
+that it matches our expectations---a common use case for BTest. To do
+this, we rely on BTest's built-in support for test baselines. These
+baselines record prior output of a test, adding support for
+abstracting away brittle details such as ever-changing timestamps or
+home directories. BTest comes with tooling to establish, update, and
+verify baselines, and to plug in "`canonifiers`_": scripts that
+abstract, or "normalize", troublesome detail from a baseline.
+
+In our test, we first add a command line that produces the output we
+want to check, and then run ``btest-diff`` to make sure it matches the
+previously recorded baseline. ``btest-diff`` is itself just a script
+that returns success if the output matches a pre-recorded baseline
+after applying any required normalizations.
+
+In the following example, we use an awk script as a fancy way to print all
 file names starting with a dot in the user's home directory. We
 write that list into a file called ``dots`` and then check whether
 its content matches what we know from last time::
@@ -126,12 +141,16 @@ Note that each test gets its own little sandbox directory when run,
 so by creating a file like ``dots``, you aren't cluttering up
 anything.
 
-The first time we run this test, we need to record a baseline::
+The first time we run this test, we need to record a baseline. The
+``btest`` command includes a baseline-update mode, set via ``-U``,
+that achieves this::
 
     > btest -U examples/t4.awk
 
-Now, ``btest-diff`` has remembered what the ``dots`` file should
-look like::
+``btest-diff`` recognizes this update mode via an environment variable
+set by btest, and records the ``dots`` file in a separate baseline
+folder. With this baseline in place, modifications to the output now
+trigger a test failure::
 
     > btest examples/t4.awk
     examples.t4 ... ok
@@ -140,8 +159,9 @@ look like::
     examples.t4 ... failed
     1 test failed
 
-If we want to see what exactly the unexpected change is that was
-introduced to ``dots``, there's a *diff* mode for that::
+If we want to see what exactly changed in ``dots`` to trigger the
+failure, ``btest`` allows us to record the discrepancies via a
+*diagnostics* mode that records them in a file called ``.diag``::
 
     > btest -d examples/t4.awk
     examples.t4 ... failed
@@ -166,15 +186,16 @@ introduced to ``dots``, there's a *diff* mode for that::
     % cat .stderr
     [... if any of the commands had printed something to stderr, that would follow here ...]
 
-Once we delete the new file, we are fine again::
+Once we delete the new file, the test passes again::
 
     > rm ~/.NEWDOTFILE
     > btest -d examples/t4.awk
     examples.t4 ... ok
 
-That's already the main functionality that the ``btest`` package
-provides. In the following, we describe a number of further options
-extending/modifying this basic approach.
+That's the essence of the functionality the ``btest`` package
+provides. This example did not use canonifiers. We cover these,
+and a number of additional options that extend or modify this basic
+approach, in the following sections.
 
 Reference
 =========
@@ -399,6 +420,14 @@ configuration file:
     of the test as its parameter. The return value indicates whether
     the test should continue; if false, the test will be considered
     failed. By default, there's no initializer set.
+
+``MinVersion``
+    On occasion, you'll want to ensure that the version of ``btest``
+    running your testsuite includes a particular feature. By setting
+    this value to a given version number (as reported by ``btest
+    --version``), ``btest`` installations older than this version will
+    fail test execution with exit code 1 and a corresponding error
+    message on stderr.
 
 ``PartFinalizer``
     An executable that will be executed each time a test *part* has
@@ -832,6 +861,9 @@ Note how ``output`` contains the output of both ``t7.sh#1`` and ``t7.sh#2``,
 however in each case ``%INPUT`` refers to the corresponding part. For
 the first part of a test, one can also omit the ``#1`` postfix in the filename.
 
+.. _canonifiers: `canonifying diffs`_
+.. _canonifying diffs:
+
 Canonifying Diffs
 =================
 
@@ -842,9 +874,32 @@ baseline. This can be useful if certain elements in an output are
 remove/replace these with something consistent. To enable such
 canonification, set the environment variable
 ``TEST_DIFF_CANONIFIER`` to a script reading the original version
-from stdin and writing the canonified version to stdout. Note that
-both baseline and current output are passed through the filter
-before their differences are computed.
+from stdin and writing the canonified version to stdout.
+For examples of canonifier scripts, take a look at those `used in the
+Zeek distribution <https://github.com/zeek/zeek/tree/master/testing/scripts/>`_.
+
+    **NOTE:** ``btest-diff`` passes both the pre-recorded baseline and
+    the fresh test output through any canonifiers before comparing
+    their contents. BTest version 0.63 introduced two changes in
+    ``btest-diff``'s baseline handling:
+
+    * ``btest-diff`` now records baselines in canonicalized form. The
+      benefit here is that by canonicalizing upon recording, you can
+      use ``btest -U`` more freely, keeping expected noise out of
+      revision control. The downside is that updates to canonifiers
+      require a refresh of the baselines.
+
+    * ``btest-diff`` now prefixes the baselines with a header that
+      warns against manual modification, and knows to exclude that
+      header from comparison. We recommend only ever updating
+      baselines via ``btest -U`` (or its interactive sibling, ``-u``).
+
+    Once you use canonicalized baselines in your project, it's a good
+    idea to use ``MinVersion = 0.63`` in your btest.cfg to avoid the
+    use of older ``btest`` installations. Since these are unaware of
+    the new baseline header and repeated application of canonifiers
+    may cause unexpected alterations to already-canonified baselines,
+    using such versions will likely cause test failures.
 
 Running Processes in the Background
 ===================================
