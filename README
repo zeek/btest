@@ -8,12 +8,12 @@ BTest - A Generic Driver for Powerful System Tests
 ==================================================
 
 The ``btest`` is a powerful framework for writing system tests. Freely
-borrowing some ideas from other packages, it's main objective is to
+borrowing some ideas from other packages, its main objective is to
 provide an easy-to-use, straightforward driver for a suite of
 shell-based tests. Each test consists of a set of command lines that
 will be executed, and success is determined based on their exit
 codes. ``btest`` comes with some additional tools that can be used
-within such tests to compare output against a previously established
+within such tests to robustly compare output against a previously established
 baseline.
 
 .. contents::
@@ -241,7 +241,7 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     leads to all tests to run that are *not* not part of them.
     Specifying a sole ``-`` as a group name selects all tests that
     do not belong to any group. (Note that if you combine these
-    variants to create ambigious situations, it's left
+    variants to create ambiguous situations, it's left
     undefined which tests will end up running).
 
 -j THREADS, --jobs=THREADS
@@ -535,7 +535,7 @@ form ``cp $1 $2``.
 
     * Filtered commands are only recognized if they are directly
       starting the command line. For example, ``@TEST-EXEC: ls | cat
-      >outout`` would not trigger the example filter above.
+      >output`` would not trigger the example filter above.
 
     * Filters are only executed for ``@TEST-EXEC``, not for
       ``@TEST-EXEC-FAIL``.
@@ -708,7 +708,7 @@ supported:
    Note that using the ``-j`` option to parallelize execution will
    work such that unique/available port numbers are assigned between
    concurrent tests, however there is still a potential race condition
-   for external processes to claim a port before the test actaully
+   for external processes to claim a port before the test actually
    runs and claims it for itself.
 
 ``@TEST-REQUIRES: <cmdline>``
@@ -1128,5 +1128,5 @@ first need to run ``btest -u`` to establish the initial baseline).
 License
 =======
 
-BTest is open-source under a BSD licence.
+BTest is open-source under a BSD license.
 
