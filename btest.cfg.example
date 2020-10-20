@@ -5,6 +5,7 @@ TmpDir      = %(testbase)s/.tmp
 BaselineDir = %(testbase)s/Baseline
 IgnoreDirs  = .svn CVS .tmp
 IgnoreFiles = *.tmp *.swp #*
+MinVersion  = 0.63
 
 [environment]
 CFLAGS=-O3

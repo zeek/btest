@@ -2,7 +2,7 @@
 # %TEST-EXEC: btest -a - foo1 default1 notfoo1 notdefault1 >>output 2>&1
 # %TEST-EXEC: btest -a foo foo1 default1 notfoo1 notdefault1 >>output 2>&1
 # %TEST-EXEC: btest -a notexist foo1 default1 notfoo1 notdefault1 >>output 2>&1
-# %TEST-EXEC-FAIL: btest-diff output
+# %TEST-EXEC: btest-diff output
 
 %TEST-START-FILE foo1
 @TEST-ALTERNATIVE: foo

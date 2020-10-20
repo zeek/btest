@@ -1,4 +1,18 @@
 
+0.63 | 2020-10-20 08:32:28 +0000
+
+  * Add support for minimum BTest version requirement in the config
+    file. If an entry called "MinVersion" is present in the "btest"
+    section, it spells out a minimum version that BTest must have in
+    order to run. If that condition isn't fulfilled, we exit with
+    error code 1 and a corresponding error message on stderr.
+    (Christian Kreibich, Corelight)
+
+  * GH-29: Add new options -F/--abort-on-failure that will abort once
+    at least one test has failed. (Robin Sommer, Corelight)
+
+  * Documentation and code cleanup. (Christian Kreibich, Corelight)
+
 0.62-13 | 2020-10-09 07:33:49 +0000
 
   * Canonify outputs when updating baselines via btest-diff.
