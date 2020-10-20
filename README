@@ -359,20 +359,24 @@ Options
 The following options can be set in the ``btest`` section of the
 configuration file:
 
-``TestDirs``
-    A space-separated list of directories to search for tests. If
-    defined, one doesn't need to specify any tests on the command
-    line.
-
-``TmpDir``
-    A directory where to create temporary files when running tests.
-    By default, this is set to ``%(testbase)s/.tmp``.
-
 ``BaselineDir``
     A directory where to store the baseline files for ``btest-diff``
     (note that the actual baseline files will be in test-specific
     subdirectories of this directory).  By default, this is set
     to ``%(testbase)s/Baseline``.
+
+``CommandPrefix``
+    Changes the naming of all ``btest`` commands by replacing the
+    ``@TEST-`` prefix with a custom string. For example, with
+    ``CommandPrefix=$TEST-``, the ``@TEST-EXEC`` command becomes
+    ``$TEST-EXEC``.
+
+``Finalizer``
+    An executable that will be executed each time any test has
+    successfully run. It runs in the same directory as the test itself
+    and receives the name of the test as its parameter. The return
+    value indicates whether the test should indeed be considered
+    successful. By default, there's no finalizer set.
 
 ``IgnoreDirs``
     A space-separated list of relative directory names to ignore
@@ -389,10 +393,6 @@ configuration file:
     An alternative way to ignore a file is by placing ``@TEST-IGNORE``
     in it.
 
-``StateFile``
-    The name of the state file to record the names of failing tests. Default is
-    ``.btest.failed.dat``.
-
 ``Initializer``
     An executable that will be executed before each test. It runs in
     the same directory as the test itself will and receives the name
@@ -400,24 +400,30 @@ configuration file:
     the test should continue; if false, the test will be considered
     failed. By default, there's no initializer set.
 
-``Finalizer``
-    An executable that will be executed each time any test has
-    successfully run. It runs in the same directory as the test itself
-    and receives the name of the test as its parameter. The return
-    value indicates whether the test should indeed be considered
-    successful. By default, there's no finalizer set.
-
 ``PartFinalizer``
     An executable that will be executed each time a test *part* has
     successfully run. This operates similarly to ``Finalizer`` except
     that it runs after each test part rather than only at completion
     of the full test. See `parts`_ for more about test parts.
 
-``CommandPrefix``
-    Changes the naming of all ``btest`` commands by replacing the
-    ``@TEST-`` prefix with a custom string. For example, with
-    ``CommandPrefix=$TEST-``, the ``@TEST-EXEC`` command becomes
-    ``$TEST-EXEC``.
+``PerfPath``
+    Specifies a path to the ``perf`` tool, which is used on Linux to
+    measure the execution times of tests. By default, BTest searches
+    for ``perf`` in ``PATH``.
+
+``PortRange``
+    Specifies a port range like "10000-11000" to use in conjuction with
+    ``@TEST-PORT`` commands.  Port assignments will be restricted to this
+    range.  The default range is "1024-65535".
+
+``StateFile``
+    The name of the state file to record the names of failing tests. Default is
+    ``.btest.failed.dat``.
+
+``TestDirs``
+    A space-separated list of directories to search for tests. If
+    defined, one doesn't need to specify any tests on the command
+    line.
 
 ``TimingBaselineDir``
     A directory where to store the host-specific `timing`_ baseline
@@ -429,15 +435,9 @@ configuration file:
     for a test before it's considered failed. Default is 1.0 (which means
     a 1.0% deviation is tolerated by default).
 
-``PerfPath``
-    Specifies a path to the ``perf`` tool, which is used on Linux to
-    measure the execution times of tests. By default, BTest searches
-    for ``perf`` in ``PATH``.
-
-``PortRange``
-    Specifies a port range like "10000-11000" to use in conjuction with
-    ``@TEST-PORT`` commands.  Port assignments will be restricted to this
-    range.  The default range is "1024-65535".
+``TmpDir``
+    A directory where to create temporary files when running tests.
+    By default, this is set to ``%(testbase)s/.tmp``.
 
 .. _environment variables:
 
@@ -569,6 +569,22 @@ Writing Tests
 trigger certain functionality. Currently, the following keywords are
 supported:
 
+``@TEST-ALTERNATIVE: <alternative>``
+    Runs this test only for the given alternative (see alternative_).
+    If ``<alternative>`` is ``default``, the test executes when BTest runs
+    with no alternative given (which however is the default anyway).
+
+``@TEST-COPY-FILE: <file>``
+    Copy the given file into the test's directory before the test is
+    run. If ``<file>`` is a relative path, it's interpreted relative
+    to the BTest's base directory. Environment variables in ``<file>``
+    will be replaced if enclosed in ``${..}``. This command can be
+    given multiple times.
+
+``@TEST-DOC: <docstring>``
+    Associates a documentation string with the test. These strings
+    get included into the output of the ``--documentation`` option.
+
 .. _@TEST-EXEC:
 
 ``@TEST-EXEC: <cmdline>``
@@ -595,6 +611,15 @@ supported:
     configuration file, there are further ones that are passed into
     the commands:
 
+    ``TEST_BASE``
+        The btest base directory, i.e., the directory where
+        ``btest.cfg`` is located.
+
+    ``TEST_BASELINE``
+        The name of a directory where the command can save permanent
+        information across ``btest`` runs. (This is where
+        ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
+
     ``TEST_DIAGNOSTICS``
         A file where further diagnostic information can be saved
         in case a command fails (this is also where ``btest-diff``
@@ -607,24 +632,8 @@ supported:
         if ``btest`` is run with ``--update-baseline``, or
         ``UPDATE_INTERACTIVE`` if run with ``--update-interactive``.
 
-    ``TEST_BASELINE``
-        The name of a directory where the command can save permanent
-        information across ``btest`` runs. (This is where
-        ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
-
     ``TEST_NAME``
         The name of the currently executing test.
-
-    ``TEST_VERBOSE``
-        The path of a file where the test can record further
-        information about its execution that will be included with
-        btest's ``--verbose`` output. This is for further tracking
-        the execution of commands and should generally generate
-        output that follows a line-based structure.
-
-    ``TEST_BASE``
-        The btest base directory, i.e., the directory where
-        ``btest.cfg`` is located.
 
     ``TEST_PART``
         The test part number (see `parts`_ for more about test parts).
@@ -642,10 +651,65 @@ supported:
           with the ``--update-interactive`` option and the user chooses to
           abort the tests when prompted to record a new baseline.
 
+    ``TEST_VERBOSE``
+        The path of a file where the test can record further
+        information about its execution that will be included with
+        btest's ``--verbose`` output. This is for further tracking
+        the execution of commands and should generally generate
+        output that follows a line-based structure.
+
 
 ``@TEST-EXEC-FAIL: <cmdline>``
     Like ``@TEST-EXEC``, except that this expects the command to
     *fail*, i.e., the test is aborted when the return code is zero.
+
+.. _@TEST-GROUP:
+
+``@TEST-GROUP: <group>``
+    Assigns the test to a group of name ``<group>``. By using option
+    ``-g`` one can limit execution to all tests that belong to a given
+    group (or a set of groups).
+
+``@TEST-IGNORE``
+    This is used to indicate that this file should be skipped (i.e., no
+    test commands in this file will be executed).  An alternative way to
+    ignore files is by using the ``IgnoreFiles`` option in the btest
+    configuration file.
+
+``@TEST-KNOWN-FAILURE``
+   Marks a test as known to currently fail. This only changes BTest's
+   output, which upon failure will indicate that that is expected; it
+   won't change the test's processing otherwise. The keyword doesn't
+   take any arguments but one could add a descriptive text, as in ::
+
+    .. @TEST-KNOWN-FAILURE: We know this fails because ....
+
+.. _@TEST-MEASURE-TIME:
+
+``@TEST-MEASURE-TIME``
+   Measures execution time for this test and compares it to a
+   previously established `timing`_ baseline. If it deviates significantly,
+   the test will be considered failed.
+
+``@TEST-NOT-ALTERNATIVE: <alternative>``
+    Ignores this test for the given alternative (see alternative_).
+    If ``<alternative>`` is ``default``, the test is ignored if BTest runs
+    with no alternative given.
+
+.. _@TEST-PORT:
+
+``@TEST-PORT: <env>``
+   Assign an available TCP port number to an environment variable
+   that is accessible from the running test process.  ``<env>`` is an
+   arbitrary user-chosen string that will be set to the next available
+   TCP port number.  Availability is based on checking successful
+   binding of the port on IPv4 INADDR_ANY and also restricted to the
+   range specified by the ``PortRange`` option.  IPv6 is not supported.
+   Note that using the ``-j`` option to parallelize execution will
+   work such that unique/available port numbers are assigned between
+   concurrent tests, however there is still a potential race condition
+   for external processes to claim a port before the test actaully
+   runs and claims it for itself.
 
 ``@TEST-REQUIRES: <cmdline>``
     Defines a condition that must be met for the test to be executed.
@@ -658,22 +722,46 @@ supported:
     a particular library is available). Multiple requirements may be
     specified and then all must be met for the test to continue.
 
-``@TEST-ALTERNATIVE: <alternative>``
-    Runs this test only for the given alternative (see alternative_).
-    If ``<alternative>`` is ``default``, the test executes when BTest runs
-    with no alternative given (which however is the default anyway).
+.. _@TEST-SERIALIZE:
 
-``@TEST-NOT-ALTERNATIVE: <alternative>``
-    Ignores this test for the given alternative (see alternative_).
-    If ``<alternative>`` is ``default``, the test is ignored if BTest runs
-    with no alternative given.
+``@TEST-SERIALIZE: <set>``
+   When using option ``-j`` to parallelize execution, all tests that
+   specify the same serialization set are guaranteed to run
+   sequentially. ``<set>`` is an arbitrary user-chosen string.
 
-``@TEST-COPY-FILE: <file>``
-    Copy the given file into the test's directory before the test is
-    run. If ``<file>`` is a relative path, it's interpreted relative
-    to the BTest's base directory. Environment variables in ``<file>``
-    will be replaced if enclosed in ``${..}``. This command can be
-    given multiple times.
+``@TEST-START-FILE <file>``
+    This is used to include an additional input file for a test
+    right inside the test file. All lines following the keyword line
+    will be written into the given file until a line containing
+    ``@TEST-END-FILE`` is found.  The lines containing ``@TEST-START-FILE``
+    and ``@TEST-END-FILE``, and all lines in between, will be removed from
+    the test's %INPUT.  Example::
+
+        > cat examples/t6.sh
+        # @TEST-EXEC: awk -f %INPUT <foo.dat >output
+        # @TEST-EXEC: btest-diff output
+
+            { lines += 1; }
+        END { print lines; }
+
+        @TEST-START-FILE foo.dat
+        1
+        2
+        3
+        @TEST-END-FILE
+
+        > btest -D examples/t6.sh
+        examples.t6 ... ok
+          % cat .diag
+          == File ===============================
+          3
+
+    Multiple such files can be defined within a single test.
+
+    Note that this is only one way to use further input files.
+    Another is to store a file in the same directory as the test
+    itself, making sure it's ignored via ``IgnoreFiles``, and then
+    refer to it via ``%DIR/<name>``.
 
 ``@TEST-START-NEXT``
     This is a short-cut for defining multiple test inputs in the
@@ -712,94 +800,6 @@ supported:
 
     Multiple ``@TEST-START-NEXT`` can be used to create more than
     two tests per file.
-
-``@TEST-START-FILE <file>``
-    This is used to include an additional input file for a test
-    right inside the test file. All lines following the keyword line
-    will be written into the given file until a line containing
-    ``@TEST-END-FILE`` is found.  The lines containing ``@TEST-START-FILE``
-    and ``@TEST-END-FILE``, and all lines in between, will be removed from
-    the test's %INPUT.  Example::
-
-        > cat examples/t6.sh
-        # @TEST-EXEC: awk -f %INPUT <foo.dat >output
-        # @TEST-EXEC: btest-diff output
-
-            { lines += 1; }
-        END { print lines; }
-
-        @TEST-START-FILE foo.dat
-        1
-        2
-        3
-        @TEST-END-FILE
-
-        > btest -D examples/t6.sh
-        examples.t6 ... ok
-          % cat .diag
-          == File ===============================
-          3
-
-    Multiple such files can be defined within a single test.
-
-    Note that this is only one way to use further input files.
-    Another is to store a file in the same directory as the test
-    itself, making sure it's ignored via ``IgnoreFiles``, and then
-    refer to it via ``%DIR/<name>``.
-
-``@TEST-IGNORE``
-    This is used to indicate that this file should be skipped (i.e., no
-    test commands in this file will be executed).  An alternative way to
-    ignore files is by using the ``IgnoreFiles`` option in the btest
-    configuration file.
-
-``@TEST-DOC: <docstring>``
-    Associates a documentation string with the test. These strings
-    get included into the output of the ``--documentation`` option.
-
-.. _@TEST-GROUP:
-
-``@TEST-GROUP: <group>``
-    Assigns the test to a group of name ``<group>``. By using option
-    ``-g`` one can limit execution to all tests that belong to a given
-    group (or a set of groups).
-
-.. _@TEST-SERIALIZE:
-
-``@TEST-SERIALIZE: <set>``
-   When using option ``-j`` to parallelize execution, all tests that
-   specify the same serialization set are guaranteed to run
-   sequentially. ``<set>`` is an arbitrary user-chosen string.
-
-.. _@TEST-PORT:
-
-``@TEST-PORT: <env>``
-   Assign an available TCP port number to an environment variable
-   that is accessible from the running test process.  ``<env>`` is an
-   arbitrary user-chosen string that will be set to the next available
-   TCP port number.  Availability is based on checking successful
-   binding of the port on IPv4 INADDR_ANY and also restricted to the
-   range specified by the ``PortRange`` option.  IPv6 is not supported.
-   Note that using the ``-j`` option to parallelize execution will
-   work such that unique/available port numbers are assigned between
-   concurrent tests, however there is still a potential race condition
-   for external processes to claim a port before the test actaully
-   runs and claims it for itself.
-
-``@TEST-KNOWN-FAILURE``
-   Marks a test as known to currently fail. This only changes BTest's
-   output, which upon failure will indicate that that is expected; it
-   won't change the test's processing otherwise. The keyword doesn't
-   take any arguments but one could add a descriptive text, as in ::
-
-    .. @TEST-KNOWN-FAILURE: We know this fails because ....
-
-.. _@TEST-MEASURE-TIME:
-
-``@TEST-MEASURE-TIME``
-   Measures execution time for this test and compares it to a
-   previously established `timing`_ baseline. If it deviates significantly,
-   the test will be considered failed.
 
 .. _parts:
 
@@ -1064,6 +1064,10 @@ This script provides the following options:
     before including. If ``-r`` is given, it filters the
     file's content instead of stdout.
 
+-n N
+    Include only ``N`` lines of output, adding a ``[...]`` marker if
+    there's more.
+
 -o
     Do not include the executed command into the generated
     documentation, just its output.
@@ -1071,10 +1075,6 @@ This script provides the following options:
 -r FILE
     Insert ``FILE`` into output instead of stdout. The ``FILE`` must
     be created by a previous ``@TEST-EXEC`` or ``@TEST-COPY-FILE``.
-
--n N
-    Include only ``N`` lines of output, adding a ``[...]`` marker if
-    there's more.
 
 
 ``btest-rst-include [options] <file>``
