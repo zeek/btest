@@ -647,9 +647,14 @@ supported:
         ``btest.cfg`` is located.
 
     ``TEST_BASELINE``
-        The name of a directory where the command can save permanent
+        A list of directories where the command can save permanent
         information across ``btest`` runs. (This is where
         ``btest-diff`` stores its baseline in ``UPDATE`` mode.)
+
+        Multiple entries are separated by colons. If more than one
+        entry is given, semantics should be to search them in order.
+        (This is where ``btest-diff`` stores its baseline in
+        ``UPDATE`` mode.)
 
     ``TEST_DIAGNOSTICS``
         A file where further diagnostic information can be saved

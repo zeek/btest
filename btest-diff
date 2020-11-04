@@ -69,11 +69,11 @@ get_canon_baseline() {
     tail -n +2 "$input"
 }
 
-# Updates the given baseline to the given destination, prepending our
-# header.
+# Updates the given baseline to the given filename inside the *first* baseline
+# directory, prepending our header.
 update_canon_baseline() {
     local input="$1"
-    local output="$2"
+    local output="${baseline_dirs[0]}/$2"
 
     echo "$HEADER" >"$output"
     cat "$input" >>"$output"
@@ -92,6 +92,9 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
+# Split string with baseline directories into array.
+IFS=':' read -ra baseline_dirs <<< "$TEST_BASELINE"
+
 input="$1"
 # shellcheck disable=SC2001
 canon=$(echo "$input" | sed 's#/#.#g')
@@ -109,13 +112,19 @@ delete_tmps() {
 
 trap delete_tmps 0
 
+# First first available baseline across directories.
+baseline=""
+for dir in "${baseline_dirs[@]}"; do
+    test -f "$dir/$canon" && baseline="$dir/$canon" && break
+done
+
 result=2
 
 rm -f $TEST_DIAGNOSTICS  2>/dev/null
 
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 
-if [ ! -e "$TEST_BASELINE/$canon" ]; then
+if [ -z "$baseline" ]; then
     cat "$input" >>$TEST_DIAGNOSTICS
 elif [ -n "$TEST_DIFF_BRIEF" ]; then
     echo "<Content not shown>" >>$TEST_DIAGNOSTICS
@@ -147,20 +156,20 @@ if [ $? -ne 0 ]; then
     result=1
 fi
 
-if [ -e "$TEST_BASELINE/$canon" ]; then
+if [ -n "$baseline" ]; then
     canon_baseline=/tmp/test-diff.$$.$canon.baseline.tmp
     tmpfiles="$tmpfiles $canon_baseline"
 
     # Prepare the baseline. When created by a recent btest-diff, we
     # don't need to re-canonicalize, otherwise we do.
-    if ! get_canon_baseline "$TEST_BASELINE/$canon" >"$canon_baseline"; then
+    if ! get_canon_baseline "$baseline" >"$canon_baseline"; then
         # It's an older uncanonicalized baseline, so canonicalize
         # it now prior to comparison. Future updates via btest
         # -U/-u will then store it canonicalized.
-        eval "$TEST_DIFF_CANONIFIER" "$TEST_BASELINE/$canon" <"$TEST_BASELINE/$canon" >"$canon_baseline"
+        eval "$TEST_DIFF_CANONIFIER" "$baseline" <"$baseline" >"$canon_baseline"
         if [ $? -ne 0 ]; then
             echo "== Error ==============================" >>$TEST_DIAGNOSTICS
-            echo "btest-diff: TEST_DIFF_CANONIFIER failed on file '$TEST_BASELINE/$canon'" >>$TEST_DIAGNOSTICS
+            echo "btest-diff: TEST_DIFF_CANONIFIER failed on file '$baseline'" >>$TEST_DIAGNOSTICS
             error=1
             result=1
         fi
@@ -200,7 +209,7 @@ elif [ "$TEST_MODE" = "UPDATE_INTERACTIVE" ]; then
     echo -n "$TEST_NAME ..." >/dev/tty
 
     if [ $rc = 0 ]; then
-        update_canon_baseline "$canon_output" "$TEST_BASELINE/$canon"
+        update_canon_baseline "$canon_output" "$canon"
         exit 0
     fi
 
@@ -213,7 +222,7 @@ elif [ "$TEST_MODE" = "UPDATE" ]; then
         exit 1
     fi
 
-    update_canon_baseline "$canon_output" "$TEST_BASELINE/$canon"
+    update_canon_baseline "$canon_output" "$canon"
     exit 0
 fi
 
