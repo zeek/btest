@@ -661,7 +661,7 @@ class Test(object):
         else: self.dir = directory
 
         self.alternative = None
-        self.baseline = None
+        self.baselines = []
         self.basename = None
         self.bound_ports = []
         self.cloned = False
@@ -903,7 +903,7 @@ class Test(object):
         self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
         self.diag = os.path.join(self.tmpdir, ".diag")
         self.verbose = os.path.join(self.tmpdir, ".verbose")
-        self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
+        self.baselines = [os.path.abspath(os.path.join(d, self.name)) for d in BaselineDirs]
         self.diagmsgs = []
         self.utime = -1
         self.utime_base = self.mgr.testTimingBaseline(self)
@@ -911,8 +911,10 @@ class Test(object):
         self.utime_exceeded = False
 
         self.rmTmp()
-        mkdir(self.baseline)
         mkdir(self.tmpdir)
+
+        for d in self.baselines:
+            mkdir(d)
 
         for (fname, lines) in self.files:
             fname = os.path.join(self.tmpdir, fname)
@@ -1051,11 +1053,12 @@ class Test(object):
 
         self.bound_ports = []
 
-        try:
-            # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
-            os.rmdir(self.baseline)
-        except OSError:
-            pass
+        for d in self.baselines:
+            try:
+                # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
+                os.rmdir(d)
+            except OSError:
+                pass
 
         self.log.close()
         self.stdout.close()
@@ -1154,7 +1157,7 @@ class Test(object):
     def prepareEnv(self, cmd, addl={}):
         env = copy.deepcopy(os.environ)
 
-        env["TEST_BASELINE"] = self.baseline
+        env["TEST_BASELINE"] = ":".join(self.baselines)
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
@@ -2462,9 +2465,9 @@ Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_AL
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
-BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+BaselineDirs = [os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))]
 Initializer = getOption("Initializer", "")
-BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDir, "_Timing")))
+BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
 Finalizer = getOption("Finalizer", "")
 PartFinalizer = getOption("PartFinalizer", "")
 
@@ -2529,7 +2532,9 @@ if Options.doc:
     outputDocumentation(tests, Options.doc)
     sys.exit(0)
 
-mkdir(BaselineDir)
+for d in BaselineDirs:
+    mkdir(d)
+    
 mkdir(TmpDir)
 
 try:
