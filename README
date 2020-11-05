@@ -227,7 +227,7 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     that passed, failed, or were skipped), rather than only failed tests.
     Note that this option has no effect when stdout is not a TTY
     (because all tests are shown in that case).
-  
+
 -b, --brief
     Does not output *anything* for tests which pass. If all tests
     pass, there will not be any output at all except final summary
@@ -382,10 +382,21 @@ The following options can be set in the ``btest`` section of the
 configuration file:
 
 ``BaselineDir``
-    A directory where to store the baseline files for ``btest-diff``
-    (note that the actual baseline files will be in test-specific
-    subdirectories of this directory).  By default, this is set
-    to ``%(testbase)s/Baseline``.
+    One or more directories where to store the baseline files for
+    ``btest-diff`` (note that the actual baseline files will be placed
+    into test-specific subdirectories of this directory).  By default,
+    this is set to ``%(testbase)s/Baseline``.
+
+    If multiple directories are to be used, they must be separated by
+    colons. ``btest-diff`` will then search them in order when looking
+    for a baseline. When updating a baseline, it will always store
+    the new version inside the first directory. Using multiple
+    directories is most useful in combination with alternatives_ to
+    support alternate executions where some tests produce expected
+    differences in their output.
+
+    This option can also be set through an environment variable
+    ``BTEST_BASELINE_DIR``.
 
 ``CommandPrefix``
     Changes the naming of all ``btest`` commands by replacing the
@@ -528,11 +539,12 @@ Running ``btest`` with ``--alternative=myalternative`` will now make
 the ``CFLAGS`` environment variable available to all commands
 executed.
 
-As a special case, one can override ``BTEST_TEST_BASE`` inside an
-alternative's environment section, and it will not only be passed on
+As a special case, one can override two specific environment
+variables---``BTEST_TEST_BASE`` and ``BTEST_BASELINE_DIR``---inside an
+alternative's environment section to have them not only be passed on
 to child processes, but also apply to the ``btest`` process itself.
-That way, one can switch to a different test base directory for an
-alternative.
+That way, one can switch to a different base and baseline directories
+for an alternative.
 
 .. _filters:
 
@@ -674,7 +686,7 @@ supported:
     ``TEST_PART``
         The test part number (see `parts`_ for more about test parts).
 
-          **NOTE:** 
+          **NOTE:**
 
           If a command returns the special exit code 100, the test is
           considered failed, however subsequent test commands within the
