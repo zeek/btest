@@ -2555,7 +2555,8 @@ try:
 
 except Abort as e:
     output_handler.finished()
-    print(e.message, file=sys.stderr)
+    print(e, file=sys.stderr)
+    sys.stderr.flush()
     os._exit(1)
 
 except (KeyboardInterrupt, IOError): # Ctrl-C can lead to broken pipe.
