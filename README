@@ -35,7 +35,7 @@ Prerequisites
 
 BTest has the following prerequisites:
 
-- Python version >= 2.6.
+- Python version >= 3.5 (older version may work, but are not well-tested).
 
 - Bash (note that on FreeBSD, bash is not installed by default).
 
@@ -54,7 +54,7 @@ Installation is simple and standard::
 
     tar xzvf btest-*.tar.gz
     cd btest-*
-    python setup.py install
+    python3 setup.py install
 
 This will install a few scripts: ``btest`` is the main driver program,
 and there are a number of further helper scripts that we discuss below
