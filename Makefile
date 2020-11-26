@@ -6,7 +6,7 @@ all:
 .PHONY: dist
 dist:
 	rm -rf build/*.tar.gz
-	python setup.py sdist -d build
+	python3 setup.py sdist -d build
 	@printf "Package: "; echo build/*.tar.gz
 
 .PHONY: upload
@@ -24,7 +24,7 @@ twine-check:
 		echo "Uploading to PyPi requires 'twine' and it's not found in PATH."; \
 		echo "Install it and/or make sure it is in PATH."; \
 		echo "E.g. you could use the following command to install it:"; \
-		echo "\tpip install twine"; \
+		echo "\tpip3 install twine"; \
 		echo ; \
 		exit 1; \
 		}

@@ -29,7 +29,7 @@ function apply_filter()
 # Strip leading white-space and then indent to 6 space.
 function indent()
 {
-    python -c "
+    python3 -c "
 from __future__ import print_function
 import sys
 input = sys.stdin.readlines()
