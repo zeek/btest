@@ -1,4 +1,17 @@
 
+0.64-14 | 2020-12-01 16:05:25 +0000
+
+  * Add support for multiple baseline directories. (Robin Sommer, Corelight)
+
+    This works be setting the environment variable BTEST_BASELINE_DIR to a
+    colon-separated list of directories. They will be searched in order when
+    looking a baseline file to compare against. Updating a baseline will always
+    put the new content into the first directory. One can now also generally
+    set a different baseline directory through BTEST_BASELINE_DIR. See the
+    README for more.
+
+  * Require Python >= 3.5. (Jon Siwek, Corelight)
+
 0.64-1 | 2020-11-11 12:57:12 +0000
 
   * Fix for Python 3. (Robin Sommer, Corelight)

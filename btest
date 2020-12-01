@@ -40,7 +40,9 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.64-1" # Automatically filled in.
+VERSION = "0.64-14" # Automatically filled in.
+
+using_py3 = (sys.version_info[0] == 3)
 
 Name = "btest"
 Config = None
@@ -651,7 +653,7 @@ class Test(object):
         else: self.dir = directory
 
         self.alternative = None
-        self.baseline = None
+        self.baselines = []
         self.basename = None
         self.bound_ports = []
         self.cloned = False
@@ -893,7 +895,7 @@ class Test(object):
         self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
         self.diag = os.path.join(self.tmpdir, ".diag")
         self.verbose = os.path.join(self.tmpdir, ".verbose")
-        self.baseline = os.path.abspath(os.path.join(BaselineDir, self.name))
+        self.baselines = [os.path.abspath(os.path.join(d, self.name)) for d in BaselineDirs]
         self.diagmsgs = []
         self.utime = -1
         self.utime_base = self.mgr.testTimingBaseline(self)
@@ -901,8 +903,10 @@ class Test(object):
         self.utime_exceeded = False
 
         self.rmTmp()
-        mkdir(self.baseline)
         mkdir(self.tmpdir)
+
+        for d in self.baselines:
+            mkdir(d)
 
         for (fname, lines) in self.files:
             fname = os.path.join(self.tmpdir, fname)
@@ -1041,11 +1045,12 @@ class Test(object):
 
         self.bound_ports = []
 
-        try:
-            # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
-            os.rmdir(self.baseline)
-        except OSError:
-            pass
+        for d in self.baselines:
+            try:
+                # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
+                os.rmdir(d)
+            except OSError:
+                pass
 
         self.log.close()
         self.stdout.close()
@@ -1144,7 +1149,7 @@ class Test(object):
     def prepareEnv(self, cmd, addl={}):
         env = copy.deepcopy(os.environ)
 
-        env["TEST_BASELINE"] = self.baseline
+        env["TEST_BASELINE"] = ":".join(self.baselines)
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
@@ -2271,10 +2276,13 @@ if not dirname:
 # If not, we'll use the current directory.
 TestBase = os.path.abspath(os.environ.get("BTEST_TEST_BASE", dirname))
 defaults["testbase"] = TestBase
+defaults["baselinedir"] = os.path.abspath(os.environ.get("BTEST_BASELINE_DIR", os.path.join(TestBase, "Baseline")))
 
 # Parse our config
 Config = getcfgparser(defaults)
 Config.read(Options.config)
+
+defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
 if getOption("MinVersion", None) is not None:
     # Built-in distutils has version comparison support. This has
@@ -2291,26 +2299,32 @@ if Options.alternatives:
     # Preprocess to split into list.
     Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",") if alt != "-"]
 
-    # If TestBase wasn't explicitly specified as an environment
-    # variable, we check to see if we're using an alternative that sets
-    # it. We'll use the TestBase from the first matching alternative that
-    # does so.
-    if "BTEST_TEST_BASE" not in os.environ:
+    # Helper function that, if an option wasn't explicitly specified as an
+    # environment variable, checks if an alternative sets its through
+    # its own environment section. If so, we make that value our new default.
+    # If multiple alternatives set it, we pick the value from the first.
+    def get_env_from_alternative(env, opt, default, transform=None):
+        if env in os.environ:
+            return
+
         for tag in Options.alternatives:
-            base = getOption("BTEST_TEST_BASE", None, section="environment-%s" % tag)
-            if base is None:
-                continue
+            value = getOption(env, None, section="environment-%s" % tag)
+            if value is not None:
+                if transform:
+                    value = transform(value)
 
-            TestBase = os.path.abspath(base)
-            defaults["testbase"] = TestBase
+                defaults[opt] = value
 
-            # At this point, our defaults have changed, so we
-            # reread the configuration.
-            Config = getcfgparser(defaults)
-            Config.read(Options.config)
+                # At this point, our defaults have changed, so we
+                # reread the configuration.
+                Config = getcfgparser(defaults)
+                Config.read(Options.config)
+                return value
 
-            # Now we continue with normal config file processing.
-            break
+        return default
+
+    TestBase = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase, lambda x: os.path.abspath(x))
+    get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
 
 os.chdir(TestBase)
 
@@ -2452,9 +2466,9 @@ Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_AL
 
 StateFile = os.path.abspath(getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
-BaselineDir = os.path.abspath(getOption("BaselineDir", os.path.join(defaults["testbase"], "Baseline")))
+BaselineDirs = [os.path.abspath(dir) for dir in defaults["baselinedir"].split(":")]
 Initializer = getOption("Initializer", "")
-BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDir, "_Timing")))
+BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
 Finalizer = getOption("Finalizer", "")
 PartFinalizer = getOption("PartFinalizer", "")
 
@@ -2519,7 +2533,9 @@ if Options.doc:
     outputDocumentation(tests, Options.doc)
     sys.exit(0)
 
-mkdir(BaselineDir)
+for d in BaselineDirs:
+    mkdir(d)
+
 mkdir(TmpDir)
 
 try:

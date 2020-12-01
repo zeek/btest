@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 
 from distutils.core import setup, Extension
 
@@ -22,7 +22,7 @@ py_modules = [
 ]
 
 setup(name='btest',
-      version="0.64-1", # Filled in automatically.
+      version="0.64-14", # Filled in automatically.
       description='A powerful system testing framework',
       long_description='See https://github.com/zeek/btest',
       author='Robin Sommer',
@@ -39,6 +39,7 @@ setup(name='btest',
         'License :: OSI Approved :: BSD License',
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Topic :: Utilities',
       ],
