@@ -1,3 +1,5 @@
+# %TEST-DOC: Check that when using multiple baseline directories we pick up, and update, files in the desired locations.
+#
 # %TEST-EXEC: mkdir -p baseline1/t1 baseline2/t2 baseline3/t3 baseline3/t4
 # %TEST-EXEC: echo 1 >baseline1/t1/output
 # %TEST-EXEC: echo 2 >baseline2/t2/output
@@ -14,7 +16,7 @@
 # %TEST-EXEC: btest -U t4
 # %TEST-EXEC: test -f baseline1/t4/output
 # %TEST-EXEC: btest t4
-# 
+#
 # %TEST-EXEC: test ! -d Baseline
 
 %TEST-START-FILE t1

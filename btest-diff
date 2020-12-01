@@ -112,7 +112,7 @@ delete_tmps() {
 
 trap delete_tmps 0
 
-# First first available baseline across directories.
+# First available baseline across directories.
 baseline=""
 for dir in "${baseline_dirs[@]}"; do
     test -f "$dir/$canon" && baseline="$dir/$canon" && break

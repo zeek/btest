@@ -1,7 +1,7 @@
 ..	-*- mode: rst-mode -*-
 ..
 .. Version number is filled in automatically.
-.. |version| replace:: 0.64
+.. |version| replace:: 0.64-7
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -388,12 +388,12 @@ configuration file:
     this is set to ``%(testbase)s/Baseline``.
 
     If multiple directories are to be used, they must be separated by
-    colons. ``btest-diff`` will then search them in order when looking
-    for a baseline. When updating a baseline, it will always store
-    the new version inside the first directory. Using multiple
-    directories is most useful in combination with alternatives_ to
-    support alternate executions where some tests produce expected
-    differences in their output.
+    colons. ``btest-diff`` will then search them for baseline files in
+    order when looking for a baseline to compare against. When
+    updating a baseline, it will always store the new version inside
+    the first directory. Using multiple directories is most useful in
+    combination with alternatives_ to support alternate executions
+    where some tests produce expected differences in their output.
 
     This option can also be set through an environment variable
     ``BTEST_BASELINE_DIR``.

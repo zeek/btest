@@ -1,3 +1,5 @@
+# %TEST-DOC: Check that we can change the baseline directory externally by setting BTEST_BASELINE_DIR.
+#
 # %TEST-EXEC-FAIL: BTEST_BASELINE_DIR=mydir btest %INPUT
 # %TEST-EXEC: test ! -e mydir/baseline-dir-env/output
 # %TEST-EXEC: BTEST_BASELINE_DIR=mydir btest -U %INPUT
