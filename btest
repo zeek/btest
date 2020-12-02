@@ -318,13 +318,17 @@ class TestManager(multiprocessing.managers.SyncManager):
 
         self._ports = self.list([p for p in range(port_range_lo, port_range_hi + 1)])
 
-        num_threads = Options.threads
+        threads = []
 
-        if num_threads:
-            threads = []
-
+        # With interactive input possibly required, we run tests
+        # directly. This avoids noisy output appearing from detached
+        # processes post-btest-exit when using CTRL-C during the input
+        # stage.
+        if Options.mode == "UPDATE_INTERACTIVE":
+            self.threadRun(0)
+        else:
             try:
-                for i in range(num_threads):
+                for i in range(Options.threads):
                     t = multiprocessing.Process(name="#%d" % (i+1), target=lambda: self.threadRun(i))
                     t.start()
                     threads += [t]
@@ -337,14 +341,9 @@ class TestManager(multiprocessing.managers.SyncManager):
                     t.terminate()
                     t.join()
 
-        else:
-            # No threads, just run all directly.
-            self.threadRun(0)
-
         if Options.abort_on_failure and self._failed.value > 0:
-            # Signal abort. In parallel mode, the child processes will
-            # already have finished because the join() above will have
-            # still be executed.
+            # Signal abort. The child processes will already have
+            # finished because the join() above still ran.
             raise Abort("Aborted after first failure.")
 
         # Record failed tests if not updating.
@@ -405,10 +404,9 @@ class TestManager(multiprocessing.managers.SyncManager):
                 if not t:
                     continue
 
-                if Options.threads and t.serialize:
-                    if hash(t.serialize) % Options.threads != thread_num:
-                        # Not ours.
-                        continue
+                if t.serialize and hash(t.serialize) % Options.threads != thread_num:
+                    # Not ours.
+                    continue
 
                 # We'll execute it, delete from queue.
                 del self._tests[i]
@@ -1011,6 +1009,8 @@ class Test(object):
                 if rc == 200:
                     # Abort all tests.
                     self.monitor_quit.set()
+                    # Flush remaining command output prior to exit:
+                    mgr.testReplayOutput(self)
                     sys.exit(1)
 
                 if rc != 100:
@@ -1219,10 +1219,10 @@ class OutputHandler:
         return self._options
 
     def threadPrefix(self):
-        """In threaded mode, returns a string with the thread's name in a form
-        suitable to prefix output with. In non-threaded mode, returns the
-        empty string."""
-        if self.options().threads:
+        """With multiple threads, returns a string with the thread's name in
+        a form suitable to prefix output with. With a single thread, returns
+        the empty string."""
+        if self.options().threads > 1:
             return "[%s]" % multiprocessing.current_process().name
         else:
             return ""
@@ -1238,23 +1238,21 @@ class OutputHandler:
                 print(msg, end=" ", file=file)
 
     def output(self, test, msg, nl=True, file=None):
-        """Output one line of output to user. In non-threaded mode, this will
-        be printed out directly to stderr. In threaded-mode, this will be
-        buffered until the test has finished; then all output is printed as a
-        block.
+        """Output one line of output to user. Unless we're just using a single
+        thread, this will be buffered until the test has finished;
+        then all output is printed as a block.
 
         This should only be called from other members of this class, or
         derived classes, not from tests.
         """
-        if not self.options().threads:
+        if self.options().threads < 2:
             self._output(msg, nl, file)
             return
 
-        else:
-            try:
-                self._buffered_output[test.name] += [(msg, nl, file)]
-            except KeyError:
-                self._buffered_output[test.name] = [(msg, nl, file)]
+        try:
+            self._buffered_output[test.name] += [(msg, nl, file)]
+        except KeyError:
+            self._buffered_output[test.name] = [(msg, nl, file)]
 
     def replayOutput(self, test):
         """Prints out all output buffered in threaded mode by output()."""
@@ -2136,20 +2134,22 @@ def readTestFile(filename):
 
     return tests
 
-def jOption(default):
-    def func(option, _, __, parser):
-        if parser.rargs and not parser.rargs[0].startswith('-'):
-            try:
-                val = int(parser.rargs[0])
-                parser.rargs.pop(0)
-            except ValueError:
-                val = default
-        else:
-            val = default
+def jOption(option, _, __, parser):
+    val = multiprocessing.cpu_count()
 
-        setattr(parser.values, option.dest, val)
+    if parser.rargs and not parser.rargs[0].startswith('-'):
+        try:
+            # Next argument should be the non-negative number of threads.
+            # Turn 0 into 1, for backward compatibility.
+            val = max(1, int(parser.rargs[0]))
+            parser.rargs.pop(0)
+        except ValueError:
+            # Default to using all CPUs. Flagging this as error risks
+            # confusing subsequent non-option arguments with arguments
+            # intended for -j.
+            pass
 
-    return func
+    setattr(parser.values, option.dest, val)
 
 # Output markup language documenting tests.
 def outputDocumentation(tests, fmt):
@@ -2229,8 +2229,8 @@ optparser.add_option("-c", "--config", action="store", type="string", dest="conf
                      help="configuration file")
 optparser.add_option("-t", "--tmp-keep", action="store_true", dest="tmps", default=False,
                      help="do not delete tmp files created for running tests")
-optparser.add_option("-j", "--jobs", action="callback", callback=jOption(multiprocessing.cpu_count()), dest="threads", default=0,
-                     help="number of threads to run tests in simultaneously; 0 disables threading")
+optparser.add_option("-j", "--jobs", action="callback", callback=jOption, dest="threads", default=1,
+                     help="number of threads running tests in parallel; with no argument will use all CPUs")
 optparser.add_option("-g", "--groups", action="store", type="string", dest="groups", default="",
                      help="execute only tests of given comma-separated list of groups")
 optparser.add_option("-r", "--rerun", action="store_true", dest="rerun", default=False,
@@ -2258,6 +2258,11 @@ optparser.add_option("-F", "--abort-on-failure", action="store_true", dest="abor
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
+
+# Update-interactive mode implies single-threaded operation
+if Options.mode == "UPDATE_INTERACTIVE" and Options.threads > 1:
+    warning("ignoring requested parallelism in interactive-update mode")
+    Options.threads = 1
 
 if not os.path.exists(Options.config):
     error("configuration file '%s' not found" % Options.config)
@@ -2555,7 +2560,9 @@ try:
         if len(addr) > 100:
             addr = os.path.join("/tmp", sname)
 
-    (succeeded, failed, skipped, unstable, failed_expected) = TestManager(address=addr).run(copy.deepcopy(tests), output_handler)
+    mgr = TestManager(address=addr)
+    (succeeded, failed, skipped, unstable, failed_expected) = mgr.run(
+        copy.deepcopy(tests), output_handler)
     total = succeeded + failed + skipped
     output_handler.finished()
 
