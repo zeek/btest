@@ -341,7 +341,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             # No threads, just run all directly.
             self.threadRun(0)
 
-        if Options.abort_on_failure and self._failed.value > 0:
+        if Options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
             # Signal abort. In parallel mode, the child processes will
             # already have finished because the join() above will have
             # still be executed.
@@ -394,8 +394,8 @@ class TestManager(multiprocessing.managers.SyncManager):
 
     def nextTests(self, thread_num):
         with self._lock:
-            if Options.abort_on_failure and self._failed.value > 0:
-                # Don't hand out any more tests if we are to be abort after
+            if Options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
+                # Don't hand out any more tests if we are to abort after
                 # first failure. Doing so will let all the processes terminate.
                 return None
 
