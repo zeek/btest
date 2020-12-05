@@ -193,6 +193,19 @@ Once we delete the new file, the test passes again::
     > btest -d examples/t4.awk
     examples.t4 ... ok
 
+Binary data
+~~~~~~~~~~~
+
+``btest`` baselines usually consist of text files, i.e. content that
+mostly makes sense to process line by line. It's possible to use
+binary data as well, though. For such data, ``btest-diff`` supports a
+binary mode in which it will treat the baselines as binary "blobs". In
+this mode, it will compare test output to baselines for byte-by-byte
+equality only, it will never apply any canonifiers, and it will leave
+the test output untouched during baseline updates.
+
+To use binary mode, invoke ``btest-diff`` with the ``--binary`` flag.
+
 That's the essence of the functionality the ``btest`` package
 provides. This example did not use canonifiers. We cover these,
 and a number of additional options that extend or modify this basic
