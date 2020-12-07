@@ -1,4 +1,11 @@
 
+0.64-18 | 2020-12-07 08:44:55 +0000
+
+  * Add "binary mode" to btest-diff. In binary mode, invoked with -b/--binary,
+    btest-diff compares test output and baselines for equality only, never
+    applies canonifiers, and doesn't apply our btest header when updating
+    baselines. (Christian Kreibich, Corelight)
+
 0.64-16 | 2020-12-07 08:35:25 +0000
 
   * GH-36: Fix --abort-on-failure for expected failures. (Robin Sommer,

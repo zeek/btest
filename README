@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 0.64-16
+.. |version| replace:: 0.64-18
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -921,6 +921,19 @@ Zeek distribution <https://github.com/zeek/zeek/tree/master/testing/scripts/>`_.
     the new baseline header and repeated application of canonifiers
     may cause unexpected alterations to already-canonified baselines,
     using such versions will likely cause test failures.
+
+Binary Data in Baselines
+========================
+
+``btest`` baselines usually consist of text files, i.e. content that
+mostly makes sense to process line by line. It's possible to use
+binary data as well, though. For such data, ``btest-diff`` supports a
+binary mode in which it will treat the baselines as binary "blobs". In
+this mode, it will compare test output to baselines for byte-by-byte
+equality only, it will never apply any canonifiers, and it will leave
+the test output untouched during baseline updates.
+
+To use binary mode, invoke ``btest-diff`` with the ``--binary`` flag.
 
 Running Processes in the Background
 ===================================
