@@ -1,4 +1,9 @@
 
+0.64-16 | 2020-12-07 08:35:25 +0000
+
+  * GH-36: Fix --abort-on-failure for expected failures. (Robin Sommer,
+    Corelight)
+    
 0.64-14 | 2020-12-01 16:05:25 +0000
 
   * Add support for multiple baseline directories. (Robin Sommer, Corelight)
