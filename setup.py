@@ -22,7 +22,7 @@ py_modules = [
 ]
 
 setup(name='btest',
-      version="0.64-21", # Filled in automatically.
+      version="0.65", # Filled in automatically.
       description='A powerful system testing framework',
       long_description='See https://github.com/zeek/btest',
       author='Robin Sommer',
