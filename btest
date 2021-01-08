@@ -816,6 +816,7 @@ class Test(object):
             clone.number = self.number + 1
             clone.name = "%s-%d" % (self.basename, clone.number)
 
+        clone.requires = self.requires
         clone.reruns = self.reruns
         clone.serialize = self.serialize
         clone.ports = self.ports
