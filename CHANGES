@@ -1,4 +1,8 @@
 
+0.67 | 2021-01-21 13:27:20 -0800
+
+  * Release 0.67.
+
 0.66-2 | 2021-01-21 13:26:58 -0800
 
   * Support BTest installation via CMake (Christian Kreibich, Corelight)
