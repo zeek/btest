@@ -1,4 +1,12 @@
 
+0.66-2 | 2021-01-21 13:26:58 -0800
+
+  * Support BTest installation via CMake (Christian Kreibich, Corelight)
+
+    This copies the relevant files manually. Relying on setup.py is
+    feasible but requires careful separation of build and source
+    directories, so currently explicit file lists are easier to maintain.
+
 0.66 | 2021-01-08 12:14:24 +0000
 
   * Bug fix to apply TEST-REQUIRES to tests duplicated with TEST-START-NEXT.

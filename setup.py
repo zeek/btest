@@ -2,6 +2,8 @@
 
 from distutils.core import setup, Extension
 
+# When making changes to the following list, remember to keep
+# CMakeLists.txt in sync.
 scripts = [
     "btest",
     "btest-ask-update",
@@ -22,7 +24,7 @@ py_modules = [
 ]
 
 setup(name='btest',
-      version="0.66", # Filled in automatically.
+      version="0.66-2", # Filled in automatically.
       description='A powerful system testing framework',
       long_description='See https://github.com/zeek/btest',
       author='Robin Sommer',
