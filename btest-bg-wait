@@ -25,7 +25,11 @@ if [ $# != 1 ]; then
     exit 1
 fi
 
-timeout=$1
+if [ -z "$ZEEK_CI_BTEST_TIMEOUT_MULTIPLIER" ]; then
+    timeout=$1
+else
+    timeout=$(expr $1 \* $ZEEK_CI_BTEST_TIMEOUT_MULTIPLIER)
+fi
 
 procs=`cat .bgprocs`
 
@@ -147,8 +151,3 @@ for p in $procs; do
 done
 
 exit $result
-
-
-
-
-
