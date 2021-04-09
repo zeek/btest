@@ -2056,7 +2056,7 @@ def readTestFile(filename):
         return []
 
     try:
-        input = io.open(filename, encoding=getDefaultBtestEncoding())
+        input = io.open(filename, encoding=getDefaultBtestEncoding(), newline='')
     except IOError as e:
         error("cannot read test file: %s" % e)
 
@@ -2450,7 +2450,7 @@ RE_ENV = re.compile(r"\$\{(\w+)\}")
 RE_PART = re.compile(r"^(.*)#([0-9]+)$")
 RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
 RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
-RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\n ]*)")
+RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\r\n ]*)")
 RE_END_FILE = re.compile(CommandPrefix + "END-FILE")
 
 # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)

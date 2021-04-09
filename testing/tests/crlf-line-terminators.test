@@ -1,0 +1,17 @@
+# %TEST-DOC: Check that CRLF line-terminators are preserved in test files.
+# Note that this test file itself has CRLF line endings and .gitattributes
+# has an entry to explicitly say this file uses CRLF.
+
+# %TEST-EXEC: cp %INPUT input
+# %TEST-EXEC: btest-diff input
+# %TEST-EXEC: btest-diff crlfs.dat
+
+one
+two
+three
+
+%TEST-START-FILE crlfs.dat
+1
+2
+3
+%TEST-END-FILE
