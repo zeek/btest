@@ -1,4 +1,8 @@
 
+0.68 | 2021-04-16 16:21:36 -0700
+
+  * Release 0.68.
+
 0.67-2 | 2021-04-16 16:21:14 -0700
 
   * Preserve CRLF line-terminators in test files (Jon Siwek, Corelight)
