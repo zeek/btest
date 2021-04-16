@@ -1,4 +1,12 @@
 
+0.67-2 | 2021-04-16 16:21:14 -0700
+
+  * Preserve CRLF line-terminators in test files (Jon Siwek, Corelight)
+
+    Since the test itself may depend on their existence.
+
+    Related to https://github.com/zeek/zeek/issues/1497
+
 0.67 | 2021-01-21 13:27:20 -0800
 
   * Release 0.67.
