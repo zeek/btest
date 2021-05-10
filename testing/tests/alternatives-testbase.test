@@ -1,2 +1,11 @@
 # %TEST-EXEC: cp -r ../../Files/local_alternative .
 # %TEST-EXEC: btest -a local tests/local-alternative-found.test
+
+# Verify that a BTEST_TEST_BASE environment value overrides any such
+# variable set in an alternatives section. If the environment
+# variable were ignored, the following setup would pick the
+# x/y/local_alternative folder, which doesn't exist.
+# %TEST-EXEC: mkdir -p x/y
+# %TEST-EXEC: cp -r ../../Files/local_alternative x/y/another_alternative
+# %TEST-EXEC: cd x/y/another_alternative/tests && mv local-alternative-found.test another-alternative-found.test
+# %TEST-EXEC: BTEST_TEST_BASE=x/y/another_alternative btest -a local tests/another-alternative-found.test

@@ -2311,7 +2311,7 @@ if Options.alternatives:
     # If multiple alternatives set it, we pick the value from the first.
     def get_env_from_alternative(env, opt, default, transform=None):
         if env in os.environ:
-            return
+            return default
 
         for tag in Options.alternatives:
             value = getOption(env, None, section="environment-%s" % tag)
