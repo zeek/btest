@@ -1,0 +1,5 @@
+# Output the TEST_BASELINE environment value, it should
+# contain the local_alternative part
+#
+# @TEST-EXEC: env | grep ^TEST_BASELINE | sort | strip-test-base > output
+# @TEST-EXEC: btest-diff output

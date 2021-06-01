@@ -40,7 +40,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.68-2" # Automatically filled in.
+VERSION = "0.68-4" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -2327,6 +2327,8 @@ if Options.alternatives:
         return Config, default
 
     (Config, TestBase) = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase, lambda x: os.path.abspath(x))
+    # Need to update BaselineDir - it may be interpolated from testbase.
+    defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
     (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
 
 os.chdir(TestBase)
