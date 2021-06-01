@@ -1,4 +1,13 @@
 
+0.68-2 | 2021-06-01 08:53:42 +0200
+
+  * Fix issue where global configuration object wasn't updated for
+    environment variables taken from alternatives. (Arne Welzel,
+    Corelight)
+
+  * Ignore environment variable when overridden by alternative. (Arne
+    Welzel, Corelight)
+
 0.68 | 2021-04-16 16:21:36 -0700
 
   * Release 0.68.

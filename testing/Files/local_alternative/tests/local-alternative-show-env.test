@@ -1,0 +1,5 @@
+# Output the ENV variables set from [environment] and ensure they
+# have been re-interpolated with "local_alternative" in them.
+#
+# @TEST-EXEC: env | grep ^ENV | sort | strip-test-base > output
+# @TEST-EXEC: btest-diff output

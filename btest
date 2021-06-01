@@ -40,7 +40,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.68" # Automatically filled in.
+VERSION = "0.68-2" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -2310,9 +2310,6 @@ if Options.alternatives:
     # its own environment section. If so, we make that value our new default.
     # If multiple alternatives set it, we pick the value from the first.
     def get_env_from_alternative(env, opt, default, transform=None):
-        if env in os.environ:
-            return
-
         for tag in Options.alternatives:
             value = getOption(env, None, section="environment-%s" % tag)
             if value is not None:
@@ -2323,14 +2320,14 @@ if Options.alternatives:
 
                 # At this point, our defaults have changed, so we
                 # reread the configuration.
-                Config = getcfgparser(defaults)
-                Config.read(Options.config)
-                return value
+                new_config = getcfgparser(defaults)
+                new_config.read(Options.config)
+                return new_config, value
 
-        return default
+        return Config, default
 
-    TestBase = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase, lambda x: os.path.abspath(x))
-    get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
+    (Config, TestBase) = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase, lambda x: os.path.abspath(x))
+    (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
 
 os.chdir(TestBase)
 

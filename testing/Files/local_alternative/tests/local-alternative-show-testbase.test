@@ -1,0 +1,5 @@
+# Output the BTEST_TEST_BASE environment value, it should not
+# contain the ignore/this/base path
+#
+# @TEST-EXEC: env | grep BTEST_TEST_BASE | strip-test-base > output
+# @TEST-EXEC: btest-diff output
