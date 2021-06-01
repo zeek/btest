@@ -2326,8 +2326,10 @@ if Options.alternatives:
 
         return Config, default
 
-    (Config, TestBase) = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase, lambda x: os.path.abspath(x))
-    (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
+    Config, TestBase = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase, lambda x: os.path.abspath(x))
+    # Need to update BaselineDir - it may be interpolated from testbase.
+    defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
+    Config, _ = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
 
 os.chdir(TestBase)
 
