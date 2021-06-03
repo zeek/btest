@@ -1125,9 +1125,9 @@ create a new subdirectory ``tests`` in the Sphinx project for the
 ``btest`` setup and then store the tests in there in, e.g.,
 ``doc/``::
 
-    cd <sphinx-root>
-    mkdir tests
-    mkdir tests/doc
+    > cd <sphinx-root>
+    > mkdir tests
+    > mkdir tests/doc
 
 Then add the following to your Sphinx ``conf.py``::
 
