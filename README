@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 0.68-4
+.. |version| replace:: 0.68-9
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -17,19 +17,10 @@ codes. ``btest`` comes with some additional tools that can be used
 within such tests to robustly compare output against a previously established
 baseline.
 
-.. contents::
-
-Download
-========
-
-You can find the latest BTest release for download at
-https://www.zeek.org/download.
-
-BTest's git repository is located at https://github.com/zeek/btest.
-
 This document describes BTest |version|. See the ``CHANGES``
-file for version history.
+file in the source tree for version history.
 
+.. contents::
 
 Prerequisites
 =============
@@ -48,19 +39,61 @@ functionality:
 - perf (Linux only).  Note that on Debian/Ubuntu, you also need to install
   the "linux-tools" package.
 
-Installation
-============
+Download and Installation
+=========================
 
-Installation is simple and standard::
+Installation is simple and standard via ``pip``::
 
-    tar xzvf btest-*.tar.gz
-    cd btest-*
-    python3 setup.py install
+    > pip install btest
 
-This will install a few scripts: ``btest`` is the main driver program,
+Alternatively, you can download a tarball `from PyPI <https://pypi.org/project/btest/#files>`_
+and install locally::
+
+    > tar xzvf btest-*.tar.gz
+    > cd btest-*
+    > python3 setup.py install
+
+The same approach also works on a local git clone of the source tree,
+located at https://github.com/zeek/btest.
+
+Each will install a few scripts: ``btest`` is the main driver program,
 and there are a number of further helper scripts that we discuss below
 (including ``btest-diff``, which is a tool for comparing output to a
 previously established baseline).
+
+.. _running btest:
+
+Running BTest
+=============
+
+A BTest testsuite consists of one or more "btests", executed by the
+``btest`` driver. Btests are plain text files in which ``btest``
+identifies keywords with corresponding arguments that tell it what to
+do. BTest is *not* a language; it recognizes keywords in any text
+file, including when embedded in other scripting languages. A common
+idiom in BTest is to use keywords to process the btest file via a
+particular command, often a script interpreter. This approach feels
+unusal at first, but lends BTest much of its flexibility: btest
+files can contain pretty much anything, as long as ``btest``
+identifies keywords in it.
+
+``btest`` requires a `configuration file`_. With it, you can run
+``btest`` on an existing testsuite in several ways:
+
+- Point it at directories containing btests::
+
+    > btest ./testsuite/
+
+- Use the config file to enumerate directories to scan for tests,
+  via the ``TestDirs`` `option`_::
+
+    > btest
+
+- Run btests selectively, by pointing ``btest`` at a specific test file::
+
+    > btest ./testsuite/my.test
+
+  More detail on this when we cover `test selection`_.
 
 Writing a Test
 ==============
@@ -69,8 +102,8 @@ First Steps
 -----------
 
 In the most simple case, ``btest`` simply executes a set of command
-lines, each of which must be prefixed with ``@TEST-EXEC:``
-::
+lines, each of which must be prefixed with the ``@TEST-EXEC:``
+keyword::
 
     > cat examples/t1
     @TEST-EXEC: echo "Foo" | grep -q Foo
@@ -94,8 +127,7 @@ Usually you will just run all tests found in a directory::
     examples.t2 ... failed
     1 test failed
 
-Why do we need the ``@TEST-EXEC:`` prefixes? Because the file
-containing the test can simultaneously act as *its input*. Let's
+The file containing the test can simultaneously act as *its input*. Let's
 say we want to verify a shell script::
 
     > cat examples/t3.sh
@@ -106,7 +138,7 @@ say we want to verify a shell script::
 
 Here, ``btest`` executes (something similar to) ``sh
 examples/t3.sh``, and then checks the return value as usual. The
-example also shows that the ``@TEST-EXEC`` prefix can appear
+example also shows that the ``@TEST-EXEC`` keyword can appear
 anywhere, in particular inside the comment section of another
 language.
 
@@ -374,6 +406,7 @@ include the output of external commands (e.g., xyz=`\echo test\`).
 Note that the backtick expansion is performed after any ``%(..)``
 have already been replaced (including within the backticks).
 
+.. _option: `options`_
 .. _options:
 
 Options
@@ -454,7 +487,7 @@ configuration file:
     for ``perf`` in ``PATH``.
 
 ``PortRange``
-    Specifies a port range like "10000-11000" to use in conjuction with
+    Specifies a port range like "10000-11000" to use in conjunction with
     ``@TEST-PORT`` commands.  Port assignments will be restricted to this
     range.  The default range is "1024-65535".
 
@@ -606,12 +639,11 @@ string substitution so it works not only with commands but anything
 found on the command line; it however only replaces full words, not
 subparts of words.
 
-Writing Tests
--------------
+Supported Keywords
+------------------
 
 ``btest`` scans a test file for lines containing keywords that
-trigger certain functionality. Currently, the following keywords are
-supported:
+trigger certain functionality. It knows the following keywords:
 
 ``@TEST-ALTERNATIVE: <alternative>``
     Runs this test only for the given alternative (see alternative_).
@@ -813,16 +845,52 @@ supported:
     refer to it via ``%DIR/<name>``.
 
 ``@TEST-START-NEXT``
-    This is a short-cut for defining multiple test inputs in the
-    same file, all executing with the same command lines. When
-    ``@TEST-START-NEXT`` is encountered, the test file is initially
-    considered to end at that point, and all ``@TEST-EXEC-*`` are
-    run with an ``%INPUT`` truncated accordingly. Afterwards, a
-    *new* ``%INPUT`` is created with everything *following* the
-    ``@TEST-START-NEXT`` marker, and the *same* commands are run
-    again (further ``@TEST-EXEC-*`` will be ignored). The effect is
-    that a single file can actually define two tests, and the
-    ``btest`` output will enumerate them::
+    This keyword lets you define multiple test inputs in the
+    same file, all executing with the same command lines. See
+    `defining multiple tests in one file`_ for details.
+
+.. _test selection: `selecting tests`_
+.. _selecting tests:
+
+Selecting Tests
+===============
+
+Internally, ``btest`` uses logical names for tests, abstracting input
+files. Those names result from substituting path separators with dots,
+ignoring btest file suffixes, and potentially adding additional
+labeling. ``btest`` does this only for tests within the ``TestDirs``
+directories given in the `configuration file`.
+
+In addition to the invocations covered in `Running BTest`_, you can
+use logical names when telling ``btest`` which tests to run. For
+example, instead of saying ::
+
+    > btest testsuite/foo.sh
+
+you can use::
+
+    > btest testsuite.foo
+
+This distinction rarely matters, but it's something to be aware of
+when `defining multiple tests in one file`_, which we cover next.
+
+.. _more than one test: `defining multiple tests in one file`_
+.. _defining multiple tests in one file:
+
+Defining Multiple Tests in one File
+===================================
+
+On occasion you want to use the same constellation of keywords on a
+set of input files. BTest supports this via the ``@TEST-START-NEXT``
+keyword. When ``btest`` encounters this keyword, it initially
+considers the input file to end at that point, and runs all
+``@TEST-EXEC-*`` with an ``%INPUT`` truncated accordingly.
+Afterwards, it creates a *new* ``%INPUT`` with everything *following*
+the ``@TEST-START-NEXT`` marker, running the *same* commands
+again. (It ignores any ``@TEST-EXEC-*`` lines later in the file.)
+
+The effect is that a single file can define multiple tests that the
+``btest`` output will enumerate::
 
         > cat examples/t5.sh
         # @TEST-EXEC: cat %INPUT | wc -c >output
@@ -847,8 +915,15 @@ supported:
           22
           [...]
 
-    Multiple ``@TEST-START-NEXT`` can be used to create more than
-    two tests per file.
+``btest`` automatically generates the ``-<n>`` suffix for each of the tests.
+
+    **NOTE:** It matters how you name tests when running them
+    individually. When you specify the btest file ("``examples/t5.sh``"),
+    ``btest`` will run all of the contained tests. When you use the
+    logical name, ``btest`` will run only that specific test: in the
+    above scenario, ``examples.t5`` runs only the first test defined
+    in the file, while ``examples.t5-2`` only runs the second. This
+    also applies to baseline updates.
 
 .. _parts: `splitting tests into parts`_
 .. _splitting tests into parts:
@@ -856,7 +931,7 @@ supported:
 Splitting Tests into Parts
 ==========================
 
-One can split a single test across multiple files by adding a
+One can also split a single test across multiple files by adding a
 numerical ``#<n>`` postfix to their names, where each ``<n>``
 represents a separate part of the test. ``btest`` will combine all of
 a test's parts in numerical order and execute them subsequently within
@@ -1050,9 +1125,9 @@ create a new subdirectory ``tests`` in the Sphinx project for the
 ``btest`` setup and then store the tests in there in, e.g.,
 ``doc/``::
 
-    cd <sphinx-root>
-    mkdir tests
-    mkdir tests/doc
+    > cd <sphinx-root>
+    > mkdir tests
+    > mkdir tests/doc
 
 Then add the following to your Sphinx ``conf.py``::
 

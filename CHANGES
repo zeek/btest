@@ -1,4 +1,13 @@
 
+0.68-9 | 2021-06-07 09:31:03 +0200
+
+  * Documentation updates. (Christian Kreibich, Corelight)
+
+    - Add a section on running btest, to give some basic context.
+    - Add more detail on btest invocation and test selection.
+    - Update docs for download and installation, shifting focus to PyPI.
+    - Move TEST-START-NEXT description to its section.
+
 0.68-4 | 2021-06-01 18:34:04 +0200
 
   * Alternatives: Update `baselinedir` default after potentially
