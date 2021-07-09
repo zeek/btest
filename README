@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 0.68-9
+.. |version| replace:: 0.69
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
