@@ -1,0 +1,19 @@
+# %TEST-EXEC-FAIL: btest -j t1 t2
+# %TEST-EXEC: btest-diff mystate
+#
+# %TEST-DOC: Tests that the StateFile is always sorted.
+
+# This test fails last (and also ends up in the list of failed tests last), but
+# shoult be the first to be listed in the statefile.
+# %TEST-START-FILE t1
+# @TEST-EXEC: sleep 1 && exit 1
+# %TEST-END-FILE
+
+# %TEST-START-FILE t2
+# @TEST-EXEC: exit 1
+# %TEST-END-FILE
+
+# %TEST-START-FILE btest.cfg
+[btest]
+StateFile = mystate
+# %TEST-END-FILE

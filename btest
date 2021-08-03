@@ -353,7 +353,7 @@ class TestManager(multiprocessing.managers.SyncManager):
             except IOError:
                 error("cannot open state file %s" % StateFile)
 
-            for t in self._failed_tests:
+            for t in sorted(self._failed_tests):
                 print(t, file=state)
 
             state.close()
