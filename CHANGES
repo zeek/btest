@@ -1,4 +1,9 @@
 
+0.69-4 | 2021-08-10 08:25:39 +0200
+
+  * Add flag `-l` to print available tests. (Benjamin Bannier,
+    Corelight)
+
 0.69-2 | 2021-08-04 18:12:33 +0200
 
   * Always print a sorted list of failed tests to the state file.

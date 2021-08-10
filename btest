@@ -40,7 +40,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.69-2" # Automatically filled in.
+VERSION = "0.69-4" # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -687,6 +687,9 @@ class Test(object):
         self.utime_exceeded = False
         self.utime_perc = 0.0
         self.verbose = None
+
+    def __lt__(self, value):
+        return self.name and value.name and self.name < value.name
 
     def displayName(self):
         name = self.name
@@ -2256,6 +2259,8 @@ optparser.add_option("--trace-file", action="store", dest="tracefile", default="
                      help="write Chrome tracing file to file; if file exists, it is overwritten")
 optparser.add_option("-F", "--abort-on-failure", action="store_true", dest="abort_on_failure",
                      help="terminate after first test failure")
+optparser.add_option("-l", "--list", action="store_true", dest="list", default=False,
+                     help="list available tests instead of executing them")
 
 optparser.set_defaults(mode="TEST")
 (Options, args) = optparser.parse_args()
@@ -2562,9 +2567,16 @@ if len(addr) > 100:
 mgr = TestManager(address=addr)
 
 try:
-    (succeeded, failed, skipped, unstable, failed_expected) = mgr.run(
-        copy.deepcopy(tests), output_handler)
-    total = succeeded + failed + skipped
+    if Options.list:
+        for test in sorted(tests):
+            if test.name:
+                print(test.name)
+        sys.exit(0)
+    else:
+        (succeeded, failed, skipped, unstable, failed_expected) = mgr.run(
+            copy.deepcopy(tests), output_handler)
+        total = succeeded + failed + skipped
+
     output_handler.finished()
 
 # Ctrl-C can lead to broken pipe (e.g. FreeBSD), so include IOError here:

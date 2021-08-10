@@ -1,0 +1,15 @@
+# %TEST-EXEC: btest -l t1 t2 t3 >>out
+# %TEST-EXEC: btest --list >>out
+# %TEST-EXEC: btest-diff out
+
+%TEST-START-FILE t1
+@TEST-EXEC: true
+%TEST-END-FILE
+
+%TEST-START-FILE t2
+@TEST-EXEC: true
+%TEST-END-FILE
+
+%TEST-START-FILE t3
+@TEST-EXEC: true
+%TEST-END-FILE
