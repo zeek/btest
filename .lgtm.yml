@@ -1,0 +1,6 @@
+extraction:
+  python:
+    index:
+      include:
+        - btest
+        - btest-setsid
