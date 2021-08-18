@@ -1,6 +1,6 @@
 
 all:
-	@../btest -f diag.log
+	@../btest -d -f diag.log
 
 cleanup:
 	@rm -f diag.log
