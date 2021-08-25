@@ -336,10 +336,11 @@ class TestManager(multiprocessing.managers.SyncManager):
                 for t in threads:
                     t.join()
 
-            except KeyboardInterrupt:
+            except KeyboardInterrupt as interrupt:
                 for t in threads:
                     t.terminate()
                     t.join()
+                    raise Abort("Interrupted") from interrupt
 
         if Options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
             # Signal abort. The child processes will already have
