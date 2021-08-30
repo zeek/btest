@@ -1,4 +1,3 @@
-
 import os
 import os.path
 import tempfile
@@ -34,7 +33,7 @@ ExtMappings = {
 }
 
 def init(settings, reporter):
-    global Intialized, App, Reporter, BTestBase, BTestTests, BTestTmp
+    global Initialized, App, Reporter, BTestBase, BTestTests, BTestTmp
 
     Initialized = True
     Reporter = reporter

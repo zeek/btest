@@ -12,13 +12,6 @@
 # @TEST-EXEC: bash %INPUT >&2
 
 btest-progress Foo 1
-sleep 1
-
 btest-progress -q Foo 2
-sleep 1
-
 btest-progress Foo 3
-sleep 1
-
 btest-progress -T Foo 4
-sleep 1
