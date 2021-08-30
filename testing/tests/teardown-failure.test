@@ -1,0 +1,12 @@
+# %TEST-DOC: Teardown is invoked on a failed test. Doesn't make it successful.
+# %TEST-EXEC-FAIL: btest -t %INPUT
+# %TEST-EXEC: btest-diff torndown
+
+@TEST-EXEC: rm -f ../../torndown; false
+
+%TEST-START-FILE btest.cfg
+[btest]
+TmpDir      = .tmp
+BaselineDir = Baseline
+Teardown = echo $1 $2 > ../../torndown
+%TEST-END-FILE

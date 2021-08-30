@@ -1020,6 +1020,16 @@ class Test(object):
                 if rc != 100:
                     break
 
+        # Run the Teardown executable, pass it test name and failure count up
+        # until this point. If Teardown fails, fail the test if it hasn't yet.
+        if Teardown != "":
+            teardown_cmdline = CmdLine("%s %s %d" % (Teardown, self.name, failures), True, 1, "<Teardown>")
+            (success, _) = self.execute(teardown_cmdline, apply_alternative=self.alternative)
+            if not success:
+                failures += 1
+                if failures == 1:
+                    self.mgr.testFailed(self)
+
         self.utime_perc = 0.0
         self.utime_exceeded = False
 
@@ -2481,6 +2491,7 @@ Initializer = getOption("Initializer", "")
 BaselineTimingDir = os.path.abspath(getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
 Finalizer = getOption("Finalizer", "")
 PartFinalizer = getOption("PartFinalizer", "")
+Teardown = getOption("Teardown", "")
 
 Config.configured_tests = []
 

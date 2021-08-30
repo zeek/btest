@@ -1,0 +1,12 @@
+# %TEST-DOC: Teardown can be used to fail a successful test.
+# %TEST-EXEC-FAIL: btest -d -v %INPUT
+# %TEST-EXEC: btest-diff torndown
+
+@TEST-EXEC: rm -f ../../torndown; true
+
+%TEST-START-FILE btest.cfg
+[btest]
+TmpDir      = .tmp
+BaselineDir = Baseline
+Teardown = sh -c 'echo $1 $2 >> ../../torndown && exit 1' bash-teardown
+%TEST-END-FILE

@@ -445,6 +445,14 @@ configuration file:
     value indicates whether the test should indeed be considered
     successful. By default, there's no finalizer set.
 
+``Teardown``
+    An executable that will be executed after a test has run,
+    regardless of whether the test was successful or not.
+    It runs in the same directory as the test itself and receives
+    the name of the test and the number of failures as its parameters.
+    The return value indicates whether the test should indeed be
+    considered successful. By default, there's no teardown set.
+
 ``IgnoreDirs``
     A space-separated list of relative directory names to ignore
     when scanning test directories recursively. Default is empty.
