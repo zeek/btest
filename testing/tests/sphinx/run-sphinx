@@ -1,9 +1,5 @@
 # %TEST-REQUIRES: which sphinx-build
 #
-# This test baseline was generated for sphinx-3.5.4, so skip the
-# test for other versions which might produce different output.
-# %TEST-REQUIRES: test "$(sphinx-build --version)" = "sphinx-build 3.5.4"
-#
 # %TEST-EXEC: cp -r %DIR/../../../examples/sphinx/* .
-# %TEST-EXEC: make clean && make man
-# %TEST-EXEC: btest-diff _build/man/btest-sphinxdemo.1
+# %TEST-EXEC: make clean && make text
+# %TEST-EXEC: btest-diff _build/text/index.txt
