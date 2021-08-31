@@ -675,6 +675,7 @@ class Test(object):
         self.number = 1
         self.part = -1
         self.ports = set()
+        self.process_lock = None
         self.requires = []
         self.reruns = 0
         self.serialize = []
@@ -890,6 +891,7 @@ class Test(object):
         for bs in bound_sockets:
             bs.close()
 
+        self.process_lock = threading.Lock()
         self.start = time.time()
         self.mgr = mgr
         mgr.testStart(self)
@@ -1184,16 +1186,17 @@ class Test(object):
 
     # Picks up any progress output that has a test has written out.
     def parseProgress(self):
-        path = os.path.join(self.tmpdir, ".progress.*")
-        for file in sorted(glob.glob(path)):
-            try:
-                for line in open(file):
-                    msg = line.strip()
-                    self.mgr.testProgress(self, msg)
+        with self.process_lock:
+            path = os.path.join(self.tmpdir, ".progress.*")
+            for file in sorted(glob.glob(path)):
+                try:
+                    for line in open(file):
+                        msg = line.strip()
+                        self.mgr.testProgress(self, msg)
 
-                os.unlink(file)
-            except (IOError, OSError):
-                pass
+                    os.unlink(file)
+                except (IOError, OSError):
+                    pass
 
 ### Output handlers.
 
