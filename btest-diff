@@ -65,7 +65,8 @@ is_canon_baseline() {
     # allow for some wiggle room in updating the wording in the header
     # in the future, we don't fix the exact string, and end after the
     # "Do not edit." sentence.
-    local header=$(echo "$HEADER" | sed -E 's/Do not edit\..*/Do not edit./')
+    local header
+    header=$(echo "$HEADER" | sed -E 's/Do not edit\..*/Do not edit./')
 
     if head -n 1 "$input" | grep -q -F "$header" 2>/dev/null; then
         return 0
@@ -144,6 +145,7 @@ fi
 
 tmpfiles=""
 delete_tmps() {
+    # shellcheck disable=SC2086
     rm -f $tmpfiles 2>/dev/null
 }
 
@@ -204,6 +206,7 @@ if [ -n "$baseline" ]; then
         # It's an older uncanonicalized baseline, so canonicalize
         # it now prior to comparison. Future updates via btest
         # -U/-u will then store it canonicalized.
+        # shellcheck disable=SC2094
         eval "$TEST_DIFF_CANONIFIER" "$baseline" <"$baseline" >"$canon_baseline"
         if [ $? -ne 0 ]; then
             echo "== Error ==============================" >>$TEST_DIAGNOSTICS

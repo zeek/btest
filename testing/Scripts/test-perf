@@ -18,6 +18,8 @@ while getopts "o:x:e:" arg; do
    case $arg in
      o) fname=$OPTARG
         ;;
+    *)
+        ;;
    esac
 done
 
@@ -28,9 +30,9 @@ msg="1000  instructions"
 
 # Write the message to a file (if specified), or stderr
 if [ -n "$fname" ]; then
-    echo $msg > "$fname"
+    echo "$msg" > "$fname"
 else
-    echo $msg >&2
+    echo "$msg" >&2
 fi
 
 # Run the specified command

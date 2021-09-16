@@ -21,13 +21,13 @@ else
 fi
 
 if [ $# != 1 ]; then
-    echo "usage: `basename $0` [-k] <timeout>"
+    echo "usage: $(basename "$0") [-k] <timeout>"
     exit 1
 fi
 
 timeout=$1
 
-procs=`cat .bgprocs`
+procs=$(cat .bgprocs)
 
 rm -f .timeout
 touch .timeout
@@ -35,7 +35,7 @@ touch .timeout
 function check_procs
 {
     for p in $procs; do
-        if [ ! -e $p/.exitcode ]; then
+        if [ ! -e "$p/.exitcode" ]; then
             return 1;
         fi
     done
@@ -47,11 +47,11 @@ function check_procs
 function kill_procs
 {
     for p in $procs; do
-        if [ ! -e $p/.exitcode ]; then
-            kill -1 `cat $p/.pid` 2>/dev/null
-            cat $p/.cmdline >>.timeout
+        if [ ! -e "$p/.exitcode" ]; then
+            kill -1 "$(cat "$p/.pid")" 2>/dev/null
+            cat "$p"/.cmdline >>.timeout
             if [ "$1" == "timeout" ]; then
-                touch $p/.timeout
+                touch "$p/.timeout"
             fi
         fi
     done
@@ -59,8 +59,8 @@ function kill_procs
     sleep 1
 
     for p in $procs; do
-        if [ ! -e $p/.exitcode ]; then
-            kill -9 `cat $p/.pid` 2>/dev/null
+        if [ ! -e "$p/.exitcode" ]; then
+            kill -9 "$(cat "$p/.pid")" 2>/dev/null
             sleep 1
         fi
     done
@@ -70,27 +70,33 @@ function collect_output
 {
     rm -f .stdout .stderr
 
-    if [ $timeout_ok != 1 -a -s .timeout ]; then
-        echo "The following processes did not terminate:" >>.stderr
-        echo >>.stderr
+    if [ $timeout_ok != 1 ] && [ -s .timeout ]; then
+        {
+            echo "The following processes did not terminate:"
+            echo
 
-        cat .timeout >>.stderr
+            cat .timeout
 
-        echo >>.stderr
-        echo "-----------" >>.stderr
+            echo
+            echo "-----------"
+        } >>.stderr
     fi
 
     for p in $procs; do
-        pid=`cat $p/.pid`
-        cmdline=`cat $p/.cmdline`
+        pid=$(cat "$p/.pid")
+        cmdline=$(cat "$p/.cmdline")
 
-        printf "<<< [%s] %s\\n" "$pid" "$cmdline" >> .stdout
-        cat $p/.stdout >>.stdout
-        echo ">>>" >>.stdout
+        {
+            printf "<<< [%s] %s\\n" "$pid" "$cmdline"
+            cat "$p"/.stdout
+            echo ">>>"
+        } >>.stdout
 
-        printf "<<< [%s] %s\\n" "$pid" "$cmdline" >> .stderr
-        cat $p/.stderr >>.stderr
-        echo ">>>" >>.stderr
+        {
+            printf "<<< [%s] %s\\n" "$pid" "$cmdline"
+            cat "$p"/.stderr
+            echo ">>>"
+        } >>.stderr
     done
 }
 
@@ -103,7 +109,7 @@ while true; do
         break
     fi
 
-    timeout=`expr $timeout - 1`
+    timeout=$((timeout - 1))
 
     if [ $timeout -le 0 ]; then
         # Timeout exceeded.
@@ -131,16 +137,16 @@ collect_output
 # See if any returned an error.
 result=0
 for p in $procs; do
-    if [ -e $p/.timeout ]; then
+    if [ -e "$p/.timeout" ]; then
         # we're here because timeouts are ok, so don't mind the exit code
         # if we initiated killing the process due to timeout
         continue
     fi
-    rc=`cat $p/.exitcode`
-    pid=`cat $p/.pid`
-    cmdline=`cat $p/.cmdline`
+    rc=$(cat "$p/.exitcode")
+    pid=$(cat "$p/.pid")
+    cmdline=$(cat "$p/.cmdline")
 
-    if [ $rc != 0 ]; then
+    if [ "$rc" != 0 ]; then
         echo ">>> process $pid failed with exitcode $rc: $cmdline" >> .stderr
         result=1
     fi
