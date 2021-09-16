@@ -5,8 +5,7 @@
 
 trap cleanup INT TERM EXIT
 
-function usage()
-{
+function usage() {
     echo
     echo "$(basename "$0") [options] <command line>"
     echo
@@ -21,14 +20,12 @@ function usage()
     exit 1
 }
 
-function apply_filter()
-{
+function apply_filter() {
     eval "$filter_env" | eval "$filter_opt"
 }
 
 # Strip leading white-space and then indent to 6 space.
-function indent()
-{
+function indent() {
     python3 -c "
 from __future__ import print_function
 import sys
@@ -42,8 +39,7 @@ for i in input:
 "
 }
 
-function cleanup()
-{
+function cleanup() {
     rm -f "$tmps"
     exit
 }
@@ -63,14 +59,17 @@ filter_env=${BTEST_RST_FILTER}
 
 while getopts "odhr:f:c:n:" opt; do
     case $opt in
-        h) usage;;
-        o) show_command=0;;
-        r) include=$OPTARG;;
-        d) dry=1; include="";;
-        c) cmd_display=$OPTARG;;
-        f) filter_opt=$OPTARG;;
-        n) lines=$OPTARG;;
-        *) exit 1;;
+        h) usage ;;
+        o) show_command=0 ;;
+        r) include=$OPTARG ;;
+        d)
+            dry=1
+            include=""
+            ;;
+        c) cmd_display=$OPTARG ;;
+        f) filter_opt=$OPTARG ;;
+        n) lines=$OPTARG ;;
+        *) exit 1 ;;
     esac
 done
 
@@ -81,14 +80,13 @@ test "$cmd_display" == "" && cmd_display=$cmd
 test "$filter_opt" == "" && filter_opt="cat"
 test "$filter_env" == "" && filter_env="cat"
 
-test "$cmd" == "" && usage;
+test "$cmd" == "" && usage
 
 if [ "$dry" != "1" ]; then
     if ! eval "$cmd" >"$cmd_out"; then
         exit 1
     fi
 fi
-
 
 # Generate reST output.
 
@@ -104,12 +102,12 @@ if [ "$show_command" == "1" ]; then
     } >>"$stdout"
 else
     {
-    echo ".. rst-class:: btest-include"
-    echo
-    echo "    .. code-block:: guess"
-    echo "      :linenos:"
-    echo
-} >>"$stdout"
+        echo ".. rst-class:: btest-include"
+        echo
+        echo "    .. code-block:: guess"
+        echo "      :linenos:"
+        echo
+    } >>"$stdout"
 fi
 
 for i in $include; do

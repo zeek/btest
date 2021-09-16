@@ -131,7 +131,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Split string with baseline directories into array.
-IFS=':' read -ra baseline_dirs <<< "$TEST_BASELINE"
+IFS=':' read -ra baseline_dirs <<<"$TEST_BASELINE"
 
 input="$1"
 # shellcheck disable=SC2001
@@ -159,7 +159,7 @@ done
 
 result=2
 
-rm -f $TEST_DIAGNOSTICS  2>/dev/null
+rm -f $TEST_DIAGNOSTICS 2>/dev/null
 
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 

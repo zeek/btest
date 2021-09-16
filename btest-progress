@@ -1,7 +1,6 @@
 #! /usr/bin/env bash
 
-function usage
-{
+function usage {
     cat <<EOF >&2
 usage: $(basename "$0") [-q] [-T] <message>
 
@@ -18,19 +17,19 @@ quiet=0
 time=1
 
 while getopts ":qT" opt; do
-  case $opt in
-    q)
-      quiet=1
-      shift
-      ;;
-    T)
-      time=0
-      shift
-      ;;
-    *)
-      usage
-      ;;
-  esac
+    case $opt in
+        q)
+            quiet=1
+            shift
+            ;;
+        T)
+            time=0
+            shift
+            ;;
+        *)
+            usage
+            ;;
+    esac
 done
 
 test $# != 0 || usage

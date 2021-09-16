@@ -2,8 +2,7 @@
 #
 # Internal helper for btest-bg-run.
 
-cleanup ()
-    {
+cleanup() {
     if [ ! -e .exitcode ]; then
         echo 15 >.exitcode
         kill 0 &>/dev/null
@@ -14,7 +13,7 @@ cleanup ()
             kill -0 "$pid" &>/dev/null && kill -9 "$pid" && echo 9 >.exitcode
         fi
     fi
-    }
+}
 
 trap "cleanup" EXIT
 

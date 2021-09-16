@@ -22,7 +22,7 @@ shift
 
 if [ -e "$dir" ]; then
     echo "directory '$dir' already exists" >&2
-    exit 1;
+    exit 1
 fi
 
 echo "$dir" >>.bgprocs

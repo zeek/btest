@@ -9,8 +9,7 @@ if [ "$BTEST_RST_OUTPUT" != "" ]; then
     exit 0
 fi
 
-while IFS= read -r -d '' output
-do
+while IFS= read -r -d '' output; do
     echo "$(pwd)/$output"
     btest-diff "$output"
 done < <(find btest-"${TEST_NAME}"*)

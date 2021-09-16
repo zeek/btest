@@ -32,20 +32,18 @@ procs=$(cat .bgprocs)
 rm -f .timeout
 touch .timeout
 
-function check_procs
-{
+function check_procs {
     for p in $procs; do
         if [ ! -e "$p/.exitcode" ]; then
-            return 1;
+            return 1
         fi
     done
 
     # All done.
-    return 0;
+    return 0
 }
 
-function kill_procs
-{
+function kill_procs {
     for p in $procs; do
         if [ ! -e "$p/.exitcode" ]; then
             kill -1 "$(cat "$p/.pid")" 2>/dev/null
@@ -66,8 +64,7 @@ function kill_procs
     done
 }
 
-function collect_output
-{
+function collect_output {
     rm -f .stdout .stderr
 
     if [ $timeout_ok != 1 ] && [ -s .timeout ]; then
@@ -117,7 +114,7 @@ while true; do
 
         if [ $timeout_ok == 1 ]; then
             # Just continue.
-            break;
+            break
         fi
 
         # Exit with error.
@@ -147,7 +144,7 @@ for p in $procs; do
     cmdline=$(cat "$p/.cmdline")
 
     if [ "$rc" != 0 ]; then
-        echo ">>> process $pid failed with exitcode $rc: $cmdline" >> .stderr
+        echo ">>> process $pid failed with exitcode $rc: $cmdline" >>.stderr
         result=1
     fi
 done

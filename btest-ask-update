@@ -16,17 +16,26 @@ while true; do
     read -r -s -n 1 key </dev/tty
 
     case $key in
-        [uU]) echo ">> Updating baseline ..." >/dev/tty; exit 0;;
-        [cC]) echo ">> Continuing ..." >/dev/tty; exit 1;;
-        [aA]) echo ">> Aborting ..." >/dev/tty; exit 200;;
+        [uU])
+            echo ">> Updating baseline ..." >/dev/tty
+            exit 0
+            ;;
+        [cC])
+            echo ">> Continuing ..." >/dev/tty
+            exit 1
+            ;;
+        [aA])
+            echo ">> Aborting ..." >/dev/tty
+            exit 200
+            ;;
 
         [dD])
-           if [ "$TEST_DIAGNOSTICS" != "" ] && [ "$TEST_DIAGNOSTICS" != "/dev/stdout" ]; then
-               less -S "$TEST_DIAGNOSTICS" </dev/tty >/dev/tty
-           else
-               echo "Do not have diagnostics." >/dev/tty
-           fi
-           ;;
-        *)    echo ">> Answer not recognized, try again ..." >/dev/tty ;;
+            if [ "$TEST_DIAGNOSTICS" != "" ] && [ "$TEST_DIAGNOSTICS" != "/dev/stdout" ]; then
+                less -S "$TEST_DIAGNOSTICS" </dev/tty >/dev/tty
+            else
+                echo "Do not have diagnostics." >/dev/tty
+            fi
+            ;;
+        *) echo ">> Answer not recognized, try again ..." >/dev/tty ;;
     esac
 done
