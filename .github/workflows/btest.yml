@@ -19,5 +19,5 @@ jobs:
       - name: Install dependencies
         run: |
             python3 -m pip install --upgrade pip
-            pip install sphinx==3.5.4
+            pip3 install sphinx==3.5.4
       - run: make test
