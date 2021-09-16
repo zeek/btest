@@ -19,23 +19,22 @@ scripts = [
     "sphinx/btest-rst-pipe",
 ]
 
-py_modules = [
-    "btest-sphinx"
-]
+py_modules = ["btest-sphinx"]
 
-setup(name='btest',
-      version="0.69-4", # Filled in automatically.
-      description='A powerful system testing framework',
-      long_description='See https://github.com/zeek/btest',
-      author='Robin Sommer',
-      author_email='robin@icir.org',
-      url='https://github.com/zeek/btest',
-      scripts=scripts,
-      package_dir={"": "sphinx"},
-      py_modules=py_modules,
-      license='3-clause BSD License',
-      keywords='system tests testing framework baselines',
-      classifiers=[
+setup(
+    name='btest',
+    version="0.69-4",  # Filled in automatically.
+    description='A powerful system testing framework',
+    long_description='See https://github.com/zeek/btest',
+    author='Robin Sommer',
+    author_email='robin@icir.org',
+    url='https://github.com/zeek/btest',
+    scripts=scripts,
+    package_dir={"": "sphinx"},
+    py_modules=py_modules,
+    license='3-clause BSD License',
+    keywords='system tests testing framework baselines',
+    classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'License :: OSI Approved :: BSD License',
@@ -44,5 +43,5 @@ setup(name='btest',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Topic :: Utilities',
-      ],
-     )
+    ],
+)

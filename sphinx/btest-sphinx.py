@@ -11,6 +11,7 @@ from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
 from sphinx.errors import SphinxError
 from sphinx.directives.code import LiteralInclude
 from sphinx.util import logging
+
 logger = logging.getLogger(__name__)
 
 Initialized = False
@@ -24,13 +25,8 @@ Tests = {}
 Includes = set()
 
 # Maps file name extensiosn to Pygments formatter.
-ExtMappings = {
-    "bro": "bro",
-    "rst": "rest",
-    "c": "c",
-    "cc": "cc",
-    "py": "python"
-}
+ExtMappings = {"bro": "bro", "rst": "rest", "c": "c", "cc": "cc", "py": "python"}
+
 
 def init(settings, reporter):
     global Initialized, App, Reporter, BTestBase, BTestTests, BTestTmp
@@ -63,12 +59,14 @@ def init(settings, reporter):
     if not os.path.exists(BTestTmp):
         os.makedirs(BTestTmp)
 
+
 def parsePartial(rawtext, settings):
     parser = Parser()
     document = utils.new_document("<partial node>")
     document.settings = settings
     parser.parse(rawtext, document)
     return document.children
+
 
 class Test(object):
     def __init__(self):
@@ -96,6 +94,7 @@ class Test(object):
     def cleanTmps(self):
         subprocess.call("rm %s#* 2>/dev/null" % self.rst_output, shell=True)
 
+
 class BTestTransform(Transform):
 
     default_priority = 800
@@ -120,6 +119,7 @@ class BTestTransform(Transform):
         pending.replace_self(content)
 
     _run = set()
+
 
 class BTest(Directive):
     required_arguments = 1
@@ -178,6 +178,7 @@ class BTest(Directive):
 
         return [pending]
 
+
 class BTestInclude(LiteralInclude):
     def __init__(self, *args, **kwargs):
         super(BTestInclude, self).__init__(*args, **kwargs)
@@ -198,8 +199,7 @@ class BTestInclude(LiteralInclude):
 
         document = self.state.document
         if not document.settings.file_insertion_enabled:
-            return [document.reporter.warning('File insertion disabled',
-                                              line=self.lineno)]
+            return [document.reporter.warning('File insertion disabled', line=self.lineno)]
         env = document.settings.env
 
         expanded_arg = os.path.expandvars(self.arguments[0])
@@ -264,8 +264,10 @@ class BTestInclude(LiteralInclude):
 
         return retnode
 
+
 directives.register_directive('btest', BTest)
 directives.register_directive('btest-include', BTestInclude)
+
 
 def setup(app):
     global App
