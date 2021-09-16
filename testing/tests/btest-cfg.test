@@ -14,4 +14,3 @@
 # %TEST-EXEC: btest-diff abspath
 
 @TEST-EXEC: exit 0
-

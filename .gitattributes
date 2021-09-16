@@ -1,4 +1,3 @@
 testing/tests/crlf-line-terminators.test text eol=crlf
 testing/Baseline/tests.crlf-line-terminators/crlfs.dat text eol=crlf
 testing/Baseline/tests.crlf-line-terminators/input text eol=crlf
-

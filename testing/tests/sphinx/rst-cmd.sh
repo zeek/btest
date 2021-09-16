@@ -13,4 +13,3 @@ btest-rst-cmd -d echo "Hello 4, no output" >>output
 btest-rst-cmd -f 'tr e X' echo "Hello 5, filter" >>output
 btest-rst-cmd -r file.txt echo "Hello 6, file" >>output
 btest-diff output
-

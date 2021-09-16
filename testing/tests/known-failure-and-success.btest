@@ -4,4 +4,3 @@
 @TEST-EXEC: echo Hello, World!
 @TEST-EXEC: exit 1
 @TEST-KNOWN-FAILURE: This test is expected to fail.
-

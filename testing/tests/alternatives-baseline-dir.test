@@ -18,4 +18,3 @@ TmpDir      = .tmp
 BTEST_BASELINE_DIR=mydir
 
 %TEST-END-FILE
-

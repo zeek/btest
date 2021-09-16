@@ -9,4 +9,3 @@
 
 @TEST-EXEC: echo Hello, World!
 @TEST-EXEC: exit 1
-

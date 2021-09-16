@@ -5,4 +5,3 @@
 
 @TEST-EXEC: printf 'World!' >>../../child-output
 @TEST-EXEC: echo >>../../child-output
-

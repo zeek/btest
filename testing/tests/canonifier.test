@@ -12,6 +12,3 @@ sed 's/[0-9][0-9][0-9]/XXX/g'
 @TEST-EXEC: echo ABC 890 DEF >output
 @TEST-EXEC-FAIL: btest-diff output
 @TEST-EXEC: TEST_DIFF_CANONIFIER="sh -c ../../test-canonifier" btest-diff output
-
-
-

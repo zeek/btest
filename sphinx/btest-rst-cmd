@@ -145,5 +145,3 @@ else
     # Running from command line, just print out.
     cat "$stdout"
 fi
-
-
