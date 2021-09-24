@@ -42,4 +42,3 @@ TimingBaselineDir = mytimings
 TimingDeltaPerc = 11.5
 PerfPath    = %(testbase)s/../../Scripts/test-perf
 %TEST-END-FILE
-

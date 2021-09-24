@@ -7,36 +7,30 @@
 # a set of meta information that btest-bg-wait will read.
 
 if [ "$#" -le 1 ]; then
-    echo "usage: `basename $0` <tag> <cmdline>"
+    echo "usage: $(basename "$0") <tag> <cmdline>"
     exit 1
 fi
 
-cwd=`pwd`
-cd `dirname $0`
-helper=`pwd`/btest-bg-run-helper
-setsid=`pwd`/btest-setsid
-cd $cwd
+cwd=$(pwd)
+cd "$(dirname "$0")" || exit 1
+helper=$(pwd)/btest-bg-run-helper
+setsid=$(pwd)/btest-setsid
+cd "$cwd" || exit 1
 
-bname=`basename $0`
 dir=$1
 shift
 
-if [ -e $dir ]; then
+if [ -e "$dir" ]; then
     echo "directory '$dir' already exists" >&2
-    exit 1;
+    exit 1
 fi
 
-echo $dir >>.bgprocs
-mkdir $dir
-cd $dir
+echo "$dir" >>.bgprocs
+mkdir "$dir"
+cd "$dir" || exit 1
 
-echo $@ >.cmdline
+echo "$@" >.cmdline
 
-$setsid $helper "$@" >.stdout 2>.stderr &
+$setsid "$helper" "$@" >.stdout 2>.stderr &
 
 sleep 1
-
-
-
-
-

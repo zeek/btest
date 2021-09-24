@@ -5,11 +5,9 @@
 # %TEST-EXEC: btest-diff child-output
 
 @TEST-EXEC: cat %INPUT >>../../child-output
-
 # %T*ST-*X*C: btest %INPUT >>output 2>&1
 # %T*ST-*X*C: btest -a foo %INPUT >>output 2>&1
 # %T*ST-*X*C: btest-diff output
 # %T*ST-*X*C: btest-diff child-output
 
 @T*ST-*X*C: cat %INPUT >>../../child-output
-

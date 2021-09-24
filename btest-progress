@@ -1,9 +1,8 @@
 #! /usr/bin/env bash
 
-function usage
-{
+function usage {
     cat <<EOF >&2
-usage: $(basename $0) [-q] [-T] <message>
+usage: $(basename "$0") [-q] [-T] <message>
 
          -q: Do not print message to standard output or standard error.
          -T: Do not include timestamp on standard error message.
@@ -18,24 +17,24 @@ quiet=0
 time=1
 
 while getopts ":qT" opt; do
-  case $opt in
-    q)
-      quiet=1
-      shift
-      ;;
-    T)
-      time=0
-      shift
-      ;;
-    *)
-      usage
-      ;;
-  esac
+    case $opt in
+        q)
+            quiet=1
+            shift
+            ;;
+        T)
+            time=0
+            shift
+            ;;
+        *)
+            usage
+            ;;
+    esac
 done
 
 test $# != 0 || usage
 
-msg="[btest] -- $@"
+msg="[btest] -- $*"
 
 if [ "${quiet}" -eq 0 ]; then
     echo "${msg}"
@@ -47,5 +46,5 @@ if [ "${quiet}" -eq 0 ]; then
 fi
 
 TIME=$(python3 -c 'import time; print(time.time_ns())')
-file=$(mktemp .progress.${TIME}.XXXXXX) || exit 1
-echo "$@" >>${file}
+file=$(mktemp ".progress.${TIME}.XXXXXX") || exit 1
+echo "$@" >>"${file}"

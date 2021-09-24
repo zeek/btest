@@ -9,28 +9,31 @@
 
 # Only "perf stat" is supported.
 if [ "$1" != "stat" ]; then
-   exit 1
+    exit 1
 fi
 shift
 
 # Ignore all options except "-o".
 while getopts "o:x:e:" arg; do
-   case $arg in
-     o) fname=$OPTARG
-        ;;
-   esac
+    case $arg in
+        o)
+            fname=$OPTARG
+            ;;
+        *) ;;
+
+    esac
 done
 
-shift $((OPTIND-1))
+shift $((OPTIND - 1))
 
 # Use a hard-coded message so that we get predictable results
 msg="1000  instructions"
 
 # Write the message to a file (if specified), or stderr
 if [ -n "$fname" ]; then
-    echo $msg > "$fname"
+    echo "$msg" >"$fname"
 else
-    echo $msg >&2
+    echo "$msg" >&2
 fi
 
 # Run the specified command

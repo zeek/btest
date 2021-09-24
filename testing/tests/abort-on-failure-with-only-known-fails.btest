@@ -15,7 +15,7 @@
 # %TEST-START-FILE test3
 @TEST-EXEC: exit 1
 # %TEST-END-FILE
- 
+
 # %TEST-START-FILE test4
 @TEST-EXEC: exit 0
 # %TEST-END-FILE

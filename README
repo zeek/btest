@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 0.69-4
+.. |version| replace:: 0.69-22
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -1294,4 +1294,3 @@ License
 =======
 
 BTest is open-source under a BSD license.
-

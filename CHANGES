@@ -1,4 +1,39 @@
 
+0.69-22 | 2021-09-24 10:57:31 +0200
+
+  * Add pre-commit configuration. (Benjamin Bannier)
+
+  * Reformat Python scripts with yapf. (Benjamin Bannier)
+
+  * Reformat shell scripts with shellfmt. (Benjamin Bannier)
+
+  * Fix a couple issues tagged by shellcheck. (Benjamin Bannier)
+
+  * More precise environment filtering in
+    local-alternative-show-env.test. (Christian Kreibich, Corelight)
+
+  * Fix parallel/interleaved execution between the test wrapup
+    functions (such as testSucceeded) and the progress monitor.
+    (Christian Kreibich, Corelight)
+
+  * Switch Sphinx build test to use "text" output format. (Christian
+    Kreibich, Corelight)
+
+  * Add GitHub action exercising the test suite. (Benjamin Bannier,
+    Corelight)
+
+  * Make `btest-progress` more robust under concurrency. (Benjamin
+    Bannier, Corelight)
+
+  * Fix test `tests.sphinx.run-sphinx` for sphinx-3.5.4. (Benjamin
+    Bannier, Corelight)
+
+  * Show verbose failures when running test target. (Benjamin Bannier,
+    Corelight)
+
+  * Fix misspelled variable name in `btest-sphinx.py`. (Benjamin
+    Bannier, Corelight)
+
 0.69-4 | 2021-08-10 08:25:39 +0200
 
   * Add flag `-l` to print available tests. (Benjamin Bannier,
@@ -853,7 +888,10 @@
         Copy the given file into the test's directory before the test is
         run. If ``<file>`` is a relative path, it's interpreted relative
         to the BTest's base directory. Environment variables in ``<file>``
-        will be replaced if enclosed in ``${..}``. This command can be
+        will be replaced if enclosed in ``$
+	{
+	..
+	}``. This command can be
         given multiple times. (Robin Sommer)
 
   * Suppressing error messages when btest-diff can't remove diag file.

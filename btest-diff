@@ -65,7 +65,8 @@ is_canon_baseline() {
     # allow for some wiggle room in updating the wording in the header
     # in the future, we don't fix the exact string, and end after the
     # "Do not edit." sentence.
-    local header=$(echo "$HEADER" | sed -E 's/Do not edit\..*/Do not edit./')
+    local header
+    header=$(echo "$HEADER" | sed -E 's/Do not edit\..*/Do not edit./')
 
     if head -n 1 "$input" | grep -q -F "$header" 2>/dev/null; then
         return 0
@@ -130,7 +131,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Split string with baseline directories into array.
-IFS=':' read -ra baseline_dirs <<< "$TEST_BASELINE"
+IFS=':' read -ra baseline_dirs <<<"$TEST_BASELINE"
 
 input="$1"
 # shellcheck disable=SC2001
@@ -144,6 +145,7 @@ fi
 
 tmpfiles=""
 delete_tmps() {
+    # shellcheck disable=SC2086
     rm -f $tmpfiles 2>/dev/null
 }
 
@@ -157,7 +159,7 @@ done
 
 result=2
 
-rm -f $TEST_DIAGNOSTICS  2>/dev/null
+rm -f $TEST_DIAGNOSTICS 2>/dev/null
 
 echo "== File ===============================" >>$TEST_DIAGNOSTICS
 
@@ -204,6 +206,7 @@ if [ -n "$baseline" ]; then
         # It's an older uncanonicalized baseline, so canonicalize
         # it now prior to comparison. Future updates via btest
         # -U/-u will then store it canonicalized.
+        # shellcheck disable=SC2094
         eval "$TEST_DIFF_CANONIFIER" "$baseline" <"$baseline" >"$canon_baseline"
         if [ $? -ne 0 ]; then
             echo "== Error ==============================" >>$TEST_DIAGNOSTICS

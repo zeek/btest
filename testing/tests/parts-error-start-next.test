@@ -12,5 +12,3 @@
 @TEST-EXEC: echo "Hello, world!. Again" >>../../output
 
 # %TEST-END-FILE
-
-

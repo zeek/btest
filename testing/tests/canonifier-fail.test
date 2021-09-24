@@ -14,4 +14,3 @@ awk 'NF == 3 { print $1,"XXX",$3; if($2 == "000") exit 1;}'
 @TEST-EXEC: echo ABC 000 DEF >output
 @TEST-EXEC-FAIL: TEST_DIFF_CANONIFIER="../../test-canonifier" btest-diff output
 @TEST-EXEC-FAIL: TEST_DIFF_CANONIFIER="./does-not-exist" btest-diff output
-

@@ -4,4 +4,3 @@
 # %TEST-EXEC: btest-diff child-output
 
 @TEST-EXEC: cat %INPUT >>../../child-output
-
