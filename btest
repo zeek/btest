@@ -161,7 +161,7 @@ def ExpandBackticks(origvalue):
             return ""
 
         try:
-            pp = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+            pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         except OSError as e:
             error("cannot execute '%s': %s" % (cmd, e))
 
