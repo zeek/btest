@@ -1,4 +1,14 @@
 
+0.69-25 | 2021-10-08 11:55:13 +0200
+
+  * Improve backtick expansion in `btest.cfg`. Instead of naive
+    splitting of the command string into arguments, pass the command
+    as-is to a subshell for parsing. Note that this changes semantics
+    of backticks slightly. However, they were ill-defined to begin
+    with. (DJ Gregor, Corelight)
+
+  * Minor README tweaks. (DJ Gregor, Corelight)
+
 0.69-22 | 2021-09-24 10:57:31 +0200
 
   * Add pre-commit configuration. (Benjamin Bannier)

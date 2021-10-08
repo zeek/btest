@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 0.69-22
+.. |version| replace:: 0.69-25
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -27,9 +27,11 @@ Prerequisites
 
 BTest has the following prerequisites:
 
-- Python version >= 3.5 (older version may work, but are not well-tested).
+- Python version >= 3.5 (older versions may work, but are not
+  well-tested).
 
-- Bash (note that on FreeBSD, bash is not installed by default).
+- Bash (note that on FreeBSD and Alpine Linux, bash is not installed
+  by default).
 
 BTest has the following optional prerequisites to enable additional
 functionality:
