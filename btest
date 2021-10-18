@@ -8,7 +8,6 @@ from __future__ import print_function
 
 import atexit
 import copy
-import distutils.version
 import fnmatch
 import glob
 import io
@@ -114,6 +113,25 @@ def getDefaultBtestEncoding():
         return 'utf-8'
 
     return locale.getpreferredencoding()
+
+
+def validate_version_requirement(required: str, present: str):
+    '''Helper function to validate that a `present` version is semantically newer or equal than a `required` version.'''
+    def extract_version(v: str):
+        '''Helper function to extract version components from a string.'''
+        try:
+            xyz = [int(x) for x in re.split(r'\.|-', v)]
+        except ValueError:
+            error("invalid version %s: versions must contain only numeric identifiers" % v)
+
+        return xyz
+
+    v_present = extract_version(present)
+    v_required = extract_version(required)
+
+    if v_present < v_required:
+        error("%s requires at least BTest %s, this is %s. Please upgrade." %
+              (Options.config, min_version, VERSION))
 
 
 # Get the value of the specified option in the specified section (or
@@ -2465,16 +2483,9 @@ Config.read(Options.config)
 
 defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
-if getOption("MinVersion", None) is not None:
-    # Built-in distutils has version comparison support. This has
-    # deficiencies but suffices for our numbering purposes. In
-    # particular, it orders our post-release-steps scheme correctly,
-    # i.e. 1.2-23 > 1.2.
-    v_now = distutils.version.LooseVersion(VERSION)
-    v_min = distutils.version.LooseVersion(getOption("MinVersion", None))
-    if v_now < v_min:
-        error("%s requires at least BTest %s, this is %s. Please upgrade." %
-              (Options.config, v_min, v_now))
+min_version = getOption("MinVersion", None)
+if min_version:
+    validate_version_requirement(min_version, VERSION)
 
 if Options.alternatives:
     # Preprocess to split into list.
