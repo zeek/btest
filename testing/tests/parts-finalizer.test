@@ -6,6 +6,7 @@
 TestDirs    = t
 TmpDir      = .tmp
 BaselineDir = Baseline
+PartInitializer = echo Initializer $TEST_PART >>../../output
 PartFinalizer = echo Finalizer $TEST_PART >>../../output
 # %TEST-END-FILE
 
