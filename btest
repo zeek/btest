@@ -827,6 +827,10 @@ class Test(object):
 
         seq = CmdSeq()
 
+        if PartInitializer:
+            seq.cmds.append(
+                CmdLine("%s %s" % (PartInitializer, self.name), True, part, "<PartInitializer>"))
+
         for (cmd, success) in cmds["exec"]:
             seq.cmds.append(CmdLine(cmd.strip(), success != "-FAIL", part, file))
 
@@ -2749,6 +2753,7 @@ Initializer = getOption("Initializer", "")
 Finalizer = getOption("Finalizer", "")
 Teardown = getOption("Teardown", "")
 
+PartInitializer = getOption("PartInitializer", "")
 PartFinalizer = getOption("PartFinalizer", "")
 PartTeardown = getOption("PartTeardown", "")
 
