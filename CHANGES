@@ -1,3 +1,15 @@
+
+0.69-31 | 2021-10-22 13:29:57 +0200
+
+  * Remove use of Python 3.7 feature `time.time_ns`. (Benjamin
+    Bannier, Corelight)
+
+  * Use appropiate Sphinx versions for different Python versions.
+    (Benjamin Bannier, Corelight)
+
+  * GH-66: Fix typo preventing use of configured Python version in CI.
+    (Benjamin Bannier, Corelight)
+
 0.69-27 | 2021-10-19 13:33:43 -0700
 
   * Remove uses of deprecated `distutils` package. (Benjamin Bannier, Corelight)
