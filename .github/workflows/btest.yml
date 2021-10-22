@@ -9,7 +9,7 @@ jobs:
   Run-BTest:
     strategy:
       matrix:
-        python_version: [3, 3.5]
+        python-version: [3, 3.5]
         os: [macos-latest, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
@@ -21,6 +21,5 @@ jobs:
             python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-            python3 -m pip install --upgrade pip
-            pip3 install sphinx==3.5.4
+            python -m pip install sphinx==3.5.4
       - run: make test
