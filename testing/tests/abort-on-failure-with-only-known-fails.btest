@@ -1,6 +1,8 @@
 # %TEST-DOC: Ensure --abort-on-failure does not trigger for known failures.
 #
-# %TEST-EXEC-FAIL: btest -FD test1 test2 test3 test4 >output 2>&1
+# The TMPDIR assignment in the following prevents leakage of Python
+# multiprocessing state into btest's .tmp folder on some platforms.
+# %TEST-EXEC-FAIL: TMPDIR=$PWD btest -FD test1 test2 test3 test4 >output 2>&1
 # %TEST-EXEC: btest-diff output
 
 # %TEST-START-FILE test1
