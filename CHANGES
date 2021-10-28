@@ -1,3 +1,16 @@
+0.69-36 | 2021-10-28 12:12:47 -0700
+
+  * Prevent multiprocessing state leaks into toplevel .tmp directory (Benjmain
+    Bannier, Corelight)
+
+  * Check whether post-testing .tmp is empty (Benjamin Bannier and Christian
+    Kreibich, Corelight)
+
+  * Clean up registered temp files in btest-rst-cmd (Christian Kreibich,
+    Corelight)
+
+  * Add temp directory to the statefile-sorted test (Christian Kreibich,
+    Corelight)
 
 0.69-31 | 2021-10-22 13:29:57 +0200
 

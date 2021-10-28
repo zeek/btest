@@ -40,14 +40,15 @@ for i in input:
 }
 
 function cleanup() {
-    rm -f "$tmps"
+    # shellcheck disable=SC2086
+    rm -f $tmps
     exit
 }
 
 stdout=$(mktemp -t "$(basename "$0")".XXXXXX)
 cmd_out=$(mktemp -t "$(basename "$0")".XXXXXX)
 filter_out=$(mktemp -t "$(basename "$0")".XXXXXX)
-tmps="$tmps $stdout $cmd_out $filter_out"
+tmps="$stdout $cmd_out $filter_out"
 
 include=$cmd_out
 show_command=1

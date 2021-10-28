@@ -15,5 +15,6 @@
 
 # %TEST-START-FILE btest.cfg
 [btest]
+TmpDir = .tmp
 StateFile = mystate
 # %TEST-END-FILE
