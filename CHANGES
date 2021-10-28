@@ -1,3 +1,7 @@
+0.70 | 2021-10-28 12:14:34 -0700
+
+  * Release 0.70.
+
 0.69-36 | 2021-10-28 12:12:47 -0700
 
   * Prevent multiprocessing state leaks into toplevel .tmp directory (Benjmain
