@@ -1,3 +1,11 @@
+0.70-6 | 2021-11-01 12:03:30 -0700
+
+  * Add PartInitializer option (Christian Kreibich, Corelight)
+
+  * Support for global and test-part teardowns (Christian Kreibich, Corelight)
+
+  * Remove Python 2.7 from manifest (Christian Kreibich, Corelight)
+
 0.70 | 2021-10-28 12:14:34 -0700
 
   * Release 0.70.

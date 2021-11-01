@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 0.70
+.. |version| replace:: 0.70-6
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -441,9 +441,9 @@ configuration file:
     ``$TEST-EXEC``.
 
 ``Finalizer``
-    An executable that will be executed each time any test has
+    A command that will be executed each time any test has
     successfully run. It runs in the same directory as the test itself
-    and receives the name of the test as its parameter. The return
+    and receives the name of the test as its only argument. The return
     value indicates whether the test should indeed be considered
     successful. By default, there's no finalizer set.
 
@@ -463,9 +463,9 @@ configuration file:
     in it.
 
 ``Initializer``
-    An executable that will be executed before each test. It runs in
+    A command that will be executed before each test. It runs in
     the same directory as the test itself will and receives the name
-    of the test as its parameter. The return value indicates whether
+    of the test as its only argument. The return value indicates whether
     the test should continue; if false, the test will be considered
     failed. By default, there's no initializer set.
 
@@ -478,10 +478,26 @@ configuration file:
     message on stderr.
 
 ``PartFinalizer``
-    An executable that will be executed each time a test *part* has
+    A command that will be executed each time a test *part* has
     successfully run. This operates similarly to ``Finalizer`` except
     that it runs after each test part rather than only at completion
     of the full test. See `parts`_ for more about test parts.
+
+``PartInitializer``
+    A command that will be executed before each test *part*. This operates
+    similarly to ``Initializer`` except that it runs at the beginning of any
+    test part that BTest runs. See `parts`_ for more about test parts.
+
+    Since a failing test part aborts execution of the test, part initializers do
+    not run for any subsequent skipped parts.
+
+``PartTeardown``
+    A command that will run after any test *part* that has run, regardless
+    of failure or success of the part. This operates similarly to ``Teardown``
+    except it applies to test `parts`_ instead of the full test.
+
+    Since a failing test part aborts execution of the test, part teardowns do
+    not run for any subsequent skipped parts.
 
 ``PerfPath``
     Specifies a path to the ``perf`` tool, which is used on Linux to
@@ -496,6 +512,28 @@ configuration file:
 ``StateFile``
     The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
+
+``Teardown``
+    A command that will be executed each time any test has run, regardless of
+    whether that test succeeded. Conceptually, it pairs with an ``Initializer``
+    that sets up test infrastructure that requires tear-down at the end of the
+    test. It runs in the same directory as the test itself and receives the name
+    of the test as its only argument. There's no default teardown command.
+
+    Teardown commands may return a non-zero exit code, which fails the
+    corresponding test. Succeeding teardown commands do not override an
+    otherwise failing test; such tests will still fail.
+
+    To allow teardown routines to reason about the preceding tests, they
+    receive two additional environment variables:
+
+    ``TEST_FAILED``
+        This variable is defined (to 1) when the test has failed, and absent
+        otherwise.
+
+    ``TEST_LAST_RETCODE``
+        This variable contains the numeric exit code of the last command
+        run prior to teardown.
 
 ``TestDirs``
     A space-separated list of directories to search for tests. If

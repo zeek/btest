@@ -39,7 +39,7 @@ try:
 except ImportError:
     import configparser
 
-VERSION = "0.70"  # Automatically filled in.
+VERSION = "0.70-6"  # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -676,13 +676,29 @@ class TestManager(multiprocessing.managers.SyncManager):
             out.close()
 
 
-# One @TEST-{EXEC,REQUIRES} command line.
 class CmdLine:
+    """A single command to invoke.
+
+    These commands can be provided by @TEST-{EXEC,REQUIRES} instructions, an
+    Initializer, Finalizer, or Teardown, or their part-specific equivalents.
+    """
     def __init__(self, cmdline, expect_success, part, file):
         self.cmdline = cmdline
         self.expect_success = expect_success
         self.part = part
         self.file = file
+
+
+class CmdSeq:
+    """A sequence of commands, with potential subsequent teardown.
+
+    Tracking the teardown separately allows us to skip to it when commands
+    fail. Commands can be invidual CmdLines or CmdSeq instances. Test.run()
+    processes the latter recursively.
+    """
+    def __init__(self):
+        self.cmds = []  # CmdLine or CmdSeq instances
+        self.teardown = None
 
 
 # One test.
@@ -697,7 +713,7 @@ class Test(object):
         self.basename = None
         self.bound_ports = []
         self.cloned = False
-        self.cmdlines = []
+        self.cmdseqs = []
         self.contents = []
         self.copy_files = []
         self.diag = None
@@ -809,13 +825,24 @@ class Test(object):
         self.basename = name
         self.contents += [(file, content)]
 
-        for (cmd, success) in cmds["exec"]:
-            cmdline = CmdLine(cmd.strip(), success != "-FAIL", part, file)
-            self.cmdlines += [cmdline]
+        seq = CmdSeq()
 
-        if PartFinalizer != "":
-            finalizer = CmdLine("%s %s" % (PartFinalizer, self.name), True, part, "<PartFinalizer>")
-            self.cmdlines += [finalizer]
+        if PartInitializer:
+            seq.cmds.append(
+                CmdLine("%s %s" % (PartInitializer, self.name), True, part, "<PartInitializer>"))
+
+        for (cmd, success) in cmds["exec"]:
+            seq.cmds.append(CmdLine(cmd.strip(), success != "-FAIL", part, file))
+
+        if PartFinalizer:
+            seq.cmds.append(
+                CmdLine("%s %s" % (PartFinalizer, self.name), True, part, "<PartFinalizer>"))
+
+        if PartTeardown:
+            seq.teardown = CmdLine("%s %s" % (PartTeardown, self.name), True, part,
+                                   "<PartTeardown>")
+
+        self.cmdseqs.append(seq)
 
         if "serialize" in cmds:
             self.serialize = cmds["serialize"]
@@ -828,8 +855,7 @@ class Test(object):
 
         if "requires" in cmds:
             for cmd in cmds["requires"]:
-                cmdline = CmdLine(cmd.strip(), True, part, file)
-                self.requires += [cmdline]
+                self.requires.append(CmdLine(cmd.strip(), True, part, file))
 
         if "copy-file" in cmds:
             self.copy_files += [cmd.strip() for cmd in cmds["copy-file"]]
@@ -868,7 +894,7 @@ class Test(object):
         clone.serialize = self.serialize
         clone.ports = self.ports
         clone.groups = self.groups
-        clone.cmdlines = self.cmdlines
+        clone.cmdseqs = self.cmdseqs
         clone.known_failure = self.known_failure
         clone.measure_time = self.measure_time
         clone.doc = self.doc
@@ -893,7 +919,7 @@ class Test(object):
         self.serialize += part.serialize
         self.ports |= part.ports
         self.groups |= part.groups
-        self.cmdlines += part.cmdlines
+        self.cmdseqs += part.cmdseqs
         self.ignore_alternatives += part.ignore_alternatives
         self.include_alternatives += part.include_alternatives
         self.files += part.files
@@ -1017,52 +1043,103 @@ class Test(object):
         self.monitor_quit = threading.Event()
         self.monitor.start()
 
-        # Run test's commands.
+        # Run test's commands. First, construct a series of command sequences:
+        # each sequence consists of test commands with an optional teardown that
+        # always runs, regardless of prior test failures.
+
+        seq = CmdSeq()
+
+        if Initializer:
+            seq.cmds.append(CmdLine("%s %s" % (Initializer, self.name), True, 1, "<Initializer>"))
+
+        seq.cmds += self.cmdseqs
+
+        if Finalizer:
+            seq.cmds.append(CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>"))
+
+        if Teardown:
+            seq.teardown = CmdLine("%s %s" % (Teardown, self.name), True, 1, "<Teardown>")
 
         failures = 0
+        rc = 0
 
-        cmds = []
+        # Executes the provided Cmdseq command sequence. Helper function, so we
+        # can recurse when a Cmdseq's command list includes other sequences.
+        def run_cmdseq(seq):
+            nonlocal failures, rc
+            need_teardown = False
 
-        if Initializer != "":
-            initializer = CmdLine("%s %s" % (Initializer, self.name), True, 1, "<Initializer>")
-            cmds += [initializer]
+            # Run commands only when successful so far, if the most recent
+            # command asked to continue despite error (code 100), or in Sphinx
+            # mode.
+            if failures == 0 or rc == 100 or Options.sphinx:
+                skip_part = -1
 
-        cmds += self.cmdlines
+                for cmd in seq.cmds:
+                    # If the next command is a CmdSeq, process it recursively
+                    # first. This processes teardowns for those sequences as
+                    # needed, and skips them when nothing was actually run in a
+                    # CmdSeq.
+                    if isinstance(cmd, CmdSeq):
+                        need_teardown |= run_cmdseq(cmd)
+                        continue
 
-        if Finalizer != "":
-            finalizer = CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>")
-            cmds += [finalizer]
+                    if skip_part >= 0 and skip_part == cmd.part:
+                        continue
 
-        skip_part = -1
+                    (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
+                    need_teardown = True
 
-        for cmd in cmds:
-            if skip_part >= 0 and skip_part == cmd.part:
-                continue
+                    if not success:
+                        failures += 1
 
-            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
+                        if Options.sphinx:
+                            # We still execute the remaining commands and
+                            # raise a failure for each one that fails.
+                            self.mgr.testFailed(self)
+                            skip_part = cmd.part
+                            continue
 
-            if not success:
-                failures += 1
+                        if failures == 1:
+                            self.mgr.testFailed(self)
 
-                if Options.sphinx:
-                    # We still execute the remaining commands and
-                    # raise a failure for each one that fails.
-                    self.mgr.testFailed(self)
-                    skip_part = cmd.part
-                    continue
+                        if rc != 100:
+                            break
 
-                if failures == 1:
-                    self.mgr.testFailed(self)
+            if need_teardown and seq.teardown:
+                (success, teardown_rc) = self.execute(seq.teardown,
+                                                      apply_alternative=self.alternative,
+                                                      addl_envs={
+                                                          'TEST_FAILED': int(failures > 0),
+                                                          'TEST_LAST_RETCODE': rc
+                                                      })
 
-                if rc == 200:
-                    # Abort all tests.
-                    self.monitor_quit.set()
-                    # Flush remaining command output prior to exit:
-                    mgr.testReplayOutput(self)
-                    sys.exit(1)
+                # A teardown can fail an otherwise successful test run, with the
+                # same special-casing of return codes 100 and 200. When failing
+                # on top of an already failing run, the return code will
+                # override the previous one. If a failing teardown wants to
+                # preserve the run's existing failing error code, it has access
+                # to it via the TEST_LAST_RETCODE environment variable.
+                if not success:
+                    rc = teardown_rc
+                    failures += 1
 
-                if rc != 100:
-                    break
+                    if Options.sphinx or failures == 1:
+                        self.mgr.testFailed(self)
+
+            return need_teardown
+
+        run_cmdseq(seq)
+
+        # Return code 200 aborts further processing, now that any teardowns have
+        # run. btest-diff uses this code when we run with --update-interactive
+        # and the user aborts the run.
+        if rc == 200:
+            # Abort all tests.
+            self.monitor_quit.set()
+            # Flush remaining command output prior to exit:
+            mgr.testReplayOutput(self)
+            sys.exit(1)
 
         self.utime_perc = 0.0
         self.utime_exceeded = False
@@ -1111,11 +1188,10 @@ class Test(object):
             self.monitor_quit.set()
             self.monitor.join()
 
-    def execute(self, cmd, apply_alternative=None):
+    def execute(self, cmd, apply_alternative=None, addl_envs=None):
         filter_cmd = None
-        addl_envs = {}
-
         cmdline = cmd.cmdline
+        env = {}
 
         # Apply alternative if requested.
         if apply_alternative:
@@ -1131,7 +1207,7 @@ class Test(object):
             for (key, val) in alt.substitutions.items():
                 cmdline = re.sub("\\b" + re.escape(key) + "\\b", val, cmdline)
 
-            addl_envs = alt.envs
+            env = alt.envs
 
         localfile = os.path.join(self.tmpdir, os.path.basename(cmd.file))
 
@@ -1164,7 +1240,12 @@ class Test(object):
         print("%s (expect %s)" % (cmdline, ("failure", "success")[cmd.expect_success]),
               file=self.log)
 
-        env = self.prepareEnv(cmd, addl_envs)
+        # Additional environment variables provided by the caller override any
+        # existing ones, but are generally not assumed to collide:
+        if addl_envs:
+            env.update(addl_envs)
+
+        env = self.prepareEnv(cmd, env)
         measure_time = self.measure_time and (Options.update_times or self.utime_base >= 0)
 
         (success, rc, utime) = runTestCommandLine(cmdline,
@@ -1216,7 +1297,9 @@ class Test(object):
         env["TEST_BASE"] = TestBase
 
         for (key, val) in addl.items():
-            env[key.upper()] = val
+            # Convert val to string since otherwise os.environ (and our clone)
+            # trigger a TypeError upon insertion, and the caller may be unaware.
+            env[key.upper()] = str(val)
 
         for idx, key in enumerate(sorted(self.ports)):
             env[key] = str(self.bound_ports[idx]) + "/tcp"
@@ -2663,11 +2746,16 @@ StateFile = os.path.abspath(
     getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
 TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
 BaselineDirs = [os.path.abspath(dir) for dir in defaults["baselinedir"].split(":")]
-Initializer = getOption("Initializer", "")
 BaselineTimingDir = os.path.abspath(
     getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
+
+Initializer = getOption("Initializer", "")
 Finalizer = getOption("Finalizer", "")
+Teardown = getOption("Teardown", "")
+
+PartInitializer = getOption("PartInitializer", "")
 PartFinalizer = getOption("PartFinalizer", "")
+PartTeardown = getOption("PartTeardown", "")
 
 Config.configured_tests = []
 

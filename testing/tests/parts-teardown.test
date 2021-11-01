@@ -1,0 +1,26 @@
+# This test consists of three parts, with the second one triggering an error.
+# We define a PartTeardown that should kick in after the first and second
+# parts. Since the third part never runs, no point in calling its teardown.
+
+# %TEST-EXEC-FAIL: btest t/test
+# %TEST-EXEC: btest-diff output
+
+# %TEST-START-FILE btest.cfg
+[btest]
+TestDirs    = t
+TmpDir      = .tmp
+BaselineDir = Baseline
+PartTeardown = echo Teardown $TEST_PART >>../../output
+# %TEST-END-FILE
+
+# %TEST-START-FILE t/test
+@TEST-EXEC: echo "Hello, world!." >>../../output
+# %TEST-END-FILE
+
+# %TEST-START-FILE t/test#2
+@TEST-EXEC: echo "Hello, world! Again, with error." >>../../output && false
+# %TEST-END-FILE
+
+# %TEST-START-FILE t/test#3
+@TEST-EXEC: echo "Hello, world! Again, but you won't see this." >>../../output
+# %TEST-END-FILE

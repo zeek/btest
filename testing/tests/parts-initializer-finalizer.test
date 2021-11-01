@@ -1,3 +1,6 @@
+# This test verifies the invocation order of initializers, finalizers, and their
+# part-specific equivalents.
+
 # %TEST-EXEC: btest t/test
 # %TEST-EXEC: btest-diff output
 
@@ -6,7 +9,10 @@
 TestDirs    = t
 TmpDir      = .tmp
 BaselineDir = Baseline
-PartFinalizer = echo Finalizer $TEST_PART >>../../output
+Initializer = echo Initializer $TEST_PART >>../../output
+Finalizer = echo Finalizer $TEST_PART >>../../output
+PartInitializer = echo PartInitializer $TEST_PART >>../../output
+PartFinalizer = echo PartFinalizer $TEST_PART >>../../output
 # %TEST-END-FILE
 
 # %TEST-START-FILE t/test

@@ -1,0 +1,41 @@
+# This test verifies the basic properties of teardowns: they get called after
+# command regardess of their outcome, they receive TEST_FAILED and
+# TEST_LAST_RETCODE environment variables, and they can fail otherwise
+# successful tests.
+
+# Succeeding tests: teardown runs
+# %TEST-EXEC: btest -t tests/success
+
+# Failing test: teardown runs, run fails
+# %TEST-EXEC-FAIL: btest -t tests/failure
+
+# Succeeding test: teardown introduces failure, run fails
+# %TEST-EXEC-FAIL: btest -c btest.failing-teardown.cfg -t tests/success
+
+# %TEST-EXEC: btest-diff output
+
+%TEST-START-FILE btest.cfg
+[btest]
+TestDirs    = tests
+TmpDir      = .tmp
+BaselineDir = Baseline
+Teardown = echo "Teardown $TEST_NAME $TEST_FAILED $TEST_LAST_RETCODE" >>../../output
+%TEST-END-FILE
+
+%TEST-START-FILE btest.failing-teardown.cfg
+[btest]
+TestDirs    = tests
+TmpDir      = .tmp
+BaselineDir = Baseline
+Teardown = echo "Teardown $TEST_NAME $TEST_FAILED $TEST_LAST_RETCODE (failing now)" >>../../output && false
+%TEST-END-FILE
+
+# %TEST-START-FILE tests/success
+@TEST-EXEC: echo "success" >>../../output
+# %TEST-END-FILE
+
+# %TEST-START-FILE tests/failure
+@TEST-EXEC: echo "success" >>../../output
+@TEST-EXEC: echo "failure" >>../../output && exit 42
+@TEST-EXEC: echo "not reached" >>../../output
+# %TEST-END-FILE
