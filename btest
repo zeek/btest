@@ -2109,15 +2109,17 @@ def findTests(paths, expand_globs=False):
     ignore_files = getOption("IgnoreFiles", "").split()
     ignore_dirs = getOption("IgnoreDirs", "").split()
 
-    expanded = []
+    expanded = set()
 
     for p in paths:
         p = os.path.join(TestBase, p)
 
         if expand_globs:
-            expanded += [d for d in glob.glob(p) if os.path.isdir(d)]
+            for d in glob.glob(p):
+                if os.path.isdir(d):
+                    expanded.add(d)
         else:
-            expanded.append(p)
+            expanded.add(p)
 
     for path in expanded:
         rpath = os.path.relpath(path, TestBase)

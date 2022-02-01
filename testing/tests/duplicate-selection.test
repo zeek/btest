@@ -1,0 +1,6 @@
+# %TEST-EXEC: btest -j t t t >>out 2>&1
+# %TEST-EXEC: btest-diff out
+
+%TEST-START-FILE t
+@TEST-EXEC: echo test
+%TEST-END-FILE
