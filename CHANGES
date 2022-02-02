@@ -1,3 +1,8 @@
+0.71-2 | 2022-02-02 12:47:42 +0100
+
+  * Avoid assertion failure if same test required multiple times.
+    (Benjamin Bannier, Corelight)
+
 0.71 | 2021-11-01 12:04:45 -0700
 
   * Release 0.71.
