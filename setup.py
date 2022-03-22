@@ -23,7 +23,7 @@ py_modules = ["btest-sphinx"]
 
 setup(
     name='btest',
-    version="0.71-2",  # Filled in automatically.
+    version="0.71-4",  # Filled in automatically.
     description='A powerful system testing framework',
     long_description='See https://github.com/zeek/btest',
     author='Robin Sommer',

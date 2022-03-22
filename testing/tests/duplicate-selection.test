@@ -1,5 +1,7 @@
+# %TEST-DOC: Validates that if the same test is requested multiple times, it still only runs once.
+#
 # %TEST-EXEC: btest -j t t t >>out 2>&1
-# %TEST-EXEC: btest-diff out
+# %TEST-EXEC: test $(grep -c 't \.\.\. ok' out) = 1
 
 %TEST-START-FILE t
 @TEST-EXEC: echo test

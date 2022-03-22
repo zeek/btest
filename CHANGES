@@ -1,3 +1,8 @@
+0.71-4 | 2022-03-22 09:19:53 +0100
+
+  * Make test `duplication-selection` independent of actual
+    scheduling. (Benjamin Bannier, Corelight)
+
 0.71-2 | 2022-02-02 12:47:42 +0100
 
   * Avoid assertion failure if same test required multiple times.
