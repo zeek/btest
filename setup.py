@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from distutils.core import setup, Extension
+from setuptools import setup
 
 # When making changes to the following list, remember to keep
 # CMakeLists.txt in sync.
