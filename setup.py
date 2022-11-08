@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from distutils.core import setup, Extension
+from setuptools import setup
 
 # When making changes to the following list, remember to keep
 # CMakeLists.txt in sync.
@@ -23,7 +23,7 @@ py_modules = ["btest-sphinx"]
 
 setup(
     name='btest',
-    version="0.72",  # Filled in automatically.
+    version="0.72-2",  # Filled in automatically.
     description='A powerful system testing framework',
     long_description='See https://github.com/zeek/btest',
     author='Robin Sommer',

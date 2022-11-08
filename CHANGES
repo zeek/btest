@@ -1,3 +1,8 @@
+0.72-2 | 2022-11-08 10:34:21 +0100
+
+  * Remove dependency on distutils. The distutils module will be
+    removed from Python in 3.12. (Cyril Rolando)
+
 0.72 | 2022-03-22 09:21:34 +0100
 
   * Release 0.72.
@@ -5,7 +10,7 @@
 0.71-4 | 2022-03-22 09:19:53 +0100
 
   * Make test `duplication-selection` independent of actual
-    scheduling. (Benjamin Bannier, Corelight)
+    scheduling.
 
 0.71-2 | 2022-02-02 12:47:42 +0100
 
