@@ -103,7 +103,7 @@ def platform():
 
 
 def getDefaultBtestEncoding():
-    if locale.getdefaultlocale()[1] is None:
+    if locale.getlocale() is None:
         return 'utf-8'
 
     return locale.getpreferredencoding()
