@@ -102,10 +102,6 @@ def platform():
     return pform.system()
 
 
-def getDefaultBtestEncoding():
-    return 'UTF-8'
-
-
 def validate_version_requirement(required: str, present: str):
     '''Helper function to validate that a `present` version is semantically newer or equal than a `required` version.'''
     def extract_version(v: str):
@@ -379,7 +375,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         # Record failed tests if not updating.
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
             try:
-                state = open(StateFile, "w", encoding=getDefaultBtestEncoding())
+                state = open(StateFile, "w", encoding="utf-8")
             except IOError:
                 error("cannot open state file %s" % StateFile)
 
@@ -997,7 +993,7 @@ class Test(object):
 
         for (file, content) in self.contents:
             localfile = os.path.join(self.tmpdir, os.path.basename(file))
-            out = io.open(localfile, "w", encoding=getDefaultBtestEncoding())
+            out = io.open(localfile, "w", encoding="utf-8")
 
             try:
                 for line in content:
@@ -1007,13 +1003,9 @@ class Test(object):
 
             out.close()
 
-        self.log = open(os.path.join(self.tmpdir, ".log"), "w", encoding=getDefaultBtestEncoding())
-        self.stdout = open(os.path.join(self.tmpdir, ".stdout"),
-                           "w",
-                           encoding=getDefaultBtestEncoding())
-        self.stderr = open(os.path.join(self.tmpdir, ".stderr"),
-                           "w",
-                           encoding=getDefaultBtestEncoding())
+        self.log = open(os.path.join(self.tmpdir, ".log"), "w", encoding="utf-8")
+        self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "w", encoding="utf-8")
+        self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w", encoding="utf-8")
 
         for cmd in self.requires:
             (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
@@ -2214,7 +2206,7 @@ def readTestFile(filename):
         return []
 
     try:
-        input = io.open(filename, encoding=getDefaultBtestEncoding(), newline='')
+        input = io.open(filename, encoding="utf-8", newline='')
     except IOError as e:
         error("cannot read test file: %s" % e)
 
@@ -2559,7 +2551,7 @@ defaults["baselinedir"] = os.path.abspath(
 
 # Parse our config
 Config = getcfgparser(defaults)
-Config.read(Options.config, encoding=getDefaultBtestEncoding())
+Config.read(Options.config, encoding="utf-8")
 
 defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
