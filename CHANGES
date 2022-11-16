@@ -1,3 +1,8 @@
+0.72-10 | 2022-11-16 14:44:01 +0100
+
+  * Always use UTF-8 encoding for BTest input and output files.
+    (Benjamin Bannier, Corelight)
+
 0.72-7 | 2022-11-16 10:23:44 +0100
 
   * Python cleanup (Benjamin Bannier, Corelight)
