@@ -1,3 +1,16 @@
+0.72-7 | 2022-11-16 10:23:44 +0100
+
+  * Python cleanup (Benjamin Bannier, Corelight)
+
+    - Use `locale.getlocale` instead of deprecated `locale.getdefaultlocale`.
+
+    - Remove code for Python 2 compatibility.
+
+    - Use `python3` instead of `python` binary in test. Newer versions
+      of e.g., macOS do not provide a `python` binary anymore.
+
+  * Bump pre-commit checks. (Benjamin Bannier, Corelight)
+
 0.72-2 | 2022-11-08 10:34:21 +0100
 
   * Remove dependency on distutils. The distutils module will be

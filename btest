@@ -4,9 +4,8 @@
 #
 # pylint: disable=line-too-long,too-many-lines,invalid-name,missing-function-docstring,missing-class-docstring
 
-from __future__ import print_function
-
 import atexit
+import configparser
 import copy
 import fnmatch
 import glob
@@ -34,12 +33,7 @@ import xml.dom.minidom
 
 from datetime import datetime
 
-try:
-    import ConfigParser as configparser
-except ImportError:
-    import configparser
-
-VERSION = "0.72-2"  # Automatically filled in.
+VERSION = "0.72-7"  # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -109,7 +103,7 @@ def platform():
 
 
 def getDefaultBtestEncoding():
-    if locale.getdefaultlocale()[1] is None:
+    if locale.getlocale() is None:
         return 'utf-8'
 
     return locale.getpreferredencoding()
