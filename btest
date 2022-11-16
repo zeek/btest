@@ -103,10 +103,7 @@ def platform():
 
 
 def getDefaultBtestEncoding():
-    if locale.getlocale() is None:
-        return 'utf-8'
-
-    return locale.getpreferredencoding()
+    return 'UTF-8'
 
 
 def validate_version_requirement(required: str, present: str):
@@ -382,7 +379,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         # Record failed tests if not updating.
         if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
             try:
-                state = open(StateFile, "w")
+                state = open(StateFile, "w", encoding=getDefaultBtestEncoding())
             except IOError:
                 error("cannot open state file %s" % StateFile)
 
@@ -1010,9 +1007,13 @@ class Test(object):
 
             out.close()
 
-        self.log = open(os.path.join(self.tmpdir, ".log"), "w")
-        self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "w")
-        self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w")
+        self.log = open(os.path.join(self.tmpdir, ".log"), "w", encoding=getDefaultBtestEncoding())
+        self.stdout = open(os.path.join(self.tmpdir, ".stdout"),
+                           "w",
+                           encoding=getDefaultBtestEncoding())
+        self.stderr = open(os.path.join(self.tmpdir, ".stderr"),
+                           "w",
+                           encoding=getDefaultBtestEncoding())
 
         for cmd in self.requires:
             (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
@@ -2558,7 +2559,7 @@ defaults["baselinedir"] = os.path.abspath(
 
 # Parse our config
 Config = getcfgparser(defaults)
-Config.read(Options.config)
+Config.read(Options.config, encoding=getDefaultBtestEncoding())
 
 defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
