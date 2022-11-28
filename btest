@@ -1676,478 +1676,484 @@ if __name__ == '__main__':
     if (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
         multiprocessing.set_start_method('fork')
 
-optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
-optparser.add_option("-U",
-                     "--update-baseline",
-                     action="store_const",
-                     dest="mode",
-                     const="UPDATE",
-                     help="create a new baseline from the tests' output")
-optparser.add_option("-u",
-                     "--update-interactive",
-                     action="store_const",
-                     dest="mode",
-                     const="UPDATE_INTERACTIVE",
-                     help="interactively asks whether to update baseline for a failed test")
-optparser.add_option("-d",
-                     "--diagnostics",
-                     action="store_true",
-                     dest="diag",
-                     default=False,
-                     help="show diagnostic output for failed tests")
-optparser.add_option("-D",
-                     "--diagnostics-all",
-                     action="store_true",
-                     dest="diagall",
-                     default=False,
-                     help="show diagnostic output for ALL tests")
-optparser.add_option(
-    "-f",
-    "--file-diagnostics",
-    action="store",
-    type="string",
-    dest="diagfile",
-    default="",
-    help="write diagnostic output for failed tests into file; if file exists, it is overwritten")
-optparser.add_option("-v",
-                     "--verbose",
-                     action="store_true",
-                     dest="verbose",
-                     default=False,
-                     help="show commands as they are executed")
-optparser.add_option("-w",
-                     "--wait",
-                     action="store_true",
-                     dest="wait",
-                     default=False,
-                     help="wait for <enter> after each failed (with -d) or all (with -D) tests")
-optparser.add_option("-b",
-                     "--brief",
-                     action="store_true",
-                     dest="brief",
-                     default=False,
-                     help="outputs only failed tests")
-optparser.add_option("-c",
-                     "--config",
-                     action="store",
-                     type="string",
-                     dest="config",
-                     default=ConfigDefault,
-                     help="configuration file")
-optparser.add_option("-t",
-                     "--tmp-keep",
-                     action="store_true",
-                     dest="tmps",
-                     default=False,
-                     help="do not delete tmp files created for running tests")
-optparser.add_option(
-    "-j",
-    "--jobs",
-    action="callback",
-    callback=jOption,
-    dest="threads",
-    default=1,
-    help="number of threads running tests in parallel; with no argument will use all CPUs")
-optparser.add_option("-g",
-                     "--groups",
-                     action="store",
-                     type="string",
-                     dest="groups",
-                     default="",
-                     help="execute only tests of given comma-separated list of groups")
-optparser.add_option("-r",
-                     "--rerun",
-                     action="store_true",
-                     dest="rerun",
-                     default=False,
-                     help="execute commands for tests that failed last time")
-optparser.add_option("-q",
-                     "--quiet",
-                     action="store_true",
-                     dest="quiet",
-                     default=False,
-                     help="suppress information output other than about failed tests")
-optparser.add_option(
-    "-x",
-    "--xml",
-    action="store",
-    type="string",
-    dest="xmlfile",
-    default="",
-    help=
-    "write a report of test results in JUnit XML format to file; if file exists, it is overwritten")
-optparser.add_option("-a",
-                     "--alternative",
-                     action="store",
-                     type="string",
-                     dest="alternatives",
-                     default=None,
-                     help="activate given alternative")
-optparser.add_option("-S",
-                     "--sphinx",
-                     action="store_true",
-                     dest="sphinx",
-                     default=False,
-                     help="indicates that we're running from inside Sphinx; for internal purposes")
-optparser.add_option("-T",
-                     "--update-times",
-                     action="store_true",
-                     dest="update_times",
-                     default=False,
-                     help="create a new timing baseline for tests being measured")
-optparser.add_option("-R",
-                     "--documentation",
-                     action="store",
-                     type="choice",
-                     dest="doc",
-                     choices=("rst", "md"),
-                     metavar="format",
-                     default=None,
-                     help="Output documentation for tests, supported formats: rst, md")
-optparser.add_option(
-    "-A",
-    "--show-all",
-    action="store_true",
-    default=False,
-    help=
-    "For console output, show one-liners for passing/skipped tests in addition to any failing ones")
-optparser.add_option("-z",
-                     "--retries",
-                     action="store",
-                     dest="retries",
-                     type="int",
-                     default=0,
-                     help="Retry failed tests this many times to determine if they are unstable")
-optparser.add_option("--trace-file",
-                     action="store",
-                     dest="tracefile",
-                     default="",
-                     help="write Chrome tracing file to file; if file exists, it is overwritten")
-optparser.add_option("-F",
-                     "--abort-on-failure",
-                     action="store_true",
-                     dest="abort_on_failure",
-                     help="terminate after first test failure")
-optparser.add_option("-l",
-                     "--list",
-                     action="store_true",
-                     dest="list",
-                     default=False,
-                     help="list available tests instead of executing them")
+    optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
+    optparser.add_option("-U",
+                         "--update-baseline",
+                         action="store_const",
+                         dest="mode",
+                         const="UPDATE",
+                         help="create a new baseline from the tests' output")
+    optparser.add_option("-u",
+                         "--update-interactive",
+                         action="store_const",
+                         dest="mode",
+                         const="UPDATE_INTERACTIVE",
+                         help="interactively asks whether to update baseline for a failed test")
+    optparser.add_option("-d",
+                         "--diagnostics",
+                         action="store_true",
+                         dest="diag",
+                         default=False,
+                         help="show diagnostic output for failed tests")
+    optparser.add_option("-D",
+                         "--diagnostics-all",
+                         action="store_true",
+                         dest="diagall",
+                         default=False,
+                         help="show diagnostic output for ALL tests")
+    optparser.add_option(
+        "-f",
+        "--file-diagnostics",
+        action="store",
+        type="string",
+        dest="diagfile",
+        default="",
+        help="write diagnostic output for failed tests into file; if file exists, it is overwritten"
+    )
+    optparser.add_option("-v",
+                         "--verbose",
+                         action="store_true",
+                         dest="verbose",
+                         default=False,
+                         help="show commands as they are executed")
+    optparser.add_option("-w",
+                         "--wait",
+                         action="store_true",
+                         dest="wait",
+                         default=False,
+                         help="wait for <enter> after each failed (with -d) or all (with -D) tests")
+    optparser.add_option("-b",
+                         "--brief",
+                         action="store_true",
+                         dest="brief",
+                         default=False,
+                         help="outputs only failed tests")
+    optparser.add_option("-c",
+                         "--config",
+                         action="store",
+                         type="string",
+                         dest="config",
+                         default=ConfigDefault,
+                         help="configuration file")
+    optparser.add_option("-t",
+                         "--tmp-keep",
+                         action="store_true",
+                         dest="tmps",
+                         default=False,
+                         help="do not delete tmp files created for running tests")
+    optparser.add_option(
+        "-j",
+        "--jobs",
+        action="callback",
+        callback=jOption,
+        dest="threads",
+        default=1,
+        help="number of threads running tests in parallel; with no argument will use all CPUs")
+    optparser.add_option("-g",
+                         "--groups",
+                         action="store",
+                         type="string",
+                         dest="groups",
+                         default="",
+                         help="execute only tests of given comma-separated list of groups")
+    optparser.add_option("-r",
+                         "--rerun",
+                         action="store_true",
+                         dest="rerun",
+                         default=False,
+                         help="execute commands for tests that failed last time")
+    optparser.add_option("-q",
+                         "--quiet",
+                         action="store_true",
+                         dest="quiet",
+                         default=False,
+                         help="suppress information output other than about failed tests")
+    optparser.add_option(
+        "-x",
+        "--xml",
+        action="store",
+        type="string",
+        dest="xmlfile",
+        default="",
+        help=
+        "write a report of test results in JUnit XML format to file; if file exists, it is overwritten"
+    )
+    optparser.add_option("-a",
+                         "--alternative",
+                         action="store",
+                         type="string",
+                         dest="alternatives",
+                         default=None,
+                         help="activate given alternative")
+    optparser.add_option(
+        "-S",
+        "--sphinx",
+        action="store_true",
+        dest="sphinx",
+        default=False,
+        help="indicates that we're running from inside Sphinx; for internal purposes")
+    optparser.add_option("-T",
+                         "--update-times",
+                         action="store_true",
+                         dest="update_times",
+                         default=False,
+                         help="create a new timing baseline for tests being measured")
+    optparser.add_option("-R",
+                         "--documentation",
+                         action="store",
+                         type="choice",
+                         dest="doc",
+                         choices=("rst", "md"),
+                         metavar="format",
+                         default=None,
+                         help="Output documentation for tests, supported formats: rst, md")
+    optparser.add_option(
+        "-A",
+        "--show-all",
+        action="store_true",
+        default=False,
+        help=
+        "For console output, show one-liners for passing/skipped tests in addition to any failing ones"
+    )
+    optparser.add_option(
+        "-z",
+        "--retries",
+        action="store",
+        dest="retries",
+        type="int",
+        default=0,
+        help="Retry failed tests this many times to determine if they are unstable")
+    optparser.add_option(
+        "--trace-file",
+        action="store",
+        dest="tracefile",
+        default="",
+        help="write Chrome tracing file to file; if file exists, it is overwritten")
+    optparser.add_option("-F",
+                         "--abort-on-failure",
+                         action="store_true",
+                         dest="abort_on_failure",
+                         help="terminate after first test failure")
+    optparser.add_option("-l",
+                         "--list",
+                         action="store_true",
+                         dest="list",
+                         default=False,
+                         help="list available tests instead of executing them")
 
-optparser.set_defaults(mode="TEST")
-(Options, args) = optparser.parse_args()
+    optparser.set_defaults(mode="TEST")
+    (Options, args) = optparser.parse_args()
 
-# Update-interactive mode implies single-threaded operation
-if Options.mode == "UPDATE_INTERACTIVE" and Options.threads > 1:
-    warning("ignoring requested parallelism in interactive-update mode")
-    Options.threads = 1
+    # Update-interactive mode implies single-threaded operation
+    if Options.mode == "UPDATE_INTERACTIVE" and Options.threads > 1:
+        warning("ignoring requested parallelism in interactive-update mode")
+        Options.threads = 1
 
-if not os.path.exists(Options.config):
-    error("configuration file '%s' not found" % Options.config)
+    if not os.path.exists(Options.config):
+        error("configuration file '%s' not found" % Options.config)
 
-# The defaults come from environment variables, plus a few additional items.
-defaults = {}
-# Changes to defaults should not change os.environ
-defaults.update(os.environ)
-defaults["default_path"] = os.environ["PATH"]
+    # The defaults come from environment variables, plus a few additional items.
+    defaults = {}
+    # Changes to defaults should not change os.environ
+    defaults.update(os.environ)
+    defaults["default_path"] = os.environ["PATH"]
 
-dirname = os.path.dirname(Options.config)
-if not dirname:
-    dirname = os.getcwd()
+    dirname = os.path.dirname(Options.config)
+    if not dirname:
+        dirname = os.getcwd()
 
-# If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
-# If not, we'll use the current directory.
-TestBase = os.path.abspath(os.environ.get("BTEST_TEST_BASE", dirname))
-defaults["testbase"] = TestBase
-defaults["baselinedir"] = os.path.abspath(
-    os.environ.get("BTEST_BASELINE_DIR", os.path.join(TestBase, "Baseline")))
+    # If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
+    # If not, we'll use the current directory.
+    TestBase = os.path.abspath(os.environ.get("BTEST_TEST_BASE", dirname))
+    defaults["testbase"] = TestBase
+    defaults["baselinedir"] = os.path.abspath(
+        os.environ.get("BTEST_BASELINE_DIR", os.path.join(TestBase, "Baseline")))
 
-# Parse our config
-Config = getcfgparser(defaults)
-Config.read(Options.config, encoding="utf-8")
+    # Parse our config
+    Config = getcfgparser(defaults)
+    Config.read(Options.config, encoding="utf-8")
 
-defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
-
-min_version = getOption("MinVersion", None)
-if min_version:
-    validate_version_requirement(min_version, VERSION)
-
-if Options.alternatives:
-    # Preprocess to split into list. "-" refers to the default setup, as a
-    # shorthand for "default", to allow combination with select alternatives.
-    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
-    Options.alternatives = [
-        Alternative.DEFAULT if alt == "-" else alt for alt in Options.alternatives
-    ]
-
-    # Helper function that, if an option wasn't explicitly specified as an
-    # environment variable, checks if an alternative sets its through
-    # its own environment section. If so, we make that value our new default.
-    # If multiple alternatives set it, we pick the value from the first.
-    def get_env_from_alternative(env, opt, default, transform=None):
-        for tag in Options.alternatives:
-            value = getOption(env, None, section="environment-%s" % tag)
-            if value is not None:
-                if transform:
-                    value = transform(value)
-
-                defaults[opt] = value
-
-                # At this point, our defaults have changed, so we
-                # reread the configuration.
-                new_config = getcfgparser(defaults)
-                new_config.read(Options.config)
-                return new_config, value
-
-        return Config, default
-
-    (Config, TestBase) = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase,
-                                                  lambda x: os.path.abspath(x))
-    # Need to update BaselineDir - it may be interpolated from testbase.
     defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
-    (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
 
-os.chdir(TestBase)
+    min_version = getOption("MinVersion", None)
+    if min_version:
+        validate_version_requirement(min_version, VERSION)
 
-if Options.sphinx:
-    Options.quiet = True
+    if Options.alternatives:
+        # Preprocess to split into list. "-" refers to the default setup, as a
+        # shorthand for "default", to allow combination with select alternatives.
+        Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
+        Options.alternatives = [
+            Alternative.DEFAULT if alt == "-" else alt for alt in Options.alternatives
+        ]
 
-if Options.quiet:
-    Options.brief = True
+        # Helper function that, if an option wasn't explicitly specified as an
+        # environment variable, checks if an alternative sets its through
+        # its own environment section. If so, we make that value our new default.
+        # If multiple alternatives set it, we pick the value from the first.
+        def get_env_from_alternative(env, opt, default, transform=None):
+            for tag in Options.alternatives:
+                value = getOption(env, None, section="environment-%s" % tag)
+                if value is not None:
+                    if transform:
+                        value = transform(value)
 
-# Determine output handlers to use.
+                    defaults[opt] = value
 
-output_handler = btest_lib.outputhandlers.create_output_handler(Options)
+                    # At this point, our defaults have changed, so we
+                    # reread the configuration.
+                    new_config = getcfgparser(defaults)
+                    new_config.read(Options.config)
+                    return new_config, value
 
-# Determine Timer to use.
+            return Config, default
 
-Timer = None
+        (Config, TestBase) = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase,
+                                                      lambda x: os.path.abspath(x))
+        # Need to update BaselineDir - it may be interpolated from testbase.
+        defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
+        (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
 
-if platform() == "Linux":
-    t = LinuxTimer()
-    if t.available():
-        Timer = t
+    os.chdir(TestBase)
 
-if Options.update_times and not Timer:
-    warning("unable to create timing baseline because timer is not available")
+    if Options.sphinx:
+        Options.quiet = True
 
-# Evaluate other command line options.
+    if Options.quiet:
+        Options.brief = True
 
-if Config.has_section("environment"):
-    for (name, value) in Config.itemsNoDefaults("environment"):
-        # Here we don't want to include items from defaults
-        os.environ[name] = value
+    # Determine output handlers to use.
 
-Alternatives = {}
+    output_handler = btest_lib.outputhandlers.create_output_handler(Options)
 
-if Options.alternatives:
-    for tag in Options.alternatives:
-        a = Alternative(tag)
+    # Determine Timer to use.
 
-        try:
-            for (name, value) in Config.itemsNoDefaults("filter-%s" % tag):
-                a.filters[name] = value
+    Timer = None
 
-        except configparser.NoSectionError:
-            pass
+    if platform() == "Linux":
+        t = LinuxTimer()
+        if t.available():
+            Timer = t
 
-        try:
-            for (name, value) in Config.itemsNoDefaults("substitution-%s" % tag):
-                a.substitutions[name] = value
+    if Options.update_times and not Timer:
+        warning("unable to create timing baseline because timer is not available")
 
-        except configparser.NoSectionError:
-            pass
+    # Evaluate other command line options.
 
-        try:
-            for (name, value) in Config.itemsNoDefaults("environment-%s" % tag):
-                a.envs[name] = value
+    if Config.has_section("environment"):
+        for (name, value) in Config.itemsNoDefaults("environment"):
+            # Here we don't want to include items from defaults
+            os.environ[name] = value
 
-        except configparser.NoSectionError:
-            pass
+    Alternatives = {}
 
-        if a.is_empty() and not a.is_default():
-            error("alternative \"%s\" is undefined" % tag)
+    if Options.alternatives:
+        for tag in Options.alternatives:
+            a = Alternative(tag)
 
-        Alternatives[tag] = a
+            try:
+                for (name, value) in Config.itemsNoDefaults("filter-%s" % tag):
+                    a.filters[name] = value
 
-CommandPrefix = getOption("CommandPrefix", "@TEST-")
+            except configparser.NoSectionError:
+                pass
 
-RE_INPUT = re.compile(r"%INPUT")
-RE_DIR = re.compile(r"%DIR")
-RE_ENV = re.compile(r"\$\{(\w+)\}")
-RE_PART = re.compile(r"^(.*)#([0-9]+)$")
-RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
-RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
-RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\r\n ]*)")
-RE_END_FILE = re.compile(CommandPrefix + "END-FILE")
+            try:
+                for (name, value) in Config.itemsNoDefaults("substitution-%s" % tag):
+                    a.substitutions[name] = value
 
-# Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
-# pylint: disable=bad-whitespace
-# yapf: disable
-RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
-RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
-RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
-RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
-RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
-RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
-RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
-RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
-RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
-RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
-# yapf: enable
-# pylint: enable=bad-whitespace
+            except configparser.NoSectionError:
+                pass
 
-Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_ALTERNATIVE,
-            RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
+            try:
+                for (name, value) in Config.itemsNoDefaults("environment-%s" % tag):
+                    a.envs[name] = value
 
-StateFile = os.path.abspath(
-    getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
-TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
-BaselineDirs = [os.path.abspath(dir) for dir in defaults["baselinedir"].split(":")]
-BaselineTimingDir = os.path.abspath(
-    getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
+            except configparser.NoSectionError:
+                pass
 
-Initializer = getOption("Initializer", "")
-Finalizer = getOption("Finalizer", "")
-Teardown = getOption("Teardown", "")
+            if a.is_empty() and not a.is_default():
+                error("alternative \"%s\" is undefined" % tag)
 
-PartInitializer = getOption("PartInitializer", "")
-PartFinalizer = getOption("PartFinalizer", "")
-PartTeardown = getOption("PartTeardown", "")
+            Alternatives[tag] = a
 
-Config.configured_tests = []
+    CommandPrefix = getOption("CommandPrefix", "@TEST-")
 
-testdirs = getOption("TestDirs", "").split()
-if testdirs:
-    Config.configured_tests = findTests(testdirs, True)
+    RE_INPUT = re.compile(r"%INPUT")
+    RE_DIR = re.compile(r"%DIR")
+    RE_ENV = re.compile(r"\$\{(\w+)\}")
+    RE_PART = re.compile(r"^(.*)#([0-9]+)$")
+    RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
+    RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
+    RE_START_FILE = re.compile(CommandPrefix + "START-FILE +([^\r\n ]*)")
+    RE_END_FILE = re.compile(CommandPrefix + "END-FILE")
 
-if args:
-    tests = findTests(args)
+    # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
+    # pylint: disable=bad-whitespace
+    # yapf: disable
+    RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
+    RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
+    RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
+    RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
+    RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
+    RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
+    RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+    RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
+    RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
+    RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
+    RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
+    # yapf: enable
+    # pylint: enable=bad-whitespace
 
-else:
-    if Options.rerun:
-        (success, tests) = readStateFile()
+    Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_ALTERNATIVE,
+                RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
 
-        if success:
-            if not tests:
-                output("no tests failed last time")
-                sys.exit(0)
+    StateFile = os.path.abspath(
+        getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
+    TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
+    BaselineDirs = [os.path.abspath(dir) for dir in defaults["baselinedir"].split(":")]
+    BaselineTimingDir = os.path.abspath(
+        getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
+
+    Initializer = getOption("Initializer", "")
+    Finalizer = getOption("Finalizer", "")
+    Teardown = getOption("Teardown", "")
+
+    PartInitializer = getOption("PartInitializer", "")
+    PartFinalizer = getOption("PartFinalizer", "")
+    PartTeardown = getOption("PartTeardown", "")
+
+    Config.configured_tests = []
+
+    testdirs = getOption("TestDirs", "").split()
+    if testdirs:
+        Config.configured_tests = findTests(testdirs, True)
+
+    if args:
+        tests = findTests(args)
+
+    else:
+        if Options.rerun:
+            (success, tests) = readStateFile()
+
+            if success:
+                if not tests:
+                    output("no tests failed last time")
+                    sys.exit(0)
+
+            else:
+                warning("cannot read state file, executing all tests")
+                tests = Config.configured_tests
 
         else:
-            warning("cannot read state file, executing all tests")
             tests = Config.configured_tests
 
-    else:
-        tests = Config.configured_tests
+    if Options.groups:
+        groups = Options.groups.split(",")
+        Options.groups = set([g for g in groups if not g.startswith("-")])
+        Options.no_groups = set([g[1:] for g in groups if g.startswith("-")])
 
-if Options.groups:
-    groups = Options.groups.split(",")
-    Options.groups = set([g for g in groups if not g.startswith("-")])
-    Options.no_groups = set([g[1:] for g in groups if g.startswith("-")])
-
-    def rightGroup(t):
-        if not t:
-            return True
-
-        if t.groups & Options.groups:
-            return True
-
-        if "" in Options.no_groups:
-            if not t.groups:
+        def rightGroup(t):
+            if not t:
                 return True
 
-        elif Options.no_groups:
-            if t.groups & Options.no_groups:
-                return False
+            if t.groups & Options.groups:
+                return True
 
-            return True
+            if "" in Options.no_groups:
+                if not t.groups:
+                    return True
 
-        return False
+            elif Options.no_groups:
+                if t.groups & Options.no_groups:
+                    return False
 
-    tests = [t for t in tests if rightGroup(t)]
+                return True
 
-if not tests:
-    output("no tests to execute")
-    sys.exit(0)
+            return False
 
-tests = mergeTestParts(tests)
+        tests = [t for t in tests if rightGroup(t)]
 
-if Options.doc:
-    outputDocumentation(tests, Options.doc)
-    sys.exit(0)
+    if not tests:
+        output("no tests to execute")
+        sys.exit(0)
 
-for d in BaselineDirs:
-    mkdir(d)
+    tests = mergeTestParts(tests)
 
-mkdir(TmpDir)
+    if Options.doc:
+        outputDocumentation(tests, Options.doc)
+        sys.exit(0)
 
-# Building our own path to avoid "error: AF_UNIX path too long" on
-# some platforms. See BIT-862.
-sname = "btest-socket-%d" % os.getpid()
-addr = os.path.join(tempfile.gettempdir(), sname)
+    for d in BaselineDirs:
+        mkdir(d)
 
-# Check if the pathname is too long to fit in struct sockaddr_un (the
-# maximum length is system-dependent, so here we just use 100, which seems
-# a safe default choice).
-if len(addr) > 100:
-    # Try relative path to TmpDir (which would usually be ".tmp").
-    addr = os.path.join(os.path.relpath(TmpDir), sname)
+    mkdir(TmpDir)
 
-    # If the path is still too long, then use the global tmp directory.
+    # Building our own path to avoid "error: AF_UNIX path too long" on
+    # some platforms. See BIT-862.
+    sname = "btest-socket-%d" % os.getpid()
+    addr = os.path.join(tempfile.gettempdir(), sname)
+
+    # Check if the pathname is too long to fit in struct sockaddr_un (the
+    # maximum length is system-dependent, so here we just use 100, which seems
+    # a safe default choice).
     if len(addr) > 100:
-        addr = os.path.join("/tmp", sname)
+        # Try relative path to TmpDir (which would usually be ".tmp").
+        addr = os.path.join(os.path.relpath(TmpDir), sname)
 
-mgr = TestManager(address=addr)
+        # If the path is still too long, then use the global tmp directory.
+        if len(addr) > 100:
+            addr = os.path.join("/tmp", sname)
 
-try:
-    if Options.list:
-        for test in sorted(tests):
-            if test.name:
-                print(test.name)
+    mgr = TestManager(address=addr)
+
+    try:
+        if Options.list:
+            for test in sorted(tests):
+                if test.name:
+                    print(test.name)
+            sys.exit(0)
+        else:
+            (succeeded, failed, skipped, unstable,
+             failed_expected) = mgr.run(copy.deepcopy(tests), output_handler)
+            total = succeeded + failed + skipped
+
+        output_handler.finished()
+
+    # Ctrl-C can lead to broken pipe (e.g. FreeBSD), so include IOError here:
+    except (Abort, KeyboardInterrupt, IOError) as exc:
+        output_handler.finished()
+        print(str(exc) or "Aborted with %s." % type(exc).__name__, file=sys.stderr)
+        sys.stderr.flush()
+        # Explicitly shut down sync manager to avoid leaking manager
+        # processes, particularly with --abort-on-failure:
+        mgr.shutdown()
+        os._exit(1)
+
+    skip = (", %d skipped" % skipped) if skipped > 0 else ""
+    unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""
+    failed_expectedstr = (" (with %d expected to fail)" %
+                          failed_expected) if failed_expected > 0 else ""
+
+    if failed > 0:
+        if not Options.quiet:
+            output("%d of %d test%s failed%s%s%s" %
+                   (failed, total, "s" if total > 1 else "", failed_expectedstr, skip, unstablestr))
+
+        if failed == failed_expected:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    elif skipped > 0 or unstable > 0:
+        if not Options.quiet:
+            output("%d test%s successful%s%s" %
+                   (succeeded, "s" if succeeded != 1 else "", skip, unstablestr))
+
         sys.exit(0)
+
     else:
-        (succeeded, failed, skipped, unstable,
-         failed_expected) = mgr.run(copy.deepcopy(tests), output_handler)
-        total = succeeded + failed + skipped
+        if not Options.quiet:
+            output("all %d tests successful" % total)
 
-    output_handler.finished()
-
-# Ctrl-C can lead to broken pipe (e.g. FreeBSD), so include IOError here:
-except (Abort, KeyboardInterrupt, IOError) as exc:
-    output_handler.finished()
-    print(str(exc) or "Aborted with %s." % type(exc).__name__, file=sys.stderr)
-    sys.stderr.flush()
-    # Explicitly shut down sync manager to avoid leaking manager
-    # processes, particularly with --abort-on-failure:
-    mgr.shutdown()
-    os._exit(1)
-
-skip = (", %d skipped" % skipped) if skipped > 0 else ""
-unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""
-failed_expectedstr = (" (with %d expected to fail)" %
-                      failed_expected) if failed_expected > 0 else ""
-
-if failed > 0:
-    if not Options.quiet:
-        output("%d of %d test%s failed%s%s%s" %
-               (failed, total, "s" if total > 1 else "", failed_expectedstr, skip, unstablestr))
-
-    if failed == failed_expected:
         sys.exit(0)
-    else:
-        sys.exit(1)
-
-elif skipped > 0 or unstable > 0:
-    if not Options.quiet:
-        output("%d test%s successful%s%s" %
-               (succeeded, "s" if succeeded != 1 else "", skip, unstablestr))
-
-    sys.exit(0)
-
-else:
-    if not Options.quiet:
-        output("all %d tests successful" % total)
-
-    sys.exit(0)
