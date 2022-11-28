@@ -1845,6 +1845,16 @@ if __name__ == '__main__':
                          dest="list",
                          default=False,
                          help="list available tests instead of executing them")
+    optparser.add_option(
+        "-B",
+        "--build-dir",
+        action="store",
+        dest="build_dir",
+        type="str",
+        default="build",
+        help=
+        "The relative path to the build directory, from the main Zeek repository. Defaults to 'build'."
+    )
 
     optparser.set_defaults(mode="TEST")
     (Options, args) = optparser.parse_args()
@@ -1873,6 +1883,7 @@ if __name__ == '__main__':
     defaults["testbase"] = TestBase
     defaults["baselinedir"] = os.path.abspath(
         os.environ.get("BTEST_BASELINE_DIR", os.path.join(TestBase, "Baseline")))
+    defaults['build_dir'] = Options.build_dir
 
     # Parse our config
     Config = getcfgparser(defaults)
