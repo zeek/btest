@@ -101,11 +101,11 @@ def platform():
 
 
 def validate_version_requirement(required: str, present: str):
-    '''Helper function to validate that a `present` version is semantically newer or equal than a `required` version.'''
+    """Helper function to validate that a `present` version is semantically newer or equal than a `required` version."""
     def extract_version(v: str):
-        '''Helper function to extract version components from a string.'''
+        """Helper function to extract version components from a string."""
         try:
-            xyz = [int(x) for x in re.split(r'\.|-', v)]
+            xyz = [int(x) for x in re.split(r'[.-]', v)]
         except ValueError:
             error("invalid version %s: versions must contain only numeric identifiers" % v)
 
@@ -133,7 +133,7 @@ def getOption(key, default, section="btest"):
     return ExpandBackticks(value)
 
 
-reBackticks = re.compile(r"`(([^`]|\`)*)`")
+reBackticks = re.compile(r"`(([^`]|`)*)`")
 
 
 def readStateFile():
@@ -260,7 +260,7 @@ def runSubprocess(*args, **kwargs):
     except KeyboardInterrupt:
         # Bail out here directly as otherwise we'd get a bunch of errors.
         # from all the childs.
-        os._exit(1)
+        sys.exit(1)
 
     return result
 
@@ -410,20 +410,29 @@ class TestManager(multiprocessing.managers.SyncManager):
         count = self._succeeded.value + self._failed.value + self._skipped.value
         return 100.0 * count / self._num_tests
 
+    # Worker method for each of the "threads" specified by the "-j" argument passed
+    # at run time. This basically segments the list of tests into chunks and runs
+    # until we're out of chunks.
     def threadRun(self, thread_num):
+        # This should prevent the child processes from receiving SIGINT signals and
+        # let the KeyboardInterrupt handler in the manager's run() method handle
+        # those.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         all_tests = []
 
         while True:
-            tests = self.nextTests(thread_num)
-            if tests is None:
+            # Pull the next test from the list that was built at startup. This may
+            # be more than one test if there were alternatives requested in the
+            # arguments passed to btest.
+            thread_tests = self.nextTests(thread_num)
+            if thread_tests is None:
                 # No more work for us.
                 return
 
-            all_tests += tests
+            all_tests += thread_tests
 
-            for t in tests:
+            for t in thread_tests:
                 t.run(self)
                 self.testReplayOutput(t)
 
@@ -708,8 +717,10 @@ class CmdSeq:
 class Test(object):
     def __init__(self, file=None, directory=None):  # Allow dir to be directly defined
 
-        if file is not None: self.dir = os.path.abspath(os.path.dirname(file))
-        else: self.dir = directory
+        if file is not None:
+            self.dir = os.path.abspath(os.path.dirname(file))
+        else:
+            self.dir = directory
 
         self.alternative = None
         self.baselines = []
@@ -1288,7 +1299,9 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self, cmd, addl={}):
+    def prepareEnv(self, cmd, addl=None):
+        if addl is None:
+            addl = {}
         env = copy.deepcopy(os.environ)
 
         env["TEST_BASELINE"] = ":".join(self.baselines)
@@ -1828,6 +1841,7 @@ class SphinxOutput(OutputHandler):
         OutputHandler.__init__(self, options)
 
         self._output = None
+        self._part = None
 
         try:
             self._rst_output = os.environ["BTEST_RST_OUTPUT"]
@@ -1899,6 +1913,7 @@ class XMLReport(OutputHandler):
         self._file = xmlfile
         self._start = time.time()
         self._timestamp = datetime.now().isoformat()
+        self._results = None
 
     def prepare(self, mgr):
         self._results = mgr.list([])
@@ -1909,7 +1924,8 @@ class XMLReport(OutputHandler):
     def testCommand(self, test, cmdline):
         pass
 
-    def makeTestCaseElement(self, doc, testsuite, name, duration):
+    @staticmethod
+    def makeTestCaseElement(doc, testsuite, name, duration):
         parts = name.split('.')
         if len(parts) > 1:
             classname = ".".join(parts[:-1])
@@ -1926,7 +1942,8 @@ class XMLReport(OutputHandler):
 
         return e
 
-    def getContext(self, test, context_file):
+    @staticmethod
+    def getContext(test, context_file):
         context = ""
         for line in test.diagmsgs:
             context += "  % " + line + "\n"
@@ -2019,6 +2036,7 @@ class ChromeTracing(OutputHandler):
     def __init__(self, options, tracefile):
         OutputHandler.__init__(self, options)
         self._file = tracefile
+        self._results = None
 
     def prepare(self, mgr):
         self._results = mgr.list([])
@@ -2216,9 +2234,9 @@ def findTests(paths, expand_globs=False):
                         tests += readTestFile(os.path.join(dirpath, file))
 
                 # Don't recurse into these.
-                for (dir, path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
+                for (dir, dir_path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
                     for skip in ignores:
-                        if path == skip:
+                        if dir_path == skip:
                             dirnames.remove(dir)
 
         else:
@@ -2738,7 +2756,7 @@ if __name__ == '__main__':
 
     RE_INPUT = re.compile(r"%INPUT")
     RE_DIR = re.compile(r"%DIR")
-    RE_ENV = re.compile(r"\$\{(\w+)\}")
+    RE_ENV = re.compile(r"\$\{(\w+)}")
     RE_PART = re.compile(r"^(.*)#([0-9]+)$")
     RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
     RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
@@ -2754,7 +2772,8 @@ if __name__ == '__main__':
     RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
     RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
     RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
-    RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+    RE_IGNORE_ALTERNATIVE  = ("not-alternative",
+                              re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
     RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
     RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
     RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
@@ -2885,7 +2904,7 @@ if __name__ == '__main__':
         # Explicitly shut down sync manager to avoid leaking manager
         # processes, particularly with --abort-on-failure:
         mgr.shutdown()
-        os._exit(1)
+        sys.exit(1)
 
     skip = (", %d skipped" % skipped) if skipped > 0 else ""
     unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""
