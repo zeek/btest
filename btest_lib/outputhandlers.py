@@ -1,6 +1,6 @@
 import atexit
 import json
-import multiprocessing
+import multiprocess as mp
 import os
 import socket
 import sys
@@ -41,7 +41,7 @@ class OutputHandler:
         a form suitable to prefix output with. With a single thread, returns
         the empty string."""
         if self.options().threads > 1:
-            return "[%s]" % multiprocessing.current_process().name
+            return "[%s]" % mp.current_process().name
         else:
             return ""
 
@@ -704,7 +704,7 @@ class ChromeTracing(OutputHandler):
         self._results.append({
             "name": test.name,
             "ts": test.start * 1e6,
-            "tid": multiprocessing.current_process().pid,
+            "tid": mp.current_process().pid,
             "pid": 1,
             "ph": "X",
             "cat": "test",

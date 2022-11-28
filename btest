@@ -9,9 +9,9 @@ import copy
 import fnmatch
 import glob
 import io
-import multiprocessing
-import multiprocessing.managers
-import multiprocessing.sharedctypes
+import multiprocess as mp
+import multiprocess.managers as mp_managers
+import multiprocess.sharedctypes as mp_sharedctypes
 import optparse
 import os
 import os.path
@@ -251,8 +251,8 @@ def runSubprocess(*args, **kwargs):
         q.put([success, rc])
 
     try:
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(target=child, args=(q, ))
+        q = mp.Queue()
+        p = mp.Process(target=child, args=(q, ))
         p.start()
         result = q.get()
         p.join()
@@ -305,7 +305,7 @@ class Abort(Exception):
 
 
 # Main class distributing the work across threads.
-class TestManager(multiprocessing.managers.SyncManager):
+class TestManager(mp_managers.SyncManager):
     def __init__(self, *args, **kwargs):
         super(TestManager, self).__init__(*args, **kwargs)
 
@@ -328,11 +328,11 @@ class TestManager(multiprocessing.managers.SyncManager):
         output_handler.prepare(self)
         self._output_handler = output_handler
         self._lock = self.RLock()
-        self._succeeded = multiprocessing.sharedctypes.RawValue('i', 0)
-        self._failed = multiprocessing.sharedctypes.RawValue('i', 0)
-        self._failed_expected = multiprocessing.sharedctypes.RawValue('i', 0)
-        self._unstable = multiprocessing.sharedctypes.RawValue('i', 0)
-        self._skipped = multiprocessing.sharedctypes.RawValue('i', 0)
+        self._succeeded = mp_sharedctypes.RawValue('i', 0)
+        self._failed = mp_sharedctypes.RawValue('i', 0)
+        self._failed_expected = mp_sharedctypes.RawValue('i', 0)
+        self._unstable = mp_sharedctypes.RawValue('i', 0)
+        self._skipped = mp_sharedctypes.RawValue('i', 0)
         self._tests = self.list(tests)
         self._failed_tests = self.list([])
         self._num_tests = len(self._tests)
@@ -370,8 +370,7 @@ class TestManager(multiprocessing.managers.SyncManager):
         else:
             try:
                 for i in range(Options.threads):
-                    t = multiprocessing.Process(name="#%d" % (i + 1),
-                                                target=lambda: self.threadRun(i))
+                    t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i))
                     t.start()
                     threads += [t]
 
@@ -1605,7 +1604,7 @@ def readTestFile(filename):
 
 
 def jOption(option, _, __, parser):
-    val = multiprocessing.cpu_count()
+    val = mp.cpu_count()
 
     if parser.rargs and not parser.rargs[0].startswith('-'):
         try:
@@ -1677,8 +1676,10 @@ if __name__ == '__main__':
     pyver_maj = sys.version_info[0]
     pyver_min = sys.version_info[1]
 
-    if (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
-        multiprocessing.set_start_method('fork')
+    if sys.platform == 'win32':
+        mp.set_start_method('spawn')
+    elif (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
+        mp.set_start_method('fork')
 
     optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
     optparser.add_option("-U",

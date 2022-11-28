@@ -43,4 +43,4 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Utilities',
     ],
-)
+    install_requires=['multiprocess'])
