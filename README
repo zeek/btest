@@ -330,6 +330,13 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     Markdown. In the output each test includes the documentation
     string that's defined for it through ``@TEST-DOC``.
 
+-s <kv>, --set=<kv>
+    Takes a ``key=value`` argument and uses it to override a value
+    used during parsing of the configuration file read by btest at
+    startup. This can be used to override various default values
+    prior to parsing. Can be passed multiple times to override
+    different keys. See `defaults`_ for an example.
+
 -t, --tmp-keep
     Does not delete any temporary files created for running the
     tests (including their outputs). By default, the temporary
@@ -375,8 +382,8 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     If the file exists already, it is overwritten.
 
 -z RETRIES, --retries=RETRIES
-     Retry any failed tests up to this many times to determine if
-     they are unstable.
+    Retry any failed tests up to this many times to determine if
+    they are unstable.
 
 .. _configuration file: configuration_
 .. _configuration:
@@ -409,6 +416,30 @@ Furthermore, all values can use standard "backtick-syntax" to
 include the output of external commands (e.g., xyz=`\echo test\`).
 Note that the backtick expansion is performed after any ``%(..)``
 have already been replaced (including within the backticks).
+
+.. _default: `defaults`_
+.. _defaults:
+
+Defaults
+~~~~~~~~
+
+There is a special section that can be added to the configuration file that will
+set default values to be used during the parsing of other configuration
+directives. For example::
+
+    [DEFAULT]
+    val=abcd
+
+    [environment]
+    ENV_VALUE=%(val)s
+
+The configuration parser reads the keys and values from the DEFAULT section
+prior to reading the other sections. It uses those keys to replace the ``%()s``
+macros as described earlier. The values stored in these keys can be overridden
+at runtime by using the ``-s``/``--set`` command-line argument. For example to
+override the ``val`` default above, the ``-s val=other`` argument can be
+passed. In that case, ``ENV_VALUE`` would be set to ``other`` instead of
+``abcd``.
 
 .. _option: `options`_
 .. _options:

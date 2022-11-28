@@ -210,6 +210,14 @@ def cpItemsNoDefaults(self, section):
     except KeyError:
         raise configparser.NoSectionError(section)
 
+    # Override any of the defaults with ones that we read from the command-line
+    # options before expanding macros below.
+    cfg_defaults = self.defaults()
+    if Options.defaults:
+        for d in Options.defaults:
+            k, v = d.split('=', 1)
+            cfg_defaults[k] = v.strip("\'\"")
+
     result = {}
 
     for (key, rawvalue) in items:
@@ -222,6 +230,22 @@ def cpItemsNoDefaults(self, section):
             result[key] = ExpandBackticks(value)
 
     return result.items()
+
+
+def getcfgparser(defaults):
+    configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
+
+    cfg = configparser.ConfigParser()
+
+    # We make all key lookups case-sensitive to avoid aliasing of
+    # case-sensitive environment variables.
+    cfg.optionxform = lambda optionstr: optionstr
+
+    default_section = cfg.defaults()
+    for key, value in defaults.items():
+        default_section[key] = value
+
+    return cfg
 
 
 # Replace environment variables in string.
@@ -283,22 +307,6 @@ def runSubprocess(*args, **kwargs):
         sys.exit(1)
 
     return result
-
-
-def getcfgparser(defaults):
-    configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
-
-    cfg = configparser.ConfigParser()
-
-    # We make all key lookups case-sensitive to avoid aliasing of
-    # case-sensitive environment variables.
-    cfg.optionxform = lambda optionstr: optionstr
-
-    default_section = cfg.defaults()
-    for key, value in defaults.items():
-        default_section[key] = value
-
-    return cfg
 
 
 # Description of an alternative configuration.
@@ -2636,6 +2644,15 @@ if __name__ == '__main__':
                          dest="list",
                          default=False,
                          help="list available tests instead of executing them")
+    optparser.add_option(
+        '-s',
+        '--set',
+        action="append",
+        dest="defaults",
+        default=[],
+        help=
+        "Override default key used in btest.cfg with another value. Can be specified multiple times."
+    )
 
     optparser.set_defaults(mode="TEST")
     (Options, args) = optparser.parse_args()
