@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 from setuptools import setup
+import sys
 
 # When making changes to the following list, remember to keep
 # CMakeLists.txt in sync.
@@ -20,6 +21,13 @@ scripts = [
 ]
 
 py_modules = ["btest-sphinx"]
+
+# We require the external multiprocess library on Windows due to pickling issues
+# with the standard one.
+if sys.platform == 'win32':
+    install_requires = ['multiprocess']
+else:
+    install_requires = []
 
 setup(
     name='btest',
@@ -44,4 +52,5 @@ setup(
         'Topic :: Utilities',
     ],
     python_requires='>=3.7',
+    install_requires=install_requires,
 )
