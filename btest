@@ -101,11 +101,11 @@ def platform():
 
 
 def validate_version_requirement(required: str, present: str):
-    '''Helper function to validate that a `present` version is semantically newer or equal than a `required` version.'''
+    """Helper function to validate that a `present` version is semantically newer or equal than a `required` version."""
     def extract_version(v: str):
-        '''Helper function to extract version components from a string.'''
+        """Helper function to extract version components from a string."""
         try:
-            xyz = [int(x) for x in re.split(r'\.|-', v)]
+            xyz = [int(x) for x in re.split(r'[.-]', v)]
         except ValueError:
             error("invalid version %s: versions must contain only numeric identifiers" % v)
 
@@ -133,7 +133,7 @@ def getOption(key, default, section="btest"):
     return ExpandBackticks(value)
 
 
-reBackticks = re.compile(r"`(([^`]|\`)*)`")
+reBackticks = re.compile(r"`(([^`]|`)*)`")
 
 
 def readStateFile():
@@ -227,7 +227,7 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
     if measure_time and Timer:
         return Timer.timeSubprocess(cmdline, **kwargs)
     (success, rc) = runSubprocess(cmdline, **kwargs)
-    return (success, rc, -1)
+    return success, rc, -1
 
 
 # Runs a subprocess. Takes same arguments as subprocess.check_call()
@@ -260,7 +260,7 @@ def runSubprocess(*args, **kwargs):
     except KeyboardInterrupt:
         # Bail out here directly as otherwise we'd get a bunch of errors.
         # from all the childs.
-        os._exit(1)
+        sys.exit(1)
 
     return result
 
@@ -708,8 +708,10 @@ class CmdSeq:
 class Test(object):
     def __init__(self, file=None, directory=None):  # Allow dir to be directly defined
 
-        if file is not None: self.dir = os.path.abspath(os.path.dirname(file))
-        else: self.dir = directory
+        if file is not None:
+            self.dir = os.path.abspath(os.path.dirname(file))
+        else:
+            self.dir = directory
 
         self.alternative = None
         self.baselines = []
@@ -1223,13 +1225,13 @@ class Test(object):
 
             (success, rc) = self.execute(filter, apply_alternative=None)
             if not success:
-                return (False, rc)
+                return False, rc
 
             mv = CmdLine("mv %s %s" % (filtered, localfile), True, 1, "<Filter-Move>")
             (success, rc) = self.execute(mv, apply_alternative=None)
 
             if not success:
-                return (False, rc)
+                return False, rc
 
         self.mgr.testCommand(self, cmd)
 
@@ -1264,17 +1266,17 @@ class Test(object):
 
         if success:
             if cmd.expect_success:
-                return (True, rc)
+                return True, rc
 
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
-            return (False, 0)
+            return False, 0
 
         else:
             if not cmd.expect_success:
-                return (True, rc)
+                return True, rc
 
             self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, rc)]
-            return (False, rc)
+            return False, rc
 
     def rmTmp(self):
         try:
@@ -1288,7 +1290,9 @@ class Test(object):
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
 
     # Prepares the environment for the child processes.
-    def prepareEnv(self, cmd, addl={}):
+    def prepareEnv(self, cmd, addl=None):
+        if addl is None:
+            addl = {}
         env = copy.deepcopy(os.environ)
 
         env["TEST_BASELINE"] = ":".join(self.baselines)
@@ -1400,7 +1404,7 @@ class LinuxTimer(TimerBase):
         except IOError:
             pass
 
-        return (success, rc, utime)
+        return success, rc, utime
 
 
 # Walk the given directory and return all test files.
@@ -1459,9 +1463,9 @@ def findTests(paths, expand_globs=False):
                         tests += readTestFile(os.path.join(dirpath, file))
 
                 # Don't recurse into these.
-                for (dir, path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
+                for (dir, dir_path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
                     for skip in ignores:
-                        if path == skip:
+                        if dir_path == skip:
                             dirnames.remove(dir)
 
         else:
@@ -1981,7 +1985,7 @@ if __name__ == '__main__':
 
     RE_INPUT = re.compile(r"%INPUT")
     RE_DIR = re.compile(r"%DIR")
-    RE_ENV = re.compile(r"\$\{(\w+)\}")
+    RE_ENV = re.compile(r"\$\{(\w+)}")
     RE_PART = re.compile(r"^(.*)#([0-9]+)$")
     RE_IGNORE = re.compile(CommandPrefix + "IGNORE")
     RE_START_NEXT_TEST = re.compile(CommandPrefix + "START-NEXT")
@@ -1997,7 +2001,8 @@ if __name__ == '__main__':
     RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
     RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
     RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
-    RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+    RE_IGNORE_ALTERNATIVE  = ("not-alternative",
+                              re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
     RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
     RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
     RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
@@ -2128,7 +2133,7 @@ if __name__ == '__main__':
         # Explicitly shut down sync manager to avoid leaking manager
         # processes, particularly with --abort-on-failure:
         mgr.shutdown()
-        os._exit(1)
+        sys.exit(1)
 
     skip = (", %d skipped" % skipped) if skipped > 0 else ""
     unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""

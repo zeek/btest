@@ -500,6 +500,7 @@ class SphinxOutput(OutputHandler):
         OutputHandler.__init__(self, options)
 
         self._output = None
+        self._part = None
 
         try:
             self._rst_output = os.environ["BTEST_RST_OUTPUT"]
@@ -571,6 +572,7 @@ class XMLReport(OutputHandler):
         self._file = xmlfile
         self._start = time.time()
         self._timestamp = datetime.now().isoformat()
+        self._results = None
 
     def prepare(self, mgr):
         self._results = mgr.list([])
@@ -581,7 +583,8 @@ class XMLReport(OutputHandler):
     def testCommand(self, test, cmdline):
         pass
 
-    def makeTestCaseElement(self, doc, testsuite, name, duration):
+    @staticmethod
+    def makeTestCaseElement(doc, testsuite, name, duration):
         parts = name.split('.')
         if len(parts) > 1:
             classname = ".".join(parts[:-1])
@@ -598,7 +601,8 @@ class XMLReport(OutputHandler):
 
         return e
 
-    def getContext(self, test, context_file):
+    @staticmethod
+    def getContext(test, context_file):
         context = ""
         for line in test.diagmsgs:
             context += "  % " + line + "\n"
@@ -691,6 +695,7 @@ class ChromeTracing(OutputHandler):
     def __init__(self, options, tracefile):
         OutputHandler.__init__(self, options)
         self._file = tracefile
+        self._results = None
 
     def prepare(self, mgr):
         self._results = mgr.list([])
