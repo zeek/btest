@@ -1121,7 +1121,13 @@ class Test(object):
                     # first. This processes teardowns for those sequences as
                     # needed, and skips them when nothing was actually run in a
                     # CmdSeq.
-                    if isinstance(cmd, CmdSeq):
+                    #
+                    # The use of isinstance() to determine "is a CmdSeq" is
+                    # dangerous since e.g. the dill serializer creates a
+                    # different type upon un-serializing, failing
+                    # isinstance(). So we take the class name as a sufficent
+                    # signal.
+                    if type(cmd).__name__ == 'CmdSeq':
                         need_teardown |= run_cmdseq(cmd)
                         continue
 
