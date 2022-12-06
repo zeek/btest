@@ -15,6 +15,7 @@ import multiprocess.sharedctypes as mp_sharedctypes
 import optparse
 import os
 import os.path
+import pathlib
 import platform as pform
 import re
 import shutil
@@ -42,6 +43,12 @@ try:
     ConfigDefault = os.environ["BTEST_CFG"]
 except KeyError:
     ConfigDefault = "btest.cfg"
+
+
+def normalize_path(path):
+    os_path = os.path.abspath(path)
+    windows_path = pathlib.PureWindowsPath(os_path)
+    return windows_path.as_posix()
 
 
 def output(msg, nl=True, file=None):
@@ -708,9 +715,9 @@ class Test(object):
     def __init__(self, file=None, directory=None):  # Allow dir to be directly defined
 
         if file is not None:
-            self.dir = os.path.abspath(os.path.dirname(file))
+            self.dir = normalize_path(os.path.dirname(file))
         else:
-            self.dir = directory
+            self.dir = normalize_path(directory)
 
         self.alternative = None
         self.baselines = []
@@ -968,10 +975,12 @@ class Test(object):
         self.mgr = mgr
         mgr.testStart(self)
 
-        self.tmpdir = os.path.abspath(os.path.join(TmpDir, self.name))
-        self.diag = os.path.join(self.tmpdir, ".diag")
-        self.verbose = os.path.join(self.tmpdir, ".verbose")
-        self.baselines = [os.path.abspath(os.path.join(d, self.name)) for d in BaselineDirs]
+        self.tmpdir = normalize_path(os.path.join(self.tmpdir, self.name))
+        self.diag = normalize_path(os.path.join(self.tmpdir, ".diag"))
+        self.verbose = normalize_path(os.path.join(self.tmpdir, ".verbose"))
+        self.baselines = [
+            normalize_path(os.path.join(d, self.name)) for d in self.mgr_data['BaselineDirs']
+        ]
         self.diagmsgs = []
         self.utime = -1
         self.utime_base = self.mgr.testTimingBaseline(self)
@@ -1009,7 +1018,7 @@ class Test(object):
                 error("cannot copy %s: %s" % (src, e))
 
         for (file, content) in self.contents:
-            localfile = os.path.join(self.tmpdir, os.path.basename(file))
+            localfile = normalize_path(os.path.join(self.tmpdir, os.path.basename(file)))
             out = io.open(localfile, "w", encoding="utf-8")
 
             try:
@@ -1219,12 +1228,13 @@ class Test(object):
 
             env = alt.envs
 
-        localfile = os.path.join(self.tmpdir, os.path.basename(cmd.file))
+        localfile = normalize_path(os.path.join(self.tmpdir, os.path.basename(cmd.file)))
 
         if filter_cmd and cmd.expect_success:  # Do not apply filter if we expect failure.
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
-            filtered = os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(localfile))
+            filtered = normalize_path(
+                os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(localfile)))
 
             filter = CmdLine("%s %s %s" % (filter_cmd, localfile, filtered), True, 1, "<Filter>")
 
@@ -1300,7 +1310,7 @@ class Test(object):
             addl = {}
         env = copy.deepcopy(os.environ)
 
-        env["TEST_BASELINE"] = ":".join(self.baselines)
+        env["TEST_BASELINE"] = os.pathsep.join(self.baselines)
         env["TEST_DIAGNOSTICS"] = self.diag
         env["TEST_MODE"] = Options.mode.upper()
         env["TEST_NAME"] = self.name
@@ -1885,11 +1895,12 @@ if __name__ == '__main__':
 
     # If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
     # If not, we'll use the current directory.
-    TestBase = os.path.abspath(os.environ.get("BTEST_TEST_BASE", dirname))
+    TestBase = normalize_path(os.environ.get("BTEST_TEST_BASE", dirname))
     defaults["testbase"] = TestBase
-    defaults["baselinedir"] = os.path.abspath(
+    defaults["baselinedir"] = normalize_path(
         os.environ.get("BTEST_BASELINE_DIR", os.path.join(TestBase, "Baseline")))
     defaults['build_dir'] = Options.build_dir
+    defaults['pathsep'] = os.pathsep
 
     # Parse our config
     Config = getcfgparser(defaults)
@@ -1931,10 +1942,13 @@ if __name__ == '__main__':
             return Config, default
 
         (Config, TestBase) = get_env_from_alternative("BTEST_TEST_BASE", "testbase", TestBase,
-                                                      lambda x: os.path.abspath(x))
+                                                      lambda x: normalize_path(os.path.abspath(x)))
         # Need to update BaselineDir - it may be interpolated from testbase.
-        defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
-        (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR", "baselinedir", None)
+        defaults["baselinedir"] = normalize_path(getOption("BaselineDir", defaults["baselinedir"]))
+        (Config, _) = get_env_from_alternative("BTEST_BASELINE_DIR",
+                                               "baselinedir",
+                                               None,
+                                               transform=lambda x: normalize_path(x))
 
     os.chdir(TestBase)
 
@@ -2031,11 +2045,11 @@ if __name__ == '__main__':
     Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_ALTERNATIVE,
                 RE_IGNORE_ALTERNATIVE, RE_COPY_FILE, RE_KNOWN_FAILURE, RE_MEASURE_TIME, RE_DOC)
 
-    StateFile = os.path.abspath(
+    StateFile = normalize_path(
         getOption("StateFile", os.path.join(defaults["testbase"], ".btest.failed.dat")))
-    TmpDir = os.path.abspath(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
-    BaselineDirs = [os.path.abspath(dir) for dir in defaults["baselinedir"].split(":")]
-    BaselineTimingDir = os.path.abspath(
+    TmpDir = normalize_path(getOption("TmpDir", os.path.join(defaults["testbase"], ".tmp")))
+    BaselineDirs = [normalize_path(dir) for dir in defaults["baselinedir"].split(os.pathsep)]
+    BaselineTimingDir = normalize_path(
         getOption("TimingBaselineDir", os.path.join(BaselineDirs[0], "_Timing")))
 
     Initializer = getOption("Initializer", "")

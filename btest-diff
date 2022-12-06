@@ -131,7 +131,11 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Split string with baseline directories into array.
-IFS=':' read -ra baseline_dirs <<<"$TEST_BASELINE"
+if [ "$(uname -s | cut -c 1-5)" == "MINGW" ]; then
+    IFS=';' read -ra baseline_dirs <<<"$TEST_BASELINE"
+else
+    IFS=':' read -ra baseline_dirs <<<"$TEST_BASELINE"
+fi
 
 input="$1"
 # shellcheck disable=SC2001
