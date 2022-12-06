@@ -2485,19 +2485,7 @@ def outputDocumentation(tests, fmt):
             print()
 
 
-### Main
-
-if __name__ == '__main__':
-    # Python 3.8+ on macOS no longer uses "fork" as the default start-method
-    # See https://github.com/zeek/btest/issues/26
-    pyver_maj = sys.version_info[0]
-    pyver_min = sys.version_info[1]
-
-    if sys.platform == 'win32':
-        mp.set_start_method('spawn')
-    elif (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
-        mp.set_start_method('fork')
-
+def parse_options():
     optparser = optparse.OptionParser(usage="%prog [options] <directories>", version=VERSION)
     optparser.add_option("-U",
                          "--update-baseline",
@@ -2673,15 +2661,34 @@ if __name__ == '__main__':
     )
 
     optparser.set_defaults(mode="TEST")
-    (Options, args) = optparser.parse_args()
+
+    (options, parsed_args) = optparser.parse_args()
 
     # Update-interactive mode implies single-threaded operation
-    if Options.mode == "UPDATE_INTERACTIVE" and Options.threads > 1:
+    if options.mode == "UPDATE_INTERACTIVE" and options.threads > 1:
         warning("ignoring requested parallelism in interactive-update mode")
-        Options.threads = 1
+        options.threads = 1
 
-    if not os.path.exists(Options.config):
-        error("configuration file '%s' not found" % Options.config)
+    if not os.path.exists(options.config):
+        error("configuration file '%s' not found" % options.config)
+
+    return options, parsed_args
+
+
+### Main
+
+if __name__ == '__main__':
+    # Python 3.8+ on macOS no longer uses "fork" as the default start-method
+    # See https://github.com/zeek/btest/issues/26
+    pyver_maj = sys.version_info[0]
+    pyver_min = sys.version_info[1]
+
+    if sys.platform == 'win32':
+        mp.set_start_method('spawn')
+    elif (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
+        mp.set_start_method('fork')
+
+    (Options, args) = parse_options()
 
     # The defaults come from environment variables, plus a few additional items.
     defaults = {}
