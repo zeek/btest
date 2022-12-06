@@ -7,5 +7,6 @@ alternatives-environment [foo] ... ok
 alternatives-environment [foo2] ... ok
 all 2 tests successful
 alternatives-environment [foo] ... ok
+alternatives-environment ... ok
 alternatives-environment [foo2] ... ok
-all 2 tests successful
+all 3 tests successful

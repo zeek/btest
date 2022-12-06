@@ -459,17 +459,17 @@ class TestManager(multiprocessing.managers.SyncManager):
 
                         alternative_test = copy.deepcopy(t)
 
-                        if alternative == "-":
+                        if alternative == Alternative.DEFAULT:
                             alternative = ""
 
                         alternative_test.setAlternative(alternative)
                         tests += [alternative_test]
 
                 else:
-                    if t.include_alternatives and "default" not in t.include_alternatives:
+                    if t.include_alternatives and Alternative.DEFAULT not in t.include_alternatives:
                         tests = []
 
-                    elif "default" in t.ignore_alternatives:
+                    elif Alternative.DEFAULT in t.ignore_alternatives:
                         tests = []
 
                     else:
@@ -2568,8 +2568,12 @@ if min_version:
     validate_version_requirement(min_version, VERSION)
 
 if Options.alternatives:
-    # Preprocess to split into list.
-    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",") if alt != "-"]
+    # Preprocess to split into list. "-" refers to the default setup, as a
+    # shorthand for "default", to allow combination with select alternatives.
+    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
+    Options.alternatives = [
+        Alternative.DEFAULT if alt == "-" else alt for alt in Options.alternatives
+    ]
 
     # Helper function that, if an option wasn't explicitly specified as an
     # environment variable, checks if an alternative sets its through
