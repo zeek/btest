@@ -313,7 +313,7 @@ class Abort(Exception):
 
 # Main class distributing the work across threads.
 class TestManager(mp_managers.SyncManager):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, options, *args, **kwargs):
         super(TestManager, self).__init__(*args, **kwargs)
 
         self._output_handler = None
@@ -328,6 +328,7 @@ class TestManager(mp_managers.SyncManager):
         self._num_tests = None
         self._timing = None
         self._ports = None
+        self._options = options
 
     def run(self, tests, output_handler):
         self.start()
@@ -372,11 +373,11 @@ class TestManager(mp_managers.SyncManager):
         # directly. This avoids noisy output appearing from detached
         # processes post-btest-exit when using CTRL-C during the input
         # stage.
-        if Options.mode == "UPDATE_INTERACTIVE":
+        if self._options.mode == "UPDATE_INTERACTIVE":
             self.threadRun(0)
         else:
             try:
-                for i in range(Options.threads):
+                for i in range(self._options.threads):
                     t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i))
                     t.start()
                     threads += [t]
@@ -389,13 +390,13 @@ class TestManager(mp_managers.SyncManager):
                     t.terminate()
                     t.join()
 
-        if Options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
+        if self._options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
             # Signal abort. The child processes will already have
             # finished because the join() above still ran.
             raise Abort("Aborted after first failure.")
 
         # Record failed tests if not updating.
-        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
+        if self._options.mode != "UPDATE" and self._options.mode != "UPDATE_INTERACTIVE":
             try:
                 state = open(StateFile, "w", encoding="utf-8")
             except IOError:
@@ -433,7 +434,7 @@ class TestManager(mp_managers.SyncManager):
                 t.run(self)
                 self.testReplayOutput(t)
 
-            if Options.update_times:
+            if self._options.update_times:
                 self.saveTiming(all_tests)
 
     def rerun(self, test):
@@ -442,7 +443,7 @@ class TestManager(mp_managers.SyncManager):
 
     def nextTests(self, thread_num):
         with self._lock:
-            if Options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
+            if self._options.abort_on_failure and self._failed.value > 0 and self._failed.value > self._failed_expected.value:
                 # Don't hand out any more tests if we are to abort after
                 # first failure. Doing so will let all the processes terminate.
                 return None
@@ -453,17 +454,17 @@ class TestManager(mp_managers.SyncManager):
                 if not t:
                     continue
 
-                if t.serialize and hash(t.serialize) % Options.threads != thread_num:
+                if t.serialize and hash(t.serialize) % self._options.threads != thread_num:
                     # Not ours.
                     continue
 
                 # We'll execute it, delete from queue.
                 del self._tests[i]
 
-                if Options.alternatives:
+                if self._options.alternatives:
                     tests = []
 
-                    for alternative in Options.alternatives:
+                    for alternative in self._options.alternatives:
 
                         if alternative in t.ignore_alternatives:
                             continue
@@ -620,7 +621,7 @@ class TestManager(mp_managers.SyncManager):
                 else:
                     self._failed_tests += [test.name]
 
-            if test.reruns < Options.retries and not test.known_failure:
+            if test.reruns < self._options.retries and not test.known_failure:
                 self.rerun(test)
 
     def testSkipped(self, test):
@@ -2154,7 +2155,7 @@ if __name__ == '__main__':
             if len(addr) > 100:
                 addr = os.path.join("/tmp", sname)
 
-    mgr = TestManager(address=addr)
+    mgr = TestManager(Options, address=addr)
 
     try:
         if Options.list:
