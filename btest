@@ -333,6 +333,18 @@ class TestManager(mp_managers.SyncManager):
     def run(self, tests, output_handler):
         self.start()
 
+        mgr_data = self.dict()
+        mgr_data['Alternatives'] = Alternatives
+        mgr_data['BaselineDirs'] = BaselineDirs
+        mgr_data['Initializer'] = Initializer
+        mgr_data['Finalizer'] = Finalizer
+        mgr_data['Teardown'] = Teardown
+        mgr_data['Options'] = self._options
+        mgr_data['TestBase'] = TestBase
+        mgr_data['TmpDir'] = TmpDir
+        mgr_data['re_input'] = RE_INPUT
+        mgr_data['re_dir'] = RE_DIR
+
         output_handler.prepare(self)
         self._output_handler = output_handler
         self._lock = self.RLock()
@@ -378,7 +390,7 @@ class TestManager(mp_managers.SyncManager):
         else:
             try:
                 for i in range(self._options.threads):
-                    t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i))
+                    t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i, mgr_data))
                     t.start()
                     threads += [t]
 
@@ -417,7 +429,7 @@ class TestManager(mp_managers.SyncManager):
         count = self._succeeded.value + self._failed.value + self._skipped.value
         return 100.0 * count / self._num_tests
 
-    def threadRun(self, thread_num):
+    def threadRun(self, thread_num, mgr_data):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         all_tests = []
@@ -431,7 +443,7 @@ class TestManager(mp_managers.SyncManager):
             all_tests += tests
 
             for t in tests:
-                t.run(self)
+                t.run(self, mgr_data)
                 self.testReplayOutput(t)
 
             if self._options.update_times:
@@ -739,6 +751,7 @@ class Test(object):
         self.log = None
         self.measure_time = False
         self.mgr = None
+        self.mgr_data = {}
         self.monitor = None
         self.monitor_quit = None
         self.name = None
@@ -964,7 +977,7 @@ class Test(object):
 
             time.sleep(15)
 
-    def run(self, mgr):
+    def run(self, mgr, mgr_data):
         bound_sockets = self.getPorts(mgr, len(self.ports))
         self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
 
@@ -976,7 +989,11 @@ class Test(object):
         self.mgr = mgr
         mgr.testStart(self)
 
-        self.tmpdir = normalize_path(os.path.join(self.tmpdir, self.name))
+        # Pull the proxied data from the manager and save it since it's going to be used
+        # more later
+        self.mgr_data = mgr_data
+
+        self.tmpdir = normalize_path(os.path.join(self.mgr_data["TmpDir"], self.name))
         self.diag = normalize_path(os.path.join(self.tmpdir, ".diag"))
         self.verbose = normalize_path(os.path.join(self.tmpdir, ".verbose"))
         self.baselines = [
@@ -1063,16 +1080,20 @@ class Test(object):
 
         seq = CmdSeq()
 
-        if Initializer:
-            seq.cmds.append(CmdLine("%s %s" % (Initializer, self.name), True, 1, "<Initializer>"))
+        if self.mgr_data['Initializer']:
+            seq.cmds.append(
+                CmdLine("%s %s" % (self.mgr_data['Initializer'], self.name), True, 1,
+                        "<Initializer>"))
 
         seq.cmds += self.cmdseqs
 
-        if Finalizer:
-            seq.cmds.append(CmdLine("%s %s" % (Finalizer, self.name), True, 1, "<Finalizer>"))
+        if self.mgr_data['Finalizer']:
+            seq.cmds.append(
+                CmdLine("%s %s" % (self.mgr_data['Finalizer'], self.name), True, 1, "<Finalizer>"))
 
-        if Teardown:
-            seq.teardown = CmdLine("%s %s" % (Teardown, self.name), True, 1, "<Teardown>")
+        if self.mgr_data['Teardown']:
+            seq.teardown = CmdLine("%s %s" % (self.mgr_data['Teardown'], self.name), True, 1,
+                                   "<Teardown>")
 
         failures = 0
         rc = 0
@@ -1086,7 +1107,7 @@ class Test(object):
             # Run commands only when successful so far, if the most recent
             # command asked to continue despite error (code 100), or in Sphinx
             # mode.
-            if failures == 0 or rc == 100 or Options.sphinx:
+            if failures == 0 or rc == 100 or self.mgr_data['Options'].sphinx:
                 skip_part = -1
 
                 for cmd in seq.cmds:
@@ -1113,7 +1134,7 @@ class Test(object):
                     if not success:
                         failures += 1
 
-                        if Options.sphinx:
+                        if self.mgr_data['Options'].sphinx:
                             # We still execute the remaining commands and
                             # raise a failure for each one that fails.
                             self.mgr.testFailed(self)
@@ -1144,7 +1165,7 @@ class Test(object):
                     rc = teardown_rc
                     failures += 1
 
-                    if Options.sphinx or failures == 1:
+                    if self.mgr_data["Options"].sphinx or failures == 1:
                         self.mgr.testFailed(self)
 
             return need_teardown
@@ -1172,7 +1193,7 @@ class Test(object):
                 self.utime_perc = (100.0 * (self.utime - self.utime_base) / self.utime_base)
                 self.utime_exceeded = (abs(self.utime_perc) > float(delta))
 
-            if self.utime_exceeded and not Options.update_times:
+            if self.utime_exceeded and not self.mgr_data["Options"].update_times:
                 self.diagmsgs += [
                     "'%s' exceeded permitted execution time deviation%s" %
                     (self.name, self.timePostfix())
@@ -1182,7 +1203,7 @@ class Test(object):
             else:
                 self.mgr.testSucceeded(self)
 
-            if not Options.tmps and self.reruns == 0:
+            if not self.mgr_data['Options'].tmps and self.reruns == 0:
                 self.rmTmp()
 
         self.finish()
@@ -1216,7 +1237,7 @@ class Test(object):
         # Apply alternative if requested.
         if apply_alternative:
 
-            alt = Alternatives[apply_alternative]
+            alt = self.mgr_data['Alternatives'][apply_alternative]
 
             try:
                 (path, executable) = os.path.split(cmdline.split()[0])
@@ -1254,9 +1275,9 @@ class Test(object):
         # Replace special names.
 
         if localfile:
-            cmdline = RE_INPUT.sub(localfile, cmdline)
+            cmdline = self.mgr_data['re_input'].sub(localfile, cmdline)
 
-        cmdline = RE_DIR.sub(self.dir, cmdline)
+        cmdline = self.mgr_data['re_dir'].sub(self.dir, cmdline)
 
         print("%s (expect %s)" % (cmdline, ("failure", "success")[cmd.expect_success]),
               file=self.log)
@@ -1267,7 +1288,8 @@ class Test(object):
             env.update(addl_envs)
 
         env = self.prepareEnv(cmd, env)
-        measure_time = self.measure_time and (Options.update_times or self.utime_base >= 0)
+        measure_time = self.measure_time and (self.mgr_data['Options'].update_times
+                                              or self.utime_base >= 0)
 
         (success, rc, utime) = runTestCommandLine(cmdline,
                                                   measure_time,
@@ -1313,11 +1335,11 @@ class Test(object):
 
         env["TEST_BASELINE"] = os.pathsep.join(self.baselines)
         env["TEST_DIAGNOSTICS"] = self.diag
-        env["TEST_MODE"] = Options.mode.upper()
+        env["TEST_MODE"] = self.mgr_data['Options'].mode.upper()
         env["TEST_NAME"] = self.name
         env["TEST_VERBOSE"] = self.verbose
         env["TEST_PART"] = str(cmd.part)
-        env["TEST_BASE"] = TestBase
+        env["TEST_BASE"] = self.mgr_data['TestBase']
 
         for (key, val) in addl.items():
             # Convert val to string since otherwise os.environ (and our clone)
