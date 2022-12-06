@@ -11,7 +11,6 @@ import fnmatch
 import glob
 import io
 import json
-import locale
 import optparse
 import os
 import os.path
@@ -363,6 +362,19 @@ class TestManager(mp_managers.SyncManager):
     def run(self, tests, output_handler):
         self.start()
 
+        mgr_data = self.dict()
+        mgr_data['Alternatives'] = Alternatives
+        mgr_data['BaselineDirs'] = BaselineDirs
+        mgr_data['Initializer'] = Initializer
+        mgr_data['Finalizer'] = Finalizer
+        mgr_data['Teardown'] = Teardown
+        mgr_data['Options'] = Options
+        mgr_data['TestBase'] = TestBase
+        mgr_data['TmpDir'] = TmpDir
+        mgr_data['RE_INPUT'] = RE_INPUT
+        mgr_data['RE_DIR'] = RE_DIR
+        mgr_data['RE_ENV'] = RE_ENV
+
         output_handler.prepare(self)
         self._output_handler = output_handler
         self._lock = self.RLock()
@@ -404,11 +416,13 @@ class TestManager(mp_managers.SyncManager):
         # processes post-btest-exit when using CTRL-C during the input
         # stage.
         if Options.mode == "UPDATE_INTERACTIVE":
-            self.threadRun(0)
+            self.threadRun(0, mgr_data)
         else:
             try:
+                # Create a set of processes for running each of the tests. This isn't the actual
+                # zeek processes, but runner processes executing individual test commands.
                 for i in range(Options.threads):
-                    t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i))
+                    t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i, mgr_data))
                     t.start()
                     threads += [t]
 
@@ -450,13 +464,19 @@ class TestManager(mp_managers.SyncManager):
     # Worker method for each of the "threads" specified by the "-j" argument passed
     # at run time. This basically segments the list of tests into chunks and runs
     # until we're out of chunks.
-    def threadRun(self, thread_num):
+    def threadRun(self, thread_num, mgr_data):
         # This should prevent the child processes from receiving SIGINT signals and
         # let the KeyboardInterrupt handler in the manager's run() method handle
         # those.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         all_tests = []
+
+        # Globals get lost moving from the parent to the child on Windows, so we need to use
+        # the data proxied from the manager to rebuild the dict of globals before continuing.
+        if sys.platform == 'win32':
+            for (global_key, global_value) in mgr_data.items():
+                globals()[global_key] = global_value
 
         while True:
             # Pull the next test from the list that was built at startup. This may
@@ -931,7 +951,9 @@ class Test(object):
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
     def clone(self, content=None, increment=True):
-        clone = Test("")
+        # Cloning the class like this ensures that the globals continue to exist in
+        # cloned object just as they are in the original object.
+        clone = self.__class__("")
         clone.number = self.number
         clone.basename = self.basename
         clone.name = self.basename
@@ -1018,6 +1040,7 @@ class Test(object):
         self.tmpdir = normalize_path_join(TmpDir, self.name)
         self.diag = normalize_path_join(self.tmpdir, ".diag")
         self.verbose = normalize_path_join(self.tmpdir, ".verbose")
+        self.baselines = []
         for d in BaselineDirs:
             self.baselines.append(normalize_path_join(d, self.name))
         self.diagmsgs = []
