@@ -9,7 +9,7 @@ jobs:
   Run-BTest:
     strategy:
       matrix:
-        python-version: [3, 3.5]
+        python-version: [3]
         os: [macos-latest, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
