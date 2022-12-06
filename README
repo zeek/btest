@@ -253,9 +253,11 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     Activates an alternative_ configuration defined in the
     configuration file. Multiple alternatives can be given as a
     comma-separated list (in this case, all specified tests are run
-    once for each specified alternative). If ``ALTERNATIVE`` is ``-``
-    that refers to running with the standard setup, which can be used
-    to run tests both with and without alternatives by giving both.
+    once for each specified alternative). The alternatives ``-``
+    and ``default`` refer to the standard setup, allowing tests to
+    run with combinations of the latter and select alternatives.
+    If an alternative is not defined in the configuration, ``btest``
+    fails with exit code 1 and an according error message on stderr.
 
 -A, --show-all
     Shows an output line for all tests that were run (this includes tests
