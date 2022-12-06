@@ -1,3 +1,15 @@
+0.72-16 | 2022-12-06 11:22:53 -0800
+
+  * CI: remove explicit use of Python 3.5, EOL (Christian Kreibich, Corelight)
+
+  * Explain recent alternatives-related changes in the README. (Christian Kreibich, Corelight)
+
+  * Fix handling of specific alternatives in combination with the default (Christian Kreibich, Corelight)
+
+  * Fail when -a/--alternative includes an alternative not defined in the config (Christian Kreibich, Corelight)
+
+  * Add test for use of an undefined alternative (Christian Kreibich, Corelight)
+
 0.72-10 | 2022-11-16 14:44:01 +0100
 
   * Always use UTF-8 encoding for BTest input and output files.

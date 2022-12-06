@@ -33,7 +33,7 @@ import xml.dom.minidom
 
 from datetime import datetime
 
-VERSION = "0.72-10"  # Automatically filled in.
+VERSION = "0.72-16"  # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -275,11 +275,19 @@ def getcfgparser(defaults):
 
 # Description of an alternative configuration.
 class Alternative:
+    DEFAULT = "default"
+
     def __init__(self, name):
         self.name = name
         self.filters = {}
         self.substitutions = {}
         self.envs = {}
+
+    def is_default(self):
+        return self.name == Alternative.DEFAULT
+
+    def is_empty(self):
+        return not (self.filters or self.substitutions or self.envs)
 
 
 # Exception class thrown to signal manager to abort processing.
@@ -451,17 +459,17 @@ class TestManager(multiprocessing.managers.SyncManager):
 
                         alternative_test = copy.deepcopy(t)
 
-                        if alternative == "-":
+                        if alternative == Alternative.DEFAULT:
                             alternative = ""
 
                         alternative_test.setAlternative(alternative)
                         tests += [alternative_test]
 
                 else:
-                    if t.include_alternatives and "default" not in t.include_alternatives:
+                    if t.include_alternatives and Alternative.DEFAULT not in t.include_alternatives:
                         tests = []
 
-                    elif "default" in t.ignore_alternatives:
+                    elif Alternative.DEFAULT in t.ignore_alternatives:
                         tests = []
 
                     else:
@@ -2560,8 +2568,12 @@ if min_version:
     validate_version_requirement(min_version, VERSION)
 
 if Options.alternatives:
-    # Preprocess to split into list.
-    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",") if alt != "-"]
+    # Preprocess to split into list. "-" refers to the default setup, as a
+    # shorthand for "default", to allow combination with select alternatives.
+    Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
+    Options.alternatives = [
+        Alternative.DEFAULT if alt == "-" else alt for alt in Options.alternatives
+    ]
 
     # Helper function that, if an option wasn't explicitly specified as an
     # environment variable, checks if an alternative sets its through
@@ -2697,6 +2709,9 @@ if Options.alternatives:
 
         except configparser.NoSectionError:
             pass
+
+        if a.is_empty() and not a.is_default():
+            error("alternative \"%s\" is undefined" % tag)
 
         Alternatives[tag] = a
 
