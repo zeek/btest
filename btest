@@ -827,7 +827,7 @@ class Test(object):
         name = os.path.relpath(basename, TestBase)
         (name, ext) = os.path.splitext(name)
 
-        name = name.replace("/", ".")
+        name = name.replace(os.sep, ".")
         while name.startswith("."):
             name = name[1:]
 
