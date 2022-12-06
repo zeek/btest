@@ -1,0 +1,6 @@
+# %TEST-DOC: This verifies that btest errors out when provided an undefined alternative.
+# %TEST-EXEC-FAIL: btest -a nonexistant %INPUT >output 2>&1
+# %TEST-EXEC: btest-diff output
+# %TEST-EXEC-FAIL: test -f child-output
+
+@TEST-EXEC: echo 'Hello world' >../../child-output
