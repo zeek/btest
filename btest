@@ -275,11 +275,19 @@ def getcfgparser(defaults):
 
 # Description of an alternative configuration.
 class Alternative:
+    DEFAULT = "default"
+
     def __init__(self, name):
         self.name = name
         self.filters = {}
         self.substitutions = {}
         self.envs = {}
+
+    def is_default(self):
+        return self.name == Alternative.DEFAULT
+
+    def is_empty(self):
+        return not (self.filters or self.substitutions or self.envs)
 
 
 # Exception class thrown to signal manager to abort processing.
@@ -2697,6 +2705,9 @@ if Options.alternatives:
 
         except configparser.NoSectionError:
             pass
+
+        if a.is_empty() and not a.is_default():
+            error("alternative \"%s\" is undefined" % tag)
 
         Alternatives[tag] = a
 
