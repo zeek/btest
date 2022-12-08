@@ -170,13 +170,32 @@ def ExpandBackticks(origvalue):
         if not cmd:
             return ""
 
-        try:
-            pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        except OSError as e:
-            error("cannot execute '%s': %s" % (cmd, e))
+        tf_name = None
+        if sys.platform == 'win32':
+            try:
+                tf, tf_name = tempfile.mkstemp(suffix='.sh')
+                fcontents = f'#!/usr/bin/env bash\n{cmd}\n'
+                with os.fdopen(tf, 'wb') as f:
+                    f.write(fcontents.encode('utf-8'))
+
+                cmd = ['bash.exe', '-c', normalize_path(tf_name)]
+                pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            except OSError as e:
+                error("cannot execute '%s': %s" % (cmd, e))
+        else:
+            try:
+                pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            except OSError as e:
+                error("cannot execute '%s': %s" % (cmd, e))
 
         out = pp.communicate()[0]
         out = out.decode()
+
+        if tf_name:
+            try:
+                os.remove(tf_name)
+            except FileNotFoundError:
+                pass
 
         return out.strip()
 
@@ -243,7 +262,17 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
 def runSubprocess(*args, **kwargs):
     def child(q):
         try:
-            subprocess.check_call(*args, **kwargs)
+            if sys.platform == 'win32':
+                tmpdir = normalize_path(kwargs.get('cwd', ''))
+                tf, tf_name = tempfile.mkstemp(suffix='.sh', dir=tmpdir)
+                fcontents = f'#!/usr/bin/env bash\n{" ".join(args)}\n'
+                with os.fdopen(tf, 'wb') as f:
+                    f.write(fcontents.encode('utf-8'))
+
+                cmd = ['bash.exe', '-c', normalize_path(tf_name)]
+                subprocess.check_call(cmd, **kwargs)
+            else:
+                subprocess.check_call(*args, **kwargs)
             success = True
             rc = 0
 
