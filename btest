@@ -17,6 +17,7 @@ import os.path
 import pathlib
 import platform as pform
 import re
+import shlex
 import shutil
 import signal
 import socket
@@ -185,6 +186,29 @@ def readStateFile():
     return (True, tests)
 
 
+def _build_win_subprocess_cmd_script(cmd, tmpdir=None):
+    '''
+    Builds a bash file for running subprocess commands under Windows.
+
+    :param cmd The command line to be run under bash.
+    :param tmpdir An optional directory path where the script file will be written.
+     If None, it will be written to the system's temp directory.
+    :return A tuple containing a file object pointing at the script file and a bash
+     command for running the script.
+    '''
+    tf = tempfile.NamedTemporaryFile(mode='w',
+                                     encoding='utf-8',
+                                     suffix='.sh',
+                                     dir=tmpdir,
+                                     delete=True)
+    fcontents = '#!/usr/bin/env bash\n%s\n' % cmd
+    tf.write(fcontents)
+    tf.flush()
+
+    bash_cmd = ['bash.exe', '-c', normalize_path(tf.name)]
+    return tf, bash_cmd
+
+
 # Expand backticks in a config option value and return the result.
 def ExpandBackticks(origvalue):
     def _exec(m):
@@ -192,13 +216,24 @@ def ExpandBackticks(origvalue):
         if not cmd:
             return ""
 
-        try:
-            pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        except OSError as e:
-            error("cannot execute '%s': %s" % (cmd, e))
+        tf = None
+        if sys.platform == 'win32':
+            try:
+                tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, None)
+                pp = subprocess.Popen(bash_cmd, stdout=subprocess.PIPE)
+            except OSError as e:
+                error("cannot execute '%s': %s" % (cmd, e))
+        else:
+            try:
+                pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            except OSError as e:
+                error("cannot execute '%s': %s" % (cmd, e))
 
         out = pp.communicate()[0]
         out = out.decode()
+
+        if tf:
+            tf.close()
 
         return out.strip()
 
@@ -289,7 +324,18 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
 def runSubprocess(*args, **kwargs):
     def child(q):
         try:
-            subprocess.check_call(*args, **kwargs)
+            if sys.platform == 'win32':
+                tmpdir = normalize_path(kwargs.get('cwd', ''))
+                if len(args) > 1:
+                    cmd = shlex.join(args)
+                else:
+                    cmd = args[0]
+
+                tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, tmpdir)
+                with tf:
+                    subprocess.check_call(bash_cmd, **kwargs)
+            else:
+                subprocess.check_call(*args, **kwargs)
             success = True
             rc = 0
 
