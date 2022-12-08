@@ -1101,7 +1101,7 @@ class Test(object):
             if not success:
                 self.mgr.testSkipped(self)
                 if not Options.tmps:
-                    self.rmTmp()
+                    self.rmTmp(with_close=True)
                 self.finish()
                 return
 
@@ -1244,7 +1244,7 @@ class Test(object):
                 self.mgr.testSucceeded(self)
 
             if not Options.tmps and self.reruns == 0:
-                self.rmTmp()
+                self.rmTmp(with_close=True)
 
         self.finish()
 
@@ -1354,13 +1354,18 @@ class Test(object):
             self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, rc)]
             return (False, rc)
 
-    def rmTmp(self):
+    def rmTmp(self, *, with_close=False):
+        if with_close:
+            self.log.close()
+            self.stdout.close()
+            self.stderr.close()
+
         try:
             if os.path.isfile(self.tmpdir):
                 os.remove(self.tmpdir)
 
             if os.path.isdir(self.tmpdir):
-                subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir, shell=True)
+                subprocess.call(['rm', '-rf', self.tmpdir], stderr=subprocess.DEVNULL)
 
         except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
