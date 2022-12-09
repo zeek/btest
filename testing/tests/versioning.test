@@ -8,5 +8,5 @@
 %TEST-START-FILE btest.cfg
 [btest]
 TmpDir      = .tmp
-Minversion  = 99999.99
+MinVersion  = 99999.99
 %TEST-END-FILE

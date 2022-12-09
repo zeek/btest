@@ -1,0 +1,16 @@
+# %TEST-DOC: Validates that env vars are case-sensitive; this is a regression test for #75.
+#
+# %TEST-EXEC: http_proxy=aaa HTTP_PROXY=bbb btest -dv test
+
+# %TEST-START-FILE btest.cfg
+[environment]
+http_PROXY=ccc
+Http_Proxy=ddd
+# %TEST-END-FILE
+
+# %TEST-START-FILE test
+# @TEST-EXEC: env | grep http_proxy=aaa
+# @TEST-EXEC: env | grep HTTP_PROXY=bbb
+# @TEST-EXEC: env | grep http_PROXY=ccc
+# @TEST-EXEC: env | grep Http_Proxy=ddd
+# %TEST-END-FILE

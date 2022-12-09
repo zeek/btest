@@ -33,7 +33,7 @@ import xml.dom.minidom
 
 from datetime import datetime
 
-VERSION = "0.72-16"  # Automatically filled in.
+VERSION = "0.72-18"  # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
@@ -269,7 +269,17 @@ def runSubprocess(*args, **kwargs):
 
 def getcfgparser(defaults):
     configparser.ConfigParser.itemsNoDefaults = cpItemsNoDefaults
-    cfg = configparser.ConfigParser(defaults)
+
+    cfg = configparser.ConfigParser()
+
+    # We make all key lookups case-sensitive to avoid aliasing of
+    # case-sensitive environment variables.
+    cfg.optionxform = lambda optionstr: optionstr
+
+    default_section = cfg.defaults()
+    for key, value in defaults.items():
+        default_section[key] = value
+
     return cfg
 
 
@@ -1294,7 +1304,7 @@ class Test(object):
         for (key, val) in addl.items():
             # Convert val to string since otherwise os.environ (and our clone)
             # trigger a TypeError upon insertion, and the caller may be unaware.
-            env[key.upper()] = str(val)
+            env[key] = str(val)
 
         for idx, key in enumerate(sorted(self.ports)):
             env[key] = str(self.bound_ports[idx]) + "/tcp"
@@ -2681,7 +2691,7 @@ if Options.update_times and not Timer:
 if Config.has_section("environment"):
     for (name, value) in Config.itemsNoDefaults("environment"):
         # Here we don't want to include items from defaults
-        os.environ[name.upper()] = value
+        os.environ[name] = value
 
 Alternatives = {}
 
