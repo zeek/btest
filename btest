@@ -287,6 +287,8 @@ def runSubprocess(*args, **kwargs):
         q.put([success, rc])
 
     try:
+        # Create a queue used for returning data from a process and then run the
+        # process itself.
         q = mp.Queue()
         p = mp.Process(target=child, args=(q, ))
         p.start()
@@ -418,11 +420,15 @@ class TestManager(mp_managers.SyncManager):
             self.threadRun(0)
         else:
             try:
+                # Create a set of processes for running each of the tests. This isn't the actual
+                # zeek processes, but more a container object for a test as it runs through its
+                # internal process calls.
                 for i in range(self._options.threads):
                     t = mp.Process(name="#%d" % (i + 1), target=lambda: self.threadRun(i, mgr_data))
                     t.start()
                     threads += [t]
 
+                # Loop over the set of processes and wait for each one to complete.
                 for t in threads:
                     t.join()
 
@@ -458,20 +464,29 @@ class TestManager(mp_managers.SyncManager):
         count = self._succeeded.value + self._failed.value + self._skipped.value
         return 100.0 * count / self._num_tests
 
+    # Worker method for each of the "threads" specified by the "-j" argument passed
+    # at run time. This basically segments the list of tests into chunks and runs
+    # until we're out of chunks.
     def threadRun(self, thread_num, mgr_data):
+        # This should prevent the child processes from receiving SIGINT signals and
+        # let the KeyboardInterrupt handler in the manager's run() method handle
+        # those.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         all_tests = []
 
         while True:
-            tests = self.nextTests(thread_num)
-            if tests is None:
+            # Pull the next test from the list that was built at startup. This may
+            # be more than one test if there were alternatives requested in the
+            # arguments passed to btest.
+            thread_tests = self.nextTests(thread_num)
+            if thread_tests is None:
                 # No more work for us.
                 return
 
-            all_tests += tests
+            all_tests += thread_tests
 
-            for t in tests:
+            for t in thread_tests:
                 t.run(self, mgr_data)
                 self.testReplayOutput(t)
 
