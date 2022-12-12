@@ -26,8 +26,8 @@ setup(
     version="0.72-20",  # Filled in automatically.
     description='A powerful system testing framework',
     long_description='See https://github.com/zeek/btest',
-    author='Robin Sommer',
-    author_email='robin@icir.org',
+    author='The Zeek Team',
+    author_email='info@zeek.org',
     url='https://github.com/zeek/btest',
     scripts=scripts,
     package_dir={"": "sphinx"},
@@ -43,4 +43,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Utilities',
     ],
+    python_requires='>=3.7',
 )

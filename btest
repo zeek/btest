@@ -35,8 +35,6 @@ from datetime import datetime
 
 VERSION = "0.72-20"  # Automatically filled in.
 
-using_py3 = (sys.version_info[0] == 3)
-
 Name = "btest"
 Config = None
 

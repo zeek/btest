@@ -9,23 +9,44 @@ jobs:
   Run-BTest:
     strategy:
       matrix:
-        # Even though python-3.5 is EOL it is still the minimum Python version
-        # required by Zeek so we should validate that our code works with it.
-        #
-        # Since that Python version is not available on ubuntu-22.04 (currently
-        # ubuntu-latest), we run the Linux job on ubuntu-20.04 which still has
-        # it.
-        python-version: [3, 3.5]
-        os: [macos-latest, ubuntu-20.04]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        os: [macos-latest, ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
             python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
             python -m pip install sphinx
       - run: make test
+
+  Test-SetupPY:
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+            python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v3
+      - name: "Install pip and the btest package"
+        run: |
+            python3 -m pip install --upgrade pip
+            python3 -m pip install setuptools wheel
+            python3 -m pip install .
+      - name: "Run btests with installed version"
+        run: |
+            cd testing
+            which btest
+            make
+      - name: "Test building package"
+        run: |
+          python3 setup.py sdist bdist_wheel
