@@ -9,8 +9,14 @@ jobs:
   Run-BTest:
     strategy:
       matrix:
-        python-version: [3]
-        os: [macos-latest, ubuntu-latest]
+        # Even though python-3.5 is EOL it is still the minimum Python version
+        # required by Zeek so we should validate that our code works with it.
+        #
+        # Since that Python version is not available on ubuntu-22.04 (currently
+        # ubuntu-latest), we run the Linux job on ubuntu-20.04 which still has
+        # it.
+        python-version: [3, 3.5]
+        os: [macos-latest, ubuntu-20.04]
 
     runs-on: ${{ matrix.os }}
     steps:
