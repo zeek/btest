@@ -5,6 +5,7 @@
 # pylint: disable=line-too-long,too-many-lines,invalid-name,missing-function-docstring,missing-class-docstring
 
 import atexit
+import binascii
 import configparser
 import copy
 import fnmatch
@@ -559,7 +560,7 @@ class TestManager(mp_managers.SyncManager):
                 if not t:
                     continue
 
-                if t.serialize and hash(t.serialize) % Options.threads != thread_num:
+                if t.serialize and t.serialize_hash() % Options.threads != thread_num:
                     # Not ours.
                     continue
 
@@ -866,6 +867,12 @@ class Test(object):
 
     def __lt__(self, value):
         return self.name and value.name and self.name < value.name
+
+    def serialize_hash(self):
+        if not self.serialize:
+            return 0
+
+        return int(binascii.crc32(self.serialize.encode('utf-8')))
 
     def displayName(self):
         name = self.name
