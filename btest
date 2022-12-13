@@ -8,6 +8,7 @@ import configparser
 import copy
 import fnmatch
 import glob
+import hashlib
 import io
 import multiprocess as mp
 import multiprocess.managers as mp_managers
@@ -510,7 +511,8 @@ class TestManager(mp_managers.SyncManager):
                 if not t:
                     continue
 
-                if t.serialize and hash(t.serialize) % self._options.threads != thread_num:
+                if t.serialize and int(hashlib.md5(t.serialize.encode('utf-8')).hexdigest(),
+                                       16) % self._options.threads != thread_num:
                     # Not ours.
                     continue
 
