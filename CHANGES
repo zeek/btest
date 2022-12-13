@@ -1,3 +1,7 @@
+0.72-20 | 2022-12-13 09:12:13 +0100
+
+  * Add back CI run for Python 3.5. (Benjamin Bannier, Corelight)
+
 0.72-18 | 2022-12-09 14:08:00 -0800
 
   * GH-75: Do not ignore case of options. (Benjamin Bannier, Corelight)

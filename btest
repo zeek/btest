@@ -33,7 +33,7 @@ import xml.dom.minidom
 
 from datetime import datetime
 
-VERSION = "0.72-18"  # Automatically filled in.
+VERSION = "0.72-20"  # Automatically filled in.
 
 using_py3 = (sys.version_info[0] == 3)
 
