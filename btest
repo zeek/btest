@@ -54,7 +54,13 @@ def normalize_path(path):
 
 def output(msg, nl=True, file=None):
     if not file:
-        file = sys.stderr
+        file = open(sys.__stderr__.fileno(),
+                    mode=sys.__stderr__.mode,
+                    buffering=1,
+                    encoding=sys.__stderr__.encoding,
+                    errors=sys.__stderr__.errors,
+                    newline='\n',
+                    closefd=False)
 
     if nl:
         print(msg, file=file)
@@ -1065,7 +1071,7 @@ class Test(object):
             if subdir != "":
                 mkdir(subdir)
             try:
-                ffile = open(fname, "w")
+                ffile = open(fname, "w", newline='\n')
             except IOError as e:
                 error("cannot write test's additional file '%s'" % fname)
 
@@ -1083,7 +1089,7 @@ class Test(object):
 
         for (file, content) in self.contents:
             localfile = normalize_path(os.path.join(self.tmpdir, os.path.basename(file)))
-            out = io.open(localfile, "w", encoding="utf-8")
+            out = io.open(localfile, "w", encoding="utf-8", newline='\n')
 
             try:
                 for line in content:

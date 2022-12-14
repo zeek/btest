@@ -48,7 +48,13 @@ class OutputHandler:
     @staticmethod
     def _output(msg, nl=True, file=None):
         if not file:
-            file = sys.stderr
+            file = open(sys.__stderr__.fileno(),
+                        mode=sys.__stderr__.mode,
+                        buffering=1,
+                        encoding=sys.__stderr__.encoding,
+                        errors=sys.__stderr__.errors,
+                        newline='\n',
+                        closefd=False)
 
         if nl:
             print(msg, file=file)
@@ -237,6 +243,13 @@ class Console(OutputHandler):
     def __init__(self, options):
         OutputHandler.__init__(self, options)
         self.show_all = True
+        self.stdout = open(sys.__stdout__.fileno(),
+                           mode=sys.__stdout__.mode,
+                           buffering=1,
+                           encoding=sys.__stdout__.encoding,
+                           errors=sys.__stdout__.errors,
+                           newline='\n',
+                           closefd=False)
 
     def testStart(self, test):
         msg = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
@@ -272,18 +285,18 @@ class Console(OutputHandler):
         self._consoleOutput(test, msg, self.show_all)
 
     def finished(self):
-        sys.stdout.flush()
+        self.stdout.flush()
 
     def _consoleOutput(self, test, msg, sticky):
         self._consoleWrite(test, msg, sticky)
 
     def _consoleWrite(self, test, msg, sticky):
-        sys.stdout.write(msg.strip() + " ")
+        self.stdout.write(msg.strip() + " ")
 
         if sticky:
-            sys.stdout.write("\n")
+            self.stdout.write("\n")
 
-        sys.stdout.flush()
+        self.stdout.flush()
 
 
 class CompactConsole(Console):
@@ -302,16 +315,23 @@ class CompactConsole(Console):
     def __init__(self, options):
         Console.__init__(self, options)
         self.show_all = False
+        self.stdout = open(sys.__stdout__.fileno(),
+                           mode=sys.__stdout__.mode,
+                           buffering=1,
+                           encoding=sys.__stdout__.encoding,
+                           errors=sys.__stdout__.errors,
+                           newline='\n',
+                           closefd=False)
 
         def cleanup():
-            sys.stdout.write(self.CursorOn)
+            self.stdout.write(self.CursorOn)
 
         atexit.register(cleanup)
 
     def testStart(self, test):
         test.console_last_line = None
         self._consoleOutput(test, "", False)
-        sys.stdout.write(self.CursorOff)
+        self.stdout.write(self.CursorOff)
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
@@ -322,10 +342,10 @@ class CompactConsole(Console):
         test.console_last_line = None
 
     def finished(self):
-        sys.stdout.write(self.EraseToEndOfLine)
-        sys.stdout.write("\r")
-        sys.stdout.write(self.CursorOn)
-        sys.stdout.flush()
+        self.stdout.write(self.EraseToEndOfLine)
+        self.stdout.write("\r")
+        self.stdout.write(self.CursorOn)
+        self.stdout.flush()
 
     def _consoleOutput(self, test, msg, sticky):
         line = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
@@ -337,20 +357,20 @@ class CompactConsole(Console):
         self._consoleWrite(test, line, sticky)
 
     def _consoleAugment(self, test, msg):
-        sys.stdout.write(self.EraseToEndOfLine)
-        sys.stdout.write(" %s" % msg.strip())
-        sys.stdout.write("\r%s" % test.console_last_line)
-        sys.stdout.flush()
+        self.stdout.write(self.EraseToEndOfLine)
+        self.stdout.write(" %s" % msg.strip())
+        self.stdout.write("\r%s" % test.console_last_line)
+        self.stdout.flush()
 
     def _consoleWrite(self, test, msg, sticky):
-        sys.stdout.write(chr(27) + '[2K')
-        sys.stdout.write("\r%s" % msg.strip())
+        self.stdout.write(chr(27) + '[2K')
+        self.stdout.write("\r%s" % msg.strip())
 
         if sticky:
-            sys.stdout.write("\n")
+            self.stdout.write("\n")
             test.console_last_line = None
 
-        sys.stdout.flush()
+        self.stdout.flush()
 
 
 class Brief(OutputHandler):
@@ -526,7 +546,7 @@ class SphinxOutput(OutputHandler):
         if not self._output:
             return
 
-        out = open(self._output, "a")
+        out = open(self._output, "a", newline='\n')
 
         print("\n.. code-block:: none ", file=out)
         print("\n  ERROR executing test '%s' (part %s)\n" % (test.displayName(), self._part),
@@ -543,7 +563,7 @@ class SphinxOutput(OutputHandler):
 
             if os.path.isfile(f):
                 print("  % cat " + os.path.basename(f), file=out)
-                for line in open(f):
+                for line in open(f, newline='\n'):
                     print("   %s" % line.strip(), file=out)
                 print(file=out)
 
@@ -613,7 +633,7 @@ class XMLReport(OutputHandler):
 
             if os.path.isfile(f):
                 context += "  % cat " + os.path.basename(f) + "\n"
-                for line in open(f):
+                for line in open(f, newline='\n'):
                     context += "  " + line.strip() + "\n"
 
         return context
@@ -743,7 +763,7 @@ def create_output_handler(options):
 
     if options.diagfile:
         try:
-            diagfile = open(options.diagfile, "w", 1)
+            diagfile = open(options.diagfile, "w", 1, newline='\n')
             output_handlers += [Diag(options, options.diagall, diagfile)]
 
         except IOError as e:
@@ -754,7 +774,7 @@ def create_output_handler(options):
 
     if options.xmlfile:
         try:
-            xmlfile = open(options.xmlfile, "w", 1)
+            xmlfile = open(options.xmlfile, "w", 1, newline='\n')
             output_handlers += [XMLReport(options, xmlfile)]
 
         except IOError as e:
@@ -762,7 +782,7 @@ def create_output_handler(options):
 
     if options.tracefile:
         try:
-            tracefile = open(options.tracefile, "w", 1)
+            tracefile = open(options.tracefile, "w", 1, newline='\n')
             output_handlers += [ChromeTracing(options, tracefile)]
 
         except IOError as e:

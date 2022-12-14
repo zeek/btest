@@ -225,7 +225,7 @@ if [ -n "$baseline" ]; then
         if is_binary_mode; then
             diff -s "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
         else
-            diff -au "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
+            diff -au --strip-trailing-cr "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
         fi
         result=$?
     fi
