@@ -1531,7 +1531,7 @@ def findTests(paths, expand_globs=False):
         if os.path.isdir(path) and os.path.basename(path) in ignore_dirs:
             continue
 
-        ignores = [os.path.join(path, dir) for dir in ignore_dirs]
+        ignores = [normalize_path(os.path.join(path, dir)) for dir in ignore_dirs]
 
         m = RE_PART.match(rpath)
         if m:
@@ -1562,7 +1562,8 @@ def findTests(paths, expand_globs=False):
                         tests += readTestFile(os.path.join(dirpath, file))
 
                 # Don't recurse into these.
-                for (dir, dir_path) in [(dir, os.path.join(dirpath, dir)) for dir in dirnames]:
+                for (dir, dir_path) in [(dir, normalize_path(os.path.join(dirpath, dir)))
+                                        for dir in dirnames]:
                     for skip in ignores:
                         if dir_path == skip:
                             dirnames.remove(dir)
