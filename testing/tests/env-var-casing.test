@@ -1,5 +1,6 @@
-# %TEST-DOC: Validates that env vars are case-sensitive; this is a regression test for #75.
+# %TEST-DOC: Validates that env vars are case-sensitive; this is a regression test for #75. Environment variables on Windows are always uppercase, due to legacy DOS requirements. This test will be skipped on that platform.
 #
+# %TEST-REQUIRES: "$(uname -s | cut -c 1-5)" == "MINGW"
 # %TEST-EXEC: http_proxy=aaa HTTP_PROXY=bbb btest -dv test
 
 # %TEST-START-FILE btest.cfg
