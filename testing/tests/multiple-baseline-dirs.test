@@ -41,5 +41,5 @@
 
 %TEST-START-FILE btest.cfg
 [btest]
-BaselineDir = baseline1:baseline2:baseline3
+BaselineDir = baseline1%(pathsep)sbaseline2%(pathsep)sbaseline3
 %TEST-END-FILE
