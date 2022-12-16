@@ -3,4 +3,10 @@
 
 dir=$(dirname "$0")
 testbase=$(cd "$dir/.." && pwd)
+
+if [ "$(uname -s | cut -c 1-5)" == "MINGW" ]; then
+    # shellcheck disable=SC2001
+    testbase=$(echo "${testbase}" | sed 's#/\([a-zA-Z]\)/\(.*\)#\u\1:/\2#')
+fi
+
 sed "s#${testbase}#<...>#g"
