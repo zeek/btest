@@ -804,7 +804,7 @@ class Test(object):
         self.log = None
         self.measure_time = False
         self.mgr = None
-        self.mgr_data = {}
+        self.mgr_data = None
         self.monitor = None
         self.monitor_quit = None
         self.name = None
