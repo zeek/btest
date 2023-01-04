@@ -10,9 +10,6 @@ import fnmatch
 import glob
 import hashlib
 import io
-import multiprocess as mp
-import multiprocess.managers as mp_managers
-import multiprocess.sharedctypes as mp_sharedctypes
 import optparse
 import os
 import os.path
@@ -30,9 +27,11 @@ import threading
 import time
 import uuid
 
-import btest_lib.outputhandlers
+import multiprocess as mp
+import multiprocess.managers as mp_managers
+import multiprocess.sharedctypes as mp_sharedctypes
 
-from datetime import datetime
+import btest_lib.outputhandlers
 
 VERSION = "0.72-20"  # Automatically filled in.
 
