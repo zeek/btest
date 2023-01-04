@@ -273,7 +273,11 @@ def runSubprocess(*args, **kwargs):
             if sys.platform == 'win32':
                 tmpdir = normalize_path(kwargs.get('cwd', ''))
                 tf, tf_name = tempfile.mkstemp(suffix='.sh', dir=tmpdir)
-                fcontents = '#!/usr/bin/env bash\n%s\n' % (" ".join(args))
+                if len(args) > 1:
+                    cmd = shlex.join(args)
+                else:
+                    cmd = args[0]
+                fcontents = '#!/usr/bin/env bash\n%s\n' % cmd
                 with os.fdopen(tf, 'wb') as f:
                     f.write(fcontents.encode('utf-8'))
 
