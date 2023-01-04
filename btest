@@ -1386,11 +1386,7 @@ class Test(object):
                 os.remove(self.tmpdir)
 
             if os.path.isdir(self.tmpdir):
-                if sys.platform == 'win32':
-                    win_path = pathlib.PureWindowsPath(self.tmpdir)
-                    subprocess.call("rmdir /s /q %s" % (str(win_path)), shell=True)
-                else:
-                    subprocess.call("rm -rf %s 2>/dev/null" % (self.tmpdir), shell=True)
+                subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir, stderr=subprocess.DEVNULL)
 
         except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
