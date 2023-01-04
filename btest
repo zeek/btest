@@ -264,7 +264,7 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
     if measure_time and Timer:
         return Timer.timeSubprocess(cmdline, **kwargs)
     (success, rc) = runSubprocess(cmdline, **kwargs)
-    return success, rc, -1
+    return (success, rc, -1)
 
 
 # Runs a subprocess. Takes same arguments as subprocess.check_call()
@@ -1321,13 +1321,13 @@ class Test(object):
 
             (success, rc) = self.execute(filter, apply_alternative=None)
             if not success:
-                return False, rc
+                return (False, rc)
 
             mv = CmdLine("mv %s %s" % (filtered, localfile), True, 1, "<Filter-Move>")
             (success, rc) = self.execute(mv, apply_alternative=None)
 
             if not success:
-                return False, rc
+                return (False, rc)
 
         self.mgr.testCommand(self, cmd)
 
@@ -1363,17 +1363,17 @@ class Test(object):
 
         if success:
             if cmd.expect_success:
-                return True, rc
+                return (True, rc)
 
             self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
-            return False, 0
+            return (False, 0)
 
         else:
             if not cmd.expect_success:
-                return True, rc
+                return (True, rc)
 
             self.diagmsgs += ["'%s' failed unexpectedly (exit code %s)" % (cmdline, rc)]
-            return False, rc
+            return (False, rc)
 
     def rmTmp(self, with_close=False):
         if with_close:
@@ -1510,7 +1510,7 @@ class LinuxTimer(TimerBase):
         except IOError:
             pass
 
-        return success, rc, utime
+        return (success, rc, utime)
 
 
 # Walk the given directory and return all test files.
