@@ -19,6 +19,7 @@ import os.path
 import pathlib
 import platform as pform
 import re
+import shlex
 import shutil
 import signal
 import socket
@@ -181,7 +182,7 @@ def ExpandBackticks(origvalue):
         if sys.platform == 'win32':
             try:
                 tf, tf_name = tempfile.mkstemp(suffix='.sh')
-                fcontents = f'#!/usr/bin/env bash\n{cmd}\n'
+                fcontents = '#!/usr/bin/env bash\n%s\n' % cmd
                 with os.fdopen(tf, 'wb') as f:
                     f.write(fcontents.encode('utf-8'))
 
@@ -272,7 +273,7 @@ def runSubprocess(*args, **kwargs):
             if sys.platform == 'win32':
                 tmpdir = normalize_path(kwargs.get('cwd', ''))
                 tf, tf_name = tempfile.mkstemp(suffix='.sh', dir=tmpdir)
-                fcontents = f'#!/usr/bin/env bash\n{" ".join(args)}\n'
+                fcontents = '#!/usr/bin/env bash\n%s\n' % (" ".join(args))
                 with os.fdopen(tf, 'wb') as f:
                     f.write(fcontents.encode('utf-8'))
 
@@ -1381,9 +1382,9 @@ class Test(object):
             if os.path.isdir(self.tmpdir):
                 if sys.platform == 'win32':
                     win_path = pathlib.PureWindowsPath(self.tmpdir)
-                    subprocess.call(f"rmdir /s /q {str(win_path)}", shell=True)
+                    subprocess.call("rmdir /s /q %s" % (str(win_path)), shell=True)
                 else:
-                    subprocess.call(f"rm -rf {self.tmpdir} 2>/dev/null", shell=True)
+                    subprocess.call("rm -rf %s 2>/dev/null" % (self.tmpdir), shell=True)
 
         except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
@@ -2221,11 +2222,11 @@ if __name__ == '__main__':
     if sys.platform == 'win32':
         # On win32 we have to use a named pipe so that python's multiprocessing
         # chooses AF_PIPE as the family type.
-        addr = f'\\\\.\\pipe\\btest-pipe-{os.getpid()}'
+        addr = "\\\\.\\pipe\\btest-pipe-%s" % (os.getpid())
     else:
         # Building our own path to avoid "error: AF_UNIX path too long" on
         # some platforms. See BIT-862.
-        sname = f"btest-socket-{os.getpid()}"
+        sname = "btest-socket-%s" % (os.getpid())
         addr = os.path.join(tempfile.gettempdir(), sname)
 
         # Check if the pathname is too long to fit in struct sockaddr_un (the
