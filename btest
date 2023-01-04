@@ -1076,7 +1076,7 @@ class Test(object):
             if subdir != "":
                 mkdir(subdir)
             try:
-                ffile = open(fname, "w", newline='\n')
+                ffile = open(fname, "w", newline="\n")
             except IOError as e:
                 error("cannot write test's additional file '%s'" % fname)
 
@@ -1094,7 +1094,7 @@ class Test(object):
 
         for (file, content) in self.contents:
             localfile = normalize_path(os.path.join(self.tmpdir, os.path.basename(file)))
-            out = io.open(localfile, "w", encoding="utf-8", newline='\n')
+            out = io.open(localfile, "w", encoding="utf-8", newline="\n")
 
             try:
                 for line in content:
@@ -1139,17 +1139,17 @@ class Test(object):
 
         if self.mgr_data['Initializer']:
             seq.cmds.append(
-                CmdLine("%s %s" % (self.mgr_data['Initializer'], self.name), True, 1,
+                CmdLine("%s %s" % (self.mgr_data["Initializer"], self.name), True, 1,
                         "<Initializer>"))
 
         seq.cmds += self.cmdseqs
 
         if self.mgr_data['Finalizer']:
             seq.cmds.append(
-                CmdLine("%s %s" % (self.mgr_data['Finalizer'], self.name), True, 1, "<Finalizer>"))
+                CmdLine("%s %s" % (self.mgr_data["Finalizer"], self.name), True, 1, "<Finalizer>"))
 
         if self.mgr_data['Teardown']:
-            seq.teardown = CmdLine("%s %s" % (self.mgr_data['Teardown'], self.name), True, 1,
+            seq.teardown = CmdLine("%s %s" % (self.mgr_data["Teardown"], self.name), True, 1,
                                    "<Teardown>")
 
         failures = 0
