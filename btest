@@ -53,6 +53,10 @@ def normalize_path(path):
     return windows_path.as_posix()
 
 
+def normalize_path_join(*args):
+    return normalize_path(os.path.join(*args))
+
+
 def output(msg, nl=True, file=None):
     if not file:
         file = open(sys.__stderr__.fileno(),
@@ -1050,12 +1054,12 @@ class Test(object):
         # more later
         self.mgr_data = mgr_data
 
-        self.tmpdir = normalize_path(os.path.join(self.mgr_data["TmpDir"], self.name))
-        self.diag = normalize_path(os.path.join(self.tmpdir, ".diag"))
-        self.verbose = normalize_path(os.path.join(self.tmpdir, ".verbose"))
-        self.baselines = [
-            normalize_path(os.path.join(d, self.name)) for d in self.mgr_data['BaselineDirs']
-        ]
+        self.tmpdir = normalize_path_join(self.mgr_data["TmpDir"], self.name)
+        self.diag = normalize_path_join(self.tmpdir, ".diag")
+        self.verbose = normalize_path_join(self.tmpdir, ".verbose")
+        self.baselines = []
+        for d in self.mgr_data['BaselineDirs']:
+            self.baselines.append(normalize_path_join(d, self.name))
         self.diagmsgs = []
         self.utime = -1
         self.utime_base = self.mgr.testTimingBaseline(self)
@@ -1093,7 +1097,7 @@ class Test(object):
                 error("cannot copy %s: %s" % (src, e))
 
         for (file, content) in self.contents:
-            localfile = normalize_path(os.path.join(self.tmpdir, os.path.basename(file)))
+            localfile = normalize_path_join(self.tmpdir, os.path.basename(file))
             out = io.open(localfile, "w", encoding="utf-8", newline="\n")
 
             try:
@@ -1307,13 +1311,12 @@ class Test(object):
 
             env = alt.envs
 
-        localfile = normalize_path(os.path.join(self.tmpdir, os.path.basename(cmd.file)))
+        localfile = normalize_path_join(self.tmpdir, os.path.basename(cmd.file))
 
         if filter_cmd and cmd.expect_success:  # Do not apply filter if we expect failure.
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
-            filtered = normalize_path(
-                os.path.join(self.tmpdir, "filtered-%s" % os.path.basename(localfile)))
+            filtered = normalize_path_join(self.tmpdir, "filtered-%s" % os.path.basename(localfile))
 
             filter = CmdLine("%s %s %s" % (filter_cmd, localfile, filtered), True, 1, "<Filter>")
 
@@ -1536,7 +1539,7 @@ def findTests(paths, expand_globs=False):
         if os.path.isdir(path) and os.path.basename(path) in ignore_dirs:
             continue
 
-        ignores = [normalize_path(os.path.join(path, dir)) for dir in ignore_dirs]
+        ignores = [normalize_path_join(path, dir) for dir in ignore_dirs]
 
         m = RE_PART.match(rpath)
         if m:
@@ -1567,7 +1570,7 @@ def findTests(paths, expand_globs=False):
                         tests += readTestFile(os.path.join(dirpath, file))
 
                 # Don't recurse into these.
-                for (dir, dir_path) in [(dir, normalize_path(os.path.join(dirpath, dir)))
+                for (dir, dir_path) in [(dir, normalize_path_join(dirpath, dir))
                                         for dir in dirnames]:
                     for skip in ignores:
                         if dir_path == skip:
