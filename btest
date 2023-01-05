@@ -1394,9 +1394,7 @@ class Test(object):
                 os.remove(self.tmpdir)
 
             if os.path.isdir(self.tmpdir):
-                subprocess.call("rm -rf %s 2>/dev/null" % self.tmpdir,
-                                stderr=subprocess.DEVNULL,
-                                shell=True)
+                subprocess.call('rm -rf %s' % self.tmpdir, stderr=subprocess.DEVNULL, shell=True)
 
         except OSError as e:
             error("cannot remove tmp directory %s: %s" % (self.tmpdir, e))
