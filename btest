@@ -500,6 +500,13 @@ class TestManager(mp_managers.SyncManager):
         # those.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
+        # Globals get lost moving from the parent to the child on Windows, so we need to use
+        # the data proxied from the manager to rebuild the dict of globals before continuing.
+        if sys.platform == 'win32':
+            for (global_key, global_value) in mgr_data.items():
+                globals()[global_key] = global_value
+
+
         all_tests = []
 
         while True:
@@ -976,7 +983,7 @@ class Test(object):
     # Copies all control information over to a new Test but replacing the test's
     # content with a new one.
     def clone(self, content=None, increment=True):
-        clone = Test("")
+        clone = self.__class__("")
         clone.number = self.number
         clone.basename = self.basename
         clone.name = self.basename
@@ -1059,12 +1066,6 @@ class Test(object):
         self.start = time.time()
         self.mgr = mgr
         mgr.testStart(self)
-
-        # Globals get lost moving from the parent to the child on Windows, so we need to use
-        # the data proxied from the manager to rebuild the dict of globals before continuing.
-        if sys.platform == 'win32':
-            for (global_key, global_value) in mgr_data.items():
-                globals()[global_key] = global_value
 
         self.tmpdir = normalize_path_join(TmpDir, self.name)
         self.diag = normalize_path_join(self.tmpdir, ".diag")
