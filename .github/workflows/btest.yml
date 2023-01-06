@@ -15,7 +15,7 @@ jobs:
         # Since that Python version is not available on ubuntu-22.04 (currently
         # ubuntu-latest), we run the Linux job on ubuntu-20.04 which still has
         # it.
-        python-version: [3, 3.5]
+        python-version: [3, 3.7, 3.5]
         os: [macos-latest, ubuntu-20.04, windows-latest]
 
     runs-on: ${{ matrix.os }}
