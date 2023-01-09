@@ -2039,6 +2039,61 @@ class ChromeTracing(OutputHandler):
         self._file.close()
 
 
+def create_output_handler(options):
+
+    output_handlers = []
+
+    if options.verbose:
+        output_handlers += [Verbose(options, )]
+
+    elif options.brief:
+        output_handlers += [Brief(options, )]
+
+    else:
+        if sys.stdout.isatty():
+            if options.show_all:
+                output_handlers += [Console(options, )]
+            else:
+                output_handlers += [CompactConsole(options, )]
+        else:
+            output_handlers += [Standard(options, )]
+
+    if options.diagall:
+        output_handlers += [Diag(options, True, None)]
+
+    elif options.diag:
+        output_handlers += [Diag(options, False, None)]
+
+    if options.diagfile:
+        try:
+            diagfile = open(options.diagfile, "w", 1)
+            output_handlers += [Diag(options, options.diagall, diagfile)]
+
+        except IOError as e:
+            print("cannot open %s: %s" % (options.diagfile, e), file=sys.stderr)
+
+    if options.sphinx:
+        output_handlers += [SphinxOutput(options)]
+
+    if options.xmlfile:
+        try:
+            xmlfile = open(options.xmlfile, "w", 1)
+            output_handlers += [XMLReport(options, xmlfile)]
+
+        except IOError as e:
+            print("cannot open %s: %s" % (options.xmlfile, e), file=sys.stderr)
+
+    if options.tracefile:
+        try:
+            tracefile = open(options.tracefile, "w", 1)
+            output_handlers += [ChromeTracing(options, tracefile)]
+
+        except IOError as e:
+            print("cannot open %s: %s" % (options.tracefile, e), file=sys.stderr)
+
+    return Forwarder(options, output_handlers)
+
+
 ### Timing measurements.
 
 
@@ -2620,57 +2675,7 @@ if Options.quiet:
 
 # Determine output handlers to use.
 
-output_handlers = []
-
-if Options.verbose:
-    output_handlers += [Verbose(Options, )]
-
-elif Options.brief:
-    output_handlers += [Brief(Options, )]
-
-else:
-    if sys.stdout.isatty():
-        if Options.show_all:
-            output_handlers += [Console(Options, )]
-        else:
-            output_handlers += [CompactConsole(Options, )]
-    else:
-        output_handlers += [Standard(Options, )]
-
-if Options.diagall:
-    output_handlers += [Diag(Options, True, None)]
-
-elif Options.diag:
-    output_handlers += [Diag(Options, False, None)]
-
-if Options.diagfile:
-    try:
-        diagfile = open(Options.diagfile, "w", 1)
-        output_handlers += [Diag(Options, Options.diagall, diagfile)]
-
-    except IOError as e:
-        print("cannot open %s: %s" % (Options.diagfile, e), file=sys.stderr)
-
-if Options.sphinx:
-    output_handlers += [SphinxOutput(Options)]
-
-if Options.xmlfile:
-    try:
-        xmlfile = open(Options.xmlfile, "w", 1)
-        output_handlers += [XMLReport(Options, xmlfile)]
-
-    except IOError as e:
-        print("cannot open %s: %s" % (Options.xmlfile, e), file=sys.stderr)
-
-if Options.tracefile:
-    try:
-        tracefile = open(Options.tracefile, "w", 1)
-        output_handlers += [ChromeTracing(Options, tracefile)]
-
-    except IOError as e:
-        print("cannot open %s: %s" % (Options.tracefile, e), file=sys.stderr)
-
-output_handler = Forwarder(Options, output_handlers)
+output_handler = create_output_handler(Options)
 
 # Determine Timer to use.
 
