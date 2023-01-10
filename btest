@@ -1162,8 +1162,8 @@ class Test(object):
             out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w", encoding="utf-8")
-        self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "w", encoding="utf-8")
-        self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "w", encoding="utf-8")
+        self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "a", encoding="utf-8")
+        self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "a", encoding="utf-8")
 
         for cmd in self.requires:
             (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
