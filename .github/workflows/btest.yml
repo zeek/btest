@@ -14,6 +14,13 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Set up git config
+        # Set autocrlf mode to false so that actions/checkout doesn't
+        # modify the line endings in all of the files (mostly in the
+        # test Baselines) to be \r\n on Windows.
+        run: |
+            git config --global core.autocrlf false
+            git config --global core.eol lf
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -49,4 +56,4 @@ jobs:
             make
       - name: "Test building package"
         run: |
-          python3 setup.py sdist bdist_wheel
+            python3 setup.py sdist bdist_wheel
