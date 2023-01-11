@@ -2632,10 +2632,9 @@ elif Options.brief:
 
 else:
     if sys.stdout.isatty():
-        if Options.show_all:
-            output_handlers += [Console(Options, )]
-        else:
-            output_handlers += [CompactConsole(Options, )]
+        out = CompactConsole(Options, )
+        out.show_all = True
+        output_handlers += [out]
     else:
         output_handlers += [Standard(Options, )]
 
