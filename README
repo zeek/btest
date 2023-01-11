@@ -30,8 +30,9 @@ BTest has the following prerequisites:
 - Python version >= 3.7 (older versions may work, but are not
   well-tested).
 
-- Bash (note that on FreeBSD and Alpine Linux, bash is not installed
-  by default).
+- Bash. Note that on FreeBSD and Alpine Linux, bash is not installed by
+  default. This is also required on Windows, in the form of Git's msys2, Cygwin,
+  etc.
 
 BTest has the following optional prerequisites to enable additional
 functionality:
@@ -40,6 +41,20 @@ functionality:
 
 - perf (Linux only).  Note that on Debian/Ubuntu, you also need to install
   the "linux-tools" package.
+
+Windows Caveats
+---------------
+
+When running BTest on Windows, you must have a bash shell installed of some
+sort. This can be from WSL, Cygwin, msys2, Git, or any number of other methods,
+but ``bash.exe`` must be available. BTest will check for its existence at
+startup and exit if it is not available.
+
+A minor change must be made to any configuration value that is a path list. For
+example, if you are setting the ``PATH`` environment variable from your
+btest.cfg. In these cases, you should use ``$(pathsep)s`` in the configuration
+instead of bare ``:`` or ``;`` values to separate the paths. This ensures that
+both POSIX and Windows systems handle the path lists correctly.
 
 Download and Installation
 =========================

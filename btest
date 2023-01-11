@@ -2788,7 +2788,22 @@ if __name__ == '__main__':
     pyver_min = sys.version_info[1]
 
     if sys.platform == 'win32':
+        # The "fork" method doesn't exist at all on Windows, so force over to
+        # "spawn" instead.
         mp.set_start_method('spawn')
+
+        # Double-check that `bash.exe` exists and is executable, since it's
+        # required for pretty much anything here to work on Windows. Note we're
+        # doing this prior to parsing the config file because it's required for
+        # backtick-expansion there as well.
+        try:
+            subprocess.call(['bash.exe', '--version'],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
+        except FileNotFoundError:
+            print("error: bash.exe is required to be in your PATH to run BTest.", file=sys.stderr)
+            sys.exit(1)
+
     elif (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
         mp.set_start_method('fork')
 
