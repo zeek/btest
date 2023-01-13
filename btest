@@ -2235,6 +2235,10 @@ def create_output_handler(options):
             print("cannot open %s: %s" % (options.diagfile, e), file=sys.stderr)
 
     if options.sphinx:
+        if sys.platform == 'win32':
+            print("Sphinx support is disabled on Windows", file=sys.stderr)
+            sys.exit(1)
+
         output_handlers += [SphinxOutput(options)]
 
     if options.xmlfile:

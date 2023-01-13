@@ -36,7 +36,7 @@ BTest has the following prerequisites:
 BTest has the following optional prerequisites to enable additional
 functionality:
 
-- Sphinx.
+- Sphinx. Sphinx functionality is currently disabled on Windows.
 
 - perf (Linux only).  Note that on Debian/Ubuntu, you also need to install
   the "linux-tools" package.
