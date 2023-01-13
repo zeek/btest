@@ -131,7 +131,11 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Split string with baseline directories into array.
-IFS=':' read -ra baseline_dirs <<<"$TEST_BASELINE"
+if [ "$(uname -s | cut -c 1-5)" == "MINGW" ]; then
+    IFS=';' read -ra baseline_dirs <<<"$TEST_BASELINE"
+else
+    IFS=':' read -ra baseline_dirs <<<"$TEST_BASELINE"
+fi
 
 input="$1"
 # shellcheck disable=SC2001
@@ -221,7 +225,7 @@ if [ -n "$baseline" ]; then
         if is_binary_mode; then
             diff -s "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
         else
-            diff -au "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
+            diff -au --strip-trailing-cr "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
         fi
         result=$?
     fi

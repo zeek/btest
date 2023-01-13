@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+case "$OSTYPE" in
+    msys*)
+        exit 0
+        ;;
+    cygwin*)
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac

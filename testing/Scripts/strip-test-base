@@ -3,4 +3,13 @@
 
 dir=$(dirname "$0")
 testbase=$(cd "$dir/.." && pwd)
+SCRIPTS="$(dirname -- "${BASH_SOURCE[0]}")"
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2157
+if [ ${SCRIPTS}/is-windows ]; then
+    # shellcheck disable=SC2001
+    testbase=$(echo "${testbase}" | sed 's#/\([a-zA-Z]\)/\(.*\)#\u\1:/\2#')
+fi
+
 sed "s#${testbase}#<...>#g"

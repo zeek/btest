@@ -1,3 +1,91 @@
+0.72-48 | 2023-01-13 15:53:55 -0700
+
+  * Add Windows Caveats to README, add bash.exe check at startup (Tim Wojtulewicz)
+
+  * Add tests.environment-windows btest (Tim Wojtulewicz)
+
+    The original tests.environment btest doesn't work on Windows due to some
+    path differences in the output. This adds a new test that does the same
+    things except does some additional conversions in the test script itself
+    to remove those differences.
+
+  * Open .stdout and .stderr in append mode (Tim Wojtulewicz)
+
+    This fixes a problem on Windows where multiple TEST-EXEC statements in a
+    test could cause those files to be overwritten by subsequent TEST-EXECs,
+    causing failures.
+
+  * Fix tests.multiple-baseline-dirs btest to use pathsep (Tim Wojtulewicz)
+
+  * Fix strip-test-base script to handle Windows paths correctly (Tim Wojtulewicz)
+
+  * Fix diff-remove-abspath to handle Windows drive letters (Tim Wojtulewicz)
+
+  * Add testing script to check for Windows, use it to disable some tests (Tim Wojtulewicz)
+
+  * Return error if trying to use Sphinx features on Windows (Tim Wojtulewicz)
+
+  * Force output to use unix-style line endings for consistency (Tim Wojtulewicz)
+
+  * Use binascii.crc32 for computing hashes for TEST-SERIALIZE commands (Tim Wojtulewicz)
+
+    Windows has some issue where `hash()` returns different values for the
+    same string in the different child processes. crc32() returns the same
+    values in each.
+
+  * Rework how test processes are called on Windows (Tim Wojtulewicz)
+
+    This changes how runSubprocess works on Windows to insert all of the
+    calls within a temporary bash script. This ensures that the entire
+    environment is available when running the processes, which doesn't
+    work when simply calling subprocess.check_call().
+
+  * Fix an error when attempting to delete the tmp dirs on Windows (Tim Wojtulewicz)
+
+  * Rebuild globals() table in child processes on Windows (Tim Wojtulewicz)
+
+    Using the 'spawn' method for multiprocessing causes the global
+    state to get lost when moving from the parent into the child
+    processes. Rebuilding it by looping over a subset and reinserting
+    them into globals() ensures that they exist.
+
+  * Move option parsing to a method (Tim Wojtulewicz)
+
+  * Use named pipes on Windows since AF_UNIX is not supported (Tim Wojtulewicz)
+
+  * Fix running tests with dot-notation for their name (Tim Wojtulewicz)
+
+  * Add method for normalizing paths on both Windows and POSIX (Tim Wojtulewicz)
+
+  * Avoid isinstance() to determine whether a cmd is a CmdSeq (Christian Kreibich, Corelight)
+
+    As per the comment, some serializer/unserializers don't produce the identical
+    type when unserializing, failing isinstance().
+
+  * Add -s/--set command-line argument for overriding config defaults (Tim Wojtulewicz)
+
+  * Switch to https://pypi.org/project/multiprocess/ on Windows (Tim Wojtulewicz)
+
+    The reason for this switch is primarily because the stock
+    multiprocessing library has very poor support for pickling of
+    non-primitive types on Windows.
+
+  * Move outputhandler creation to separate function (Tim Wojtulewicz)
+
+  * Rename WSL bash so it doesn't override Git bash for Windows CI builds (Tim Wojtulewicz)
+
+  * Set git's autocrlf option to false when running tests on Github (Tim Wojtulewicz)
+
+    If this option isn't here, the Windows runners will reset all of the
+    line endings when it clones to \r\n. This breaks a few of the tests
+    because the comparison will have the wrong line endings.
+
+  * Bump required python version to 3.7, update github workflows (Tim Wojtulewicz)
+
+    This also adds a new workflow to test setup.py to ensure that the
+    package installs correctly and you can run the internal tests against
+    the installed version.
+
 0.72-20 | 2022-12-13 09:12:13 +0100
 
   * Add back CI run for Python 3.5. (Benjamin Bannier, Corelight)

@@ -1,0 +1,7 @@
+# %TEST-EXEC: btest %INPUT
+# %TEST-EXEC: btest -s override=test %INPUT
+# %TEST-EXEC: btest --set=override=test2 %INPUT
+# %TEST-EXEC: btest -s override=equals=ok %INPUT
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: echo ${ENV5} >>../../output
