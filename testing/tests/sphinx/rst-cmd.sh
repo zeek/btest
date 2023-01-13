@@ -1,3 +1,4 @@
+# %TEST-REQUIRES: ! $SCRIPTS/is-windows
 # %TEST-EXEC: bash %INPUT
 
 %TEST-START-FILE file.txt

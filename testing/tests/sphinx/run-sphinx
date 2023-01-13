@@ -1,4 +1,5 @@
 # %TEST-REQUIRES: which sphinx-build
+# %TEST-REQUIRES: ! ${SCRIPTS}/is-windows
 #
 # %TEST-EXEC: cp -r %DIR/../../../examples/sphinx/* .
 # %TEST-EXEC: make clean && make text
