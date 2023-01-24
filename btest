@@ -1571,7 +1571,7 @@ class OutputHandler:
         """Called just before a test begins."""
 
     def testCommand(self, test, cmdline):
-        """Called just before a command line is exected for a trace."""
+        """Called just before a command line is executed for a trace."""
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
@@ -1621,7 +1621,7 @@ class Forwarder(OutputHandler):
             h.testStart(test)
 
     def testCommand(self, test, cmdline):
-        """Called just before a command line is exected for a trace."""
+        """Called just before a command line is executed for a trace."""
         for h in self._handlers:
             h.testCommand(test, cmdline)
 
@@ -1663,6 +1663,12 @@ class Forwarder(OutputHandler):
 
 
 class Standard(OutputHandler):
+    """
+    The default output handler, writing plain lines with test outcome.
+
+    Each test result is reported. For parallelized operation, the output
+    includes the thread number processing the test.
+    """
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, "%s ..." % test.displayName(), nl=False)
