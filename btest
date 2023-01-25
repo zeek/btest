@@ -1528,7 +1528,11 @@ class OutputHandler:
         a form suitable to prefix output with. With a single thread, returns
         the empty string."""
         if self.options().threads > 1:
-            return "[%s]" % mp.current_process().name
+            # TestManager.run() defines the process names to "#<n>".  Align the
+            # prefixes by using enough space for the number of threads
+            # requested, plus 1 for "#".
+            pat = "[%%+%ds]" % (len(str(self.options().threads)) + 1)
+            return pat % mp.current_process().name
         else:
             return ""
 
