@@ -1727,9 +1727,8 @@ class Console(OutputHandler):
     Normal = "\033[0m"
 
     def __init__(self, options):
-        OutputHandler.__init__(self, options)
+        OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
         self.show_all = True
-        self.stdout = reopen_std_file(sys.__stdout__)
 
     def testStart(self, test):
         msg = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
@@ -1765,18 +1764,18 @@ class Console(OutputHandler):
         self._consoleOutput(test, msg, self.show_all)
 
     def finished(self):
-        self.stdout.flush()
+        self._outfile.flush()
 
     def _consoleOutput(self, test, msg, sticky):
         self._consoleWrite(test, msg, sticky)
 
     def _consoleWrite(self, test, msg, sticky):
-        self.stdout.write(msg.strip() + " ")
+        self._outfile.write(msg.strip() + " ")
 
         if sticky:
-            self.stdout.write("\n")
+            self._outfile.write("\n")
 
-        self.stdout.flush()
+        self._outfile.flush()
 
 
 class CompactConsole(Console):
@@ -1795,17 +1794,16 @@ class CompactConsole(Console):
     def __init__(self, options):
         Console.__init__(self, options)
         self.show_all = False
-        self.stdout = reopen_std_file(sys.__stdout__)
 
         def cleanup():
-            self.stdout.write(self.CursorOn)
+            self._outfile.write(self.CursorOn)
 
         atexit.register(cleanup)
 
     def testStart(self, test):
         test.console_last_line = None
         self._consoleOutput(test, "", False)
-        self.stdout.write(self.CursorOff)
+        self._outfile.write(self.CursorOff)
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
@@ -1816,10 +1814,10 @@ class CompactConsole(Console):
         test.console_last_line = None
 
     def finished(self):
-        self.stdout.write(self.EraseToEndOfLine)
-        self.stdout.write("\r")
-        self.stdout.write(self.CursorOn)
-        self.stdout.flush()
+        self._outfile.write(self.EraseToEndOfLine)
+        self._outfile.write("\r")
+        self._outfile.write(self.CursorOn)
+        self._outfile.flush()
 
     def _consoleOutput(self, test, msg, sticky):
         line = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
@@ -1831,20 +1829,20 @@ class CompactConsole(Console):
         self._consoleWrite(test, line, sticky)
 
     def _consoleAugment(self, test, msg):
-        self.stdout.write(self.EraseToEndOfLine)
-        self.stdout.write(" %s" % msg.strip())
-        self.stdout.write("\r%s" % test.console_last_line)
-        self.stdout.flush()
+        self._outfile.write(self.EraseToEndOfLine)
+        self._outfile.write(" %s" % msg.strip())
+        self._outfile.write("\r%s" % test.console_last_line)
+        self._outfile.flush()
 
     def _consoleWrite(self, test, msg, sticky):
-        self.stdout.write(chr(27) + '[2K')
-        self.stdout.write("\r%s" % msg.strip())
+        self._outfile.write(chr(27) + '[2K')
+        self._outfile.write("\r%s" % msg.strip())
 
         if sticky:
-            self.stdout.write("\n")
+            self._outfile.write("\n")
             test.console_last_line = None
 
-        self.stdout.flush()
+        self._outfile.flush()
 
 
 class Brief(OutputHandler):
