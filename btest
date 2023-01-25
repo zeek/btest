@@ -1496,7 +1496,7 @@ class Test(object):
 
 
 class OutputHandler:
-    def __init__(self, options):
+    def __init__(self, options, outfile=sys.__stderr__):
         """Base class for reporting progress and results to user. We derive
         several classes from this one, with the one being used depending on
         which output the users wants.
@@ -1507,9 +1507,12 @@ class OutputHandler:
         concurrently.
 
         options: An optparser with the global options.
+
+        outfile: The destination file object to write output to.
         """
         self._buffered_output = {}
         self._options = options
+        self._outfile = outfile
 
     def prepare(self, mgr):
         """The TestManager calls this with itself as an argument just before
@@ -1531,7 +1534,7 @@ class OutputHandler:
 
     def _output(self, msg, nl=True, file=None):
         if not file:
-            file = reopen_std_file(sys.__stderr__)
+            file = reopen_std_file(self._outfile)
 
         if nl:
             print(msg, file=file)
