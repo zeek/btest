@@ -55,7 +55,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "0.72-48"  # Automatically filled in.
+VERSION = "0.72-55"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -1496,7 +1496,7 @@ class Test(object):
 
 
 class OutputHandler:
-    def __init__(self, options):
+    def __init__(self, options, outfile=sys.__stderr__):
         """Base class for reporting progress and results to user. We derive
         several classes from this one, with the one being used depending on
         which output the users wants.
@@ -1507,9 +1507,12 @@ class OutputHandler:
         concurrently.
 
         options: An optparser with the global options.
+
+        outfile: The destination file object to write output to.
         """
         self._buffered_output = {}
         self._options = options
+        self._outfile = outfile
 
     def prepare(self, mgr):
         """The TestManager calls this with itself as an argument just before
@@ -1525,13 +1528,17 @@ class OutputHandler:
         a form suitable to prefix output with. With a single thread, returns
         the empty string."""
         if self.options().threads > 1:
-            return "[%s]" % mp.current_process().name
+            # TestManager.run() defines the process names to "#<n>".  Align the
+            # prefixes by using enough space for the number of threads
+            # requested, plus 1 for "#".
+            pat = "[%%+%ds]" % (len(str(self.options().threads)) + 1)
+            return pat % mp.current_process().name
         else:
             return ""
 
     def _output(self, msg, nl=True, file=None):
         if not file:
-            file = reopen_std_file(sys.__stderr__)
+            file = reopen_std_file(self._outfile)
 
         if nl:
             print(msg, file=file)
@@ -1571,7 +1578,7 @@ class OutputHandler:
         """Called just before a test begins."""
 
     def testCommand(self, test, cmdline):
-        """Called just before a command line is exected for a trace."""
+        """Called just before a command line is executed for a trace."""
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
@@ -1621,7 +1628,7 @@ class Forwarder(OutputHandler):
             h.testStart(test)
 
     def testCommand(self, test, cmdline):
-        """Called just before a command line is exected for a trace."""
+        """Called just before a command line is executed for a trace."""
         for h in self._handlers:
             h.testCommand(test, cmdline)
 
@@ -1663,6 +1670,12 @@ class Forwarder(OutputHandler):
 
 
 class Standard(OutputHandler):
+    """
+    The default output handler, writing plain lines with test outcome.
+
+    Each test result is reported. For parallelized operation, the output
+    includes the thread number processing the test.
+    """
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, "%s ..." % test.displayName(), nl=False)
@@ -1702,7 +1715,7 @@ class Standard(OutputHandler):
 
 class Console(OutputHandler):
     """
-    Output handler that writes colorful progress report to the console.
+    Output handler that writes colorful progress report to stdout.
 
     This handler works well in settings that can handle coloring but not
     cursor placement commands (for example because moving to the beginning of
@@ -1718,18 +1731,16 @@ class Console(OutputHandler):
     Normal = "\033[0m"
 
     def __init__(self, options):
-        OutputHandler.__init__(self, options)
-        self.show_all = True
-        self.stdout = reopen_std_file(sys.__stdout__)
+        OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
 
     def testStart(self, test):
         msg = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
-        self._consoleOutput(test, msg, False)
+        self.output(test, msg, nl=False)
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
         msg = self.DarkGray + "(%s)" % msg + self.Normal
-        self._consoleOutput(test, msg, True)
+        self.output(test, msg)
 
     def testSucceeded(self, test, msg):
         if test.known_failure:
@@ -1737,7 +1748,7 @@ class Console(OutputHandler):
         else:
             msg = self.Green + msg + self.Normal
 
-        self._consoleOutput(test, msg, self.show_all)
+        self.output(test, msg)
 
     def testFailed(self, test, msg):
         if test.known_failure:
@@ -1745,35 +1756,21 @@ class Console(OutputHandler):
         else:
             msg = self.Red + msg + self.Normal
 
-        self._consoleOutput(test, msg, True)
+        self.output(test, msg)
 
     def testUnstable(self, test, msg):
         msg = self.Yellow + msg + self.Normal
-        self._consoleOutput(test, msg, True)
+        self.output(test, msg)
 
     def testSkipped(self, test, msg):
         msg = self.Gray + msg + self.Normal
-        self._consoleOutput(test, msg, self.show_all)
-
-    def finished(self):
-        self.stdout.flush()
-
-    def _consoleOutput(self, test, msg, sticky):
-        self._consoleWrite(test, msg, sticky)
-
-    def _consoleWrite(self, test, msg, sticky):
-        self.stdout.write(msg.strip() + " ")
-
-        if sticky:
-            self.stdout.write("\n")
-
-        self.stdout.flush()
+        self.output(test, msg)
 
 
 class CompactConsole(Console):
     """
     Output handler that writes compact, colorful progress report to
-    the console while also keeping the output compact by keeping
+    stdout while also keeping the output compact by keeping
     output only for failing tests.
 
     This handler adds cursor mods and navigation to the coloring provided by
@@ -1785,32 +1782,54 @@ class CompactConsole(Console):
 
     def __init__(self, options):
         Console.__init__(self, options)
-        self.show_all = False
-        self.stdout = reopen_std_file(sys.__stdout__)
 
         def cleanup():
-            self.stdout.write(self.CursorOn)
+            self._outfile.write(self.CursorOn)
 
         atexit.register(cleanup)
 
     def testStart(self, test):
         test.console_last_line = None
         self._consoleOutput(test, "", False)
-        self.stdout.write(self.CursorOff)
+        self._outfile.write(self.CursorOff)
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
         msg = " " + self.DarkGray + "(%s)" % msg + self.Normal
         self._consoleAugment(test, msg)
 
+    def testSucceeded(self, test, msg):
+        if test.known_failure:
+            msg = self.Yellow + msg + self.Normal
+        else:
+            msg = self.Green + msg + self.Normal
+
+        self._consoleOutput(test, msg, False)
+
+    def testFailed(self, test, msg):
+        if test.known_failure:
+            msg = self.Yellow + msg + self.Normal
+        else:
+            msg = self.Red + msg + self.Normal
+
+        self._consoleOutput(test, msg, True)
+
     def testFinished(self, test, msg):
         test.console_last_line = None
 
+    def testUnstable(self, test, msg):
+        msg = self.Yellow + msg + self.Normal
+        self._consoleOutput(test, msg, True)
+
+    def testSkipped(self, test, msg):
+        msg = self.Gray + msg + self.Normal
+        self._consoleOutput(test, msg, False)
+
     def finished(self):
-        self.stdout.write(self.EraseToEndOfLine)
-        self.stdout.write("\r")
-        self.stdout.write(self.CursorOn)
-        self.stdout.flush()
+        self._outfile.write(self.EraseToEndOfLine)
+        self._outfile.write("\r")
+        self._outfile.write(self.CursorOn)
+        self._outfile.flush()
 
     def _consoleOutput(self, test, msg, sticky):
         line = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
@@ -1822,20 +1841,20 @@ class CompactConsole(Console):
         self._consoleWrite(test, line, sticky)
 
     def _consoleAugment(self, test, msg):
-        self.stdout.write(self.EraseToEndOfLine)
-        self.stdout.write(" %s" % msg.strip())
-        self.stdout.write("\r%s" % test.console_last_line)
-        self.stdout.flush()
+        self._outfile.write(self.EraseToEndOfLine)
+        self._outfile.write(" %s" % msg.strip())
+        self._outfile.write("\r%s" % test.console_last_line)
+        self._outfile.flush()
 
     def _consoleWrite(self, test, msg, sticky):
-        self.stdout.write(chr(27) + '[2K')
-        self.stdout.write("\r%s" % msg.strip())
+        self._outfile.write(chr(27) + '[2K')
+        self._outfile.write("\r%s" % msg.strip())
 
         if sticky:
-            self.stdout.write("\n")
+            self._outfile.write("\n")
             test.console_last_line = None
 
-        self.stdout.flush()
+        self._outfile.flush()
 
 
 class Brief(OutputHandler):

@@ -1,10 +1,14 @@
-# This is a wrapper for the "script" command, which has different
-# options depending on the OS.
+# This is a wrapper for the "script" command, which has different options
+# depending on the OS. "script" can have side-effects on the current terminal
+# when invoked, breaking some carriage returns. Closing its stdin seems to
+# prevent that.
 
-if ! script -q -c ls /dev/null >/dev/null 2>&1; then
-    # FreeBSD and macOS
-    script -q /dev/null $@
-else
-    # Linux
-    script -qfc "$@" /dev/null
-fi
+true | {
+    if ! script -q -c ls /dev/null >/dev/null 2>&1; then
+        # FreeBSD and macOS
+        script -q /dev/null $@
+    else
+        # Linux
+        script -qfc "$@" /dev/null
+    fi
+}

@@ -31,7 +31,7 @@ else:
 
 setup(
     name='btest',
-    version="0.72-48",  # Filled in automatically.
+    version="0.72.dev55",  # Filled in automatically.
     description='A powerful system testing framework',
     long_description='See https://github.com/zeek/btest',
     author='The Zeek Team',

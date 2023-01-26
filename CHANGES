@@ -1,3 +1,17 @@
+0.72-55 | 2023-01-25 16:06:26 -0800
+
+  * Whitespace-align the thread prefixes in output handlers (Christian Kreibich, Corelight)
+
+  * Prevent output garbling when running with "-A -j" (Christian Kreibich, Corelight)
+
+  * Switch Console and CompactConsole to using base class's output file member (Christian Kreibich, Corelight)
+
+  * Make OutputHandler's default output file a constructor argument (Christian Kreibich, Corelight)
+
+  * Prevent console.test from garbling output (Christian Kreibich, Corelight)
+
+  * Comment-only tweaks, no other change (Christian Kreibich, Corelight)
+
 0.72-48 | 2023-01-13 15:53:55 -0700
 
   * Add Windows Caveats to README, add bash.exe check at startup (Tim Wojtulewicz)
