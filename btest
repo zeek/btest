@@ -902,7 +902,7 @@ class Test(object):
     def setAlternative(self, alternative):
         self.alternative = alternative
 
-        # Parse the test's content.
+    # Parse the test's content.
     def parse(self, content, file):
         cmds = {}
         for line in content:
@@ -1362,7 +1362,8 @@ class Test(object):
 
         localfile = normalize_path_join(self.tmpdir, os.path.basename(cmd.file))
 
-        if filter_cmd and cmd.expect_success:  # Do not apply filter if we expect failure.
+        # Do not apply filter if we expect failure.
+        if filter_cmd and cmd.expect_success:
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
             filtered = normalize_path_join(self.tmpdir, "filtered-%s" % os.path.basename(localfile))
@@ -2225,19 +2226,19 @@ def create_output_handler(options):
     output_handlers = []
 
     if options.verbose:
-        output_handlers += [Verbose(options, )]
+        output_handlers += [Verbose(options)]
 
     elif options.brief:
-        output_handlers += [Brief(options, )]
+        output_handlers += [Brief(options)]
 
     else:
         if sys.stdout.isatty():
             if options.show_all:
-                output_handlers += [Console(options, )]
+                output_handlers += [Console(options)]
             else:
-                output_handlers += [CompactConsole(options, )]
+                output_handlers += [CompactConsole(options)]
         else:
-            output_handlers += [Standard(options, )]
+            output_handlers += [Standard(options)]
 
     if options.diagall:
         output_handlers += [Diag(options, True, None)]
@@ -2320,7 +2321,10 @@ class LinuxTimer(TimerBase):
         cargs = args
         ckwargs = kwargs
 
+        # fmt: off
         targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c"]
+        # fmt: on
+
         targs += [" ".join(cargs)]
         cargs = [targs]
         del ckwargs["shell"]
@@ -2970,20 +2974,19 @@ if __name__ == '__main__':
 
     # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
     # pylint: disable=bad-whitespace
-    # yapf: disable
+    # fmt: off
     RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
     RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
     RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
     RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
     RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
     RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
-    RE_IGNORE_ALTERNATIVE  = ("not-alternative",
-                              re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
+    RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
     RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
     RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
     RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
     RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
-    # yapf: enable
+    # fmt: on
     # pylint: enable=bad-whitespace
 
     Commands = (RE_EXEC, RE_REQUIRES, RE_GROUP, RE_SERIALIZE, RE_PORT, RE_INCLUDE_ALTERNATIVE,
