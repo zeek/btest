@@ -70,7 +70,7 @@ def parsePartial(rawtext, settings):
     return document.children
 
 
-class Test(object):
+class Test:
     def __init__(self):
         self.has_run = False
 
@@ -87,7 +87,7 @@ class Test(object):
 
         try:
             subprocess.check_call("btest -S %s" % self.path, shell=True)
-        except (OSError, IOError, subprocess.CalledProcessError) as e:
+        except (OSError, subprocess.CalledProcessError) as e:
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
             # it doesn't pickle.
@@ -112,7 +112,7 @@ class BTestTransform(Transform):
 
         try:
             rawtext = open("%s#%d" % (test.rst_output, part)).read()
-        except IOError as e:
+        except OSError as e:
             rawtext = ""
 
         settings = self.document.settings
@@ -183,7 +183,7 @@ class BTest(Directive):
 
 class BTestInclude(LiteralInclude):
     def __init__(self, *args, **kwargs):
-        super(BTestInclude, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def error(self, msg):
         self.state.document.settings.env.note_reread()
@@ -226,7 +226,7 @@ class BTestInclude(LiteralInclude):
         self.options["emphasize-lines"] = "1,1"
         self.options["style"] = "X"
 
-        retnode = super(BTestInclude, self).run()
+        retnode = super().run()
 
         os.chdir(BTestBase)
 
