@@ -44,7 +44,9 @@ def init(settings, reporter):
         raise SphinxError("error: btest_tests not set in config")
 
     if not os.path.exists(BTestBase):
-        raise SphinxError("error: btest_base directory '%s' does not exists" % BTestBase)
+        raise SphinxError(
+            "error: btest_base directory '%s' does not exists" % BTestBase
+        )
 
     joined = os.path.join(BTestBase, BTestTests)
 
@@ -96,7 +98,6 @@ class Test(object):
 
 
 class BTestTransform(Transform):
-
     default_priority = 800
 
     def apply(self):
@@ -149,6 +150,7 @@ class BTest(Directive):
 
         if not tag in Tests:
             import sys
+
             test = Test()
             test.tag = tag
             test.path = os.path.join(BTestTests, tag + ".btest")
@@ -199,7 +201,9 @@ class BTestInclude(LiteralInclude):
 
         document = self.state.document
         if not document.settings.file_insertion_enabled:
-            return [document.reporter.warning('File insertion disabled', line=self.lineno)]
+            return [
+                document.reporter.warning("File insertion disabled", line=self.lineno)
+            ]
         env = document.settings.env
 
         expanded_arg = os.path.expandvars(self.arguments[0])
@@ -234,7 +238,7 @@ class BTestInclude(LiteralInclude):
         if tag.startswith("_"):
             tag = tag[1:]
 
-        test_path = ("include-" + tag + ".btest")
+        test_path = "include-" + tag + ".btest"
 
         if BTestTests:
             test_path = os.path.join(BTestTests, test_path)
@@ -265,14 +269,14 @@ class BTestInclude(LiteralInclude):
         return retnode
 
 
-directives.register_directive('btest', BTest)
-directives.register_directive('btest-include', BTestInclude)
+directives.register_directive("btest", BTest)
+directives.register_directive("btest-include", BTestInclude)
 
 
 def setup(app):
     global App
     App = app
 
-    app.add_config_value('btest_base', None, 'env')
-    app.add_config_value('btest_tests', None, 'env')
-    app.add_config_value('btest_tmp', None, 'env')
+    app.add_config_value("btest_base", None, "env")
+    app.add_config_value("btest_tests", None, "env")
+    app.add_config_value("btest_tmp", None, "env")
