@@ -2,7 +2,8 @@
 #
 # Main test driver.
 #
-# pylint: disable=line-too-long,too-many-lines,invalid-name,missing-function-docstring,missing-class-docstring
+# pylint: disable=line-too-long,too-many-lines,invalid-name,missing-function-docstring,
+# pylint: disable=missing-class-docstring
 
 import atexit
 import binascii
@@ -10,7 +11,6 @@ import configparser
 import copy
 import fnmatch
 import glob
-import io
 import json
 import optparse
 import os
@@ -43,7 +43,8 @@ if sys.platform == "win32":
         print(
             "error: btest failed to import the 'multiprocess' library\n"
             "\n"
-            "This library is required for btest to function on Windows. It can be installed from pip like:\n"
+            "This library is required for btest to function on Windows. "
+            "It can be installed from pip like:\n"
             "\n"
             "    pip install multiprocess\n"
             "\n"
@@ -152,7 +153,7 @@ def platform():
 
 
 def validate_version_requirement(required: str, present: str):
-    """Helper function to validate that a `present` version is semantically newer or equal than a `required` version."""
+    """Validates that `present` version semantically satisfies `required` version."""
 
     def extract_version(v: str):
         """Helper function to extract version components from a string."""
@@ -697,7 +698,7 @@ class TestManager(mp_managers.SyncManager):
 
                     try:
                         sock.bind(("", next_port))
-                    except:
+                    except Exception:
                         self._ports.append(next_port)
                         continue
                     else:
@@ -1182,7 +1183,7 @@ class Test:
                 mkdir(subdir)
             try:
                 ffile = open(fname, "w", newline="\n")
-            except OSError as e:
+            except OSError:
                 error("cannot write test's additional file '%s'" % fname)
 
             for line in lines:
@@ -1382,7 +1383,8 @@ class Test:
 
         for d in self.baselines:
             try:
-                # Try removing the baseline directory. If it works, it's empty, i.e., no baseline was created.
+                # Try removing the baseline directory. If it works, it's empty,
+                # i.e., no baseline was created.
                 os.rmdir(d)
             except OSError:
                 pass
@@ -2738,7 +2740,10 @@ def parse_options():
         type="string",
         dest="diagfile",
         default="",
-        help="write diagnostic output for failed tests into file; if file exists, it is overwritten",
+        help=(
+            "write diagnostic output for failed tests into file; "
+            "if file exists, it is overwritten"
+        ),
     )
     optparser.add_option(
         "-v",
@@ -2822,7 +2827,10 @@ def parse_options():
         type="string",
         dest="xmlfile",
         default="",
-        help="write a report of test results in JUnit XML format to file; if file exists, it is overwritten",
+        help=(
+            "write a report of test results in JUnit XML format to file; "
+            "if file exists, it is overwritten"
+        ),
     )
     optparser.add_option(
         "-a",
@@ -2865,7 +2873,10 @@ def parse_options():
         "--show-all",
         action="store_true",
         default=False,
-        help="For console output, show one-liners for passing/skipped tests in addition to any failing ones",
+        help=(
+            "For console output, show one-liners for passing/skipped tests "
+            "in addition to any failing ones"
+        ),
     )
     optparser.add_option(
         "-z",
@@ -2904,7 +2915,10 @@ def parse_options():
         action="append",
         dest="defaults",
         default=[],
-        help="Override default key used in btest.cfg with another value. Can be specified multiple times.",
+        help=(
+            "Override default key used in btest.cfg with another value. "
+            "Can be specified multiple times."
+        ),
     )
 
     optparser.set_defaults(mode="TEST")
@@ -3109,17 +3123,17 @@ if __name__ == "__main__":
     # Commands as tuple (tag, regexp, more-than-one-is-ok, optional, group-main, group-add)
     # pylint: disable=bad-whitespace
     # fmt: off
-    RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1)
-    RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1)
-    RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1)
-    RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1)
-    RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1)
-    RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1)
-    RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1)
-    RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1)
-    RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
-    RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
-    RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
+    RE_EXEC                = ("exec",            re.compile(CommandPrefix + "EXEC(-FAIL)?: *(.*)"), True, False, 2, 1) # noqa
+    RE_REQUIRES            = ("requires",        re.compile(CommandPrefix + "REQUIRES: *(.*)"), True, True, 1, -1) # noqa
+    RE_GROUP               = ("group",           re.compile(CommandPrefix + "GROUP: *(.*)"), True, True, 1, -1) # noqa
+    RE_SERIALIZE           = ("serialize",       re.compile(CommandPrefix + "SERIALIZE: *(.*)"), False, True, 1, -1) # noqa
+    RE_PORT                = ("port",            re.compile(CommandPrefix + "PORT: *(.*)"), True, True, 1, -1) # noqa
+    RE_INCLUDE_ALTERNATIVE = ("alternative",     re.compile(CommandPrefix + "ALTERNATIVE: *(.*)"), True, True, 1, -1) # noqa
+    RE_IGNORE_ALTERNATIVE  = ("not-alternative", re.compile(CommandPrefix + "NOT-ALTERNATIVE: *(.*)"), True, True, 1, -1) # noqa
+    RE_COPY_FILE           = ("copy-file",       re.compile(CommandPrefix + "COPY-FILE: *(.*)"), True, True, 1, -1) # noqa
+    RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1) # noqa
+    RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1) # noqa
+    RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1) # noqa
     # fmt: on
     # pylint: enable=bad-whitespace
 

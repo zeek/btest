@@ -1,13 +1,12 @@
 import os
 import os.path
-import tempfile
 import subprocess
 import re
 
-from docutils import nodes, statemachine, utils
-from docutils.parsers.rst import directives, Directive, DirectiveError, Parser
-from docutils.transforms import TransformError, Transform
-from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
+from docutils import nodes, utils
+from docutils.parsers.rst import directives, Directive, Parser
+from docutils.transforms import Transform
+from sphinx.util.console import darkgreen, red
 from sphinx.errors import SphinxError
 from sphinx.directives.code import LiteralInclude
 from sphinx.util import logging
@@ -106,13 +105,13 @@ class BTestTransform(Transform):
 
         os.chdir(BTestBase)
 
-        if not test.tag in BTestTransform._run:
+        if test.tag not in BTestTransform._run:
             test.run()
             BTestTransform._run.add(test.tag)
 
         try:
             rawtext = open("%s#%d" % (test.rst_output, part)).read()
-        except OSError as e:
+        except OSError:
             rawtext = ""
 
         settings = self.document.settings
@@ -148,9 +147,7 @@ class BTest(Directive):
 
         tag = self.arguments[0]
 
-        if not tag in Tests:
-            import sys
-
+        if tag not in Tests:
             test = Test()
             test.tag = tag
             test.path = os.path.join(BTestTests, tag + ".btest")
@@ -218,7 +215,8 @@ class BTestInclude(LiteralInclude):
         if ext in ExtMappings:
             self.options["language"] = ExtMappings[ext]
         else:
-            # Note that we always need to set a language, otherwise the lineos/emphasis don't seem to work.
+            # Note that we always need to set a language, otherwise the
+            # linenos/emphasis don't seem to work.
             self.options["language"] = "none"
 
         self.options["linenos"] = True

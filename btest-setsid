@@ -5,7 +5,7 @@ import sys
 
 try:
     os.setsid()
-except:
+except Exception:
     pass
 
 prog = sys.argv[1]
