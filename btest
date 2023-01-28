@@ -68,8 +68,8 @@ except KeyError:
 
 
 def normalize_path(path):
-    """Ensures that paths on Windows convert from C:\path to C:/path, to make
-    path handling easier in lots of other places. On non-Windows platforms
+    """Ensures that paths on Windows convert backslashes to forward slashes, to
+    make path handling easier in lots of other places. On non-Windows platforms
     this is a no-op beyond converting things to absolute paths."""
     os_path = os.path.abspath(path)
     windows_path = pathlib.PureWindowsPath(os_path)
@@ -225,7 +225,7 @@ def _build_win_subprocess_cmd_script(cmd, tmpdir=None):
     tf = tempfile.NamedTemporaryFile(
         mode="w", encoding="utf-8", suffix=".sh", dir=tmpdir, delete=True
     )
-    fcontents = "#!/usr/bin/env bash\n%s\n" % cmd
+    fcontents = "#!/usr/bin/env bash\n%s\n" % (cmd, )
     tf.write(fcontents)
     tf.flush()
 
