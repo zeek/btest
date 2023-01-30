@@ -107,7 +107,7 @@ def output(msg, nl=True, file=None):
 
 
 def warning(msg):
-    print("warning: %s" % msg, file=sys.stderr)
+    print(f"warning: {msg}", file=sys.stderr)
 
 
 def error(msg):
@@ -124,7 +124,7 @@ def mkdir(folder):
 
     else:
         if not os.path.isdir(folder):
-            error("path %s exists but is not a directory" % folder)
+            error(f"path {folder} exists but is not a directory")
 
 
 def which(cmd):
@@ -970,8 +970,7 @@ class Test:
             if not optional and tag not in cmds:
                 if tag == "exec":
                     error(
-                        "%s: mandatory keyword '@TEST-EXEC' or '@TEST-EXEC-FAIL' is missing."
-                        % file
+                        f"{file}: mandatory keyword '@TEST-EXEC' or '@TEST-EXEC-FAIL' is missing."
                     )
                 else:
                     error(f"{file}: mandatory {tag} command not found.")
@@ -1101,8 +1100,7 @@ class Test:
     def mergePart(self, part):
         if self.cloned or part.cloned:
             error(
-                "cannot use @TEST-START-NEXT with tests split across parts (%s)"
-                % self.basename
+                f"cannot use @TEST-START-NEXT with tests split across parts ({self.basename})"
             )
 
         self.serialize += part.serialize
@@ -1184,7 +1182,7 @@ class Test:
             try:
                 ffile = open(fname, "w", newline="\n")
             except OSError:
-                error("cannot write test's additional file '%s'" % fname)
+                error(f"cannot write test's additional file '{fname}'")
 
             for line in lines:
                 ffile.write(line)
@@ -1451,9 +1449,7 @@ class Test:
         cmdline = RE_DIR.sub(self.dir, cmdline)
 
         print(
-            "{} (expect {})".format(
-                cmdline, ("failure", "success")[cmd.expect_success]
-            ),
+            f"{cmdline}: (expect {'success' if cmd.expect_success else 'failure'})",
             file=self.log,
         )
 
