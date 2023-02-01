@@ -1,3 +1,16 @@
+0.72-71 | 2023-02-01 16:07:09 -0700
+
+  * Fix test cloning bug that caused "subtests" to run without numeric suffix (Christian Kreibich, Corelight)
+
+    When running with retries, failing tests created via @TEST-START-NEXT were
+    cloned for retry in a way that lost their numeric suffix, which could cause
+    btest to consult the wrong baselines.
+
+  * Add testcase for retried subtests (Christian Kreibich, Corelight)
+
+    This highlights a bug in which a subtest (via @TEST-START-NEXT) other than the
+    first always gets retried as the first, but with the wrong baseline.
+
 0.72-68 | 2023-01-31 18:29:53 -0800
 
   * Automated code formatting and modernization (Christian Kreibich, Corelight)

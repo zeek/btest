@@ -57,7 +57,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "0.72-68"  # Automatically filled in.
+VERSION = "0.72-71"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -1069,11 +1069,12 @@ class Test:
         clone = self.__class__("")
         clone.number = self.number
         clone.basename = self.basename
-        clone.name = self.basename
 
         if increment:
             clone.number = self.number + 1
             clone.name = "%s-%d" % (self.basename, clone.number)
+        elif self.name:
+            clone.name = self.name
 
         clone.requires = self.requires
         clone.reruns = self.reruns
