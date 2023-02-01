@@ -1,3 +1,20 @@
+0.72-68 | 2023-01-31 18:29:53 -0800
+
+  * Automated code formatting and modernization (Christian Kreibich, Corelight)
+
+    - Final touches on top of automated reformatting.
+    - setup.cfg/pre-commit-config: Add flake8 hook and config
+    - Minor tweaks in preparation for flake8
+    - Automatically update Python sources to use python-3.7 syntax
+    - Minor tweaks to clue in pyupgrade
+    - Add `.git-blame-ignore-revs` file.
+    - Reformat Python code with Black.
+    - Minor Python tweaks in anticipation of reformatting
+    - Minor indentation tweak in pre-commit config
+    - Modernize action versions in pre-commit workflow
+    - Don't ignore the sphinx folder, it has revision-controlled content
+    - Remove unused .travis.yml setup
+
 0.72-55 | 2023-01-25 16:06:26 -0800
 
   * Whitespace-align the thread prefixes in output handlers (Christian Kreibich, Corelight)

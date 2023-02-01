@@ -1,13 +1,12 @@
 import os
 import os.path
-import tempfile
 import subprocess
 import re
 
-from docutils import nodes, statemachine, utils
-from docutils.parsers.rst import directives, Directive, DirectiveError, Parser
-from docutils.transforms import TransformError, Transform
-from sphinx.util.console import bold, purple, darkgreen, red, term_width_line
+from docutils import nodes, utils
+from docutils.parsers.rst import directives, Directive, Parser
+from docutils.transforms import Transform
+from sphinx.util.console import darkgreen, red
 from sphinx.errors import SphinxError
 from sphinx.directives.code import LiteralInclude
 from sphinx.util import logging
@@ -44,7 +43,9 @@ def init(settings, reporter):
         raise SphinxError("error: btest_tests not set in config")
 
     if not os.path.exists(BTestBase):
-        raise SphinxError("error: btest_base directory '%s' does not exists" % BTestBase)
+        raise SphinxError(
+            "error: btest_base directory '%s' does not exists" % BTestBase
+        )
 
     joined = os.path.join(BTestBase, BTestTests)
 
@@ -68,7 +69,7 @@ def parsePartial(rawtext, settings):
     return document.children
 
 
-class Test(object):
+class Test:
     def __init__(self):
         self.has_run = False
 
@@ -85,7 +86,7 @@ class Test(object):
 
         try:
             subprocess.check_call("btest -S %s" % self.path, shell=True)
-        except (OSError, IOError, subprocess.CalledProcessError) as e:
+        except (OSError, subprocess.CalledProcessError) as e:
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
             # it doesn't pickle.
@@ -96,7 +97,6 @@ class Test(object):
 
 
 class BTestTransform(Transform):
-
     default_priority = 800
 
     def apply(self):
@@ -105,13 +105,13 @@ class BTestTransform(Transform):
 
         os.chdir(BTestBase)
 
-        if not test.tag in BTestTransform._run:
+        if test.tag not in BTestTransform._run:
             test.run()
             BTestTransform._run.add(test.tag)
 
         try:
             rawtext = open("%s#%d" % (test.rst_output, part)).read()
-        except IOError as e:
+        except OSError:
             rawtext = ""
 
         settings = self.document.settings
@@ -147,8 +147,7 @@ class BTest(Directive):
 
         tag = self.arguments[0]
 
-        if not tag in Tests:
-            import sys
+        if tag not in Tests:
             test = Test()
             test.tag = tag
             test.path = os.path.join(BTestTests, tag + ".btest")
@@ -181,7 +180,7 @@ class BTest(Directive):
 
 class BTestInclude(LiteralInclude):
     def __init__(self, *args, **kwargs):
-        super(BTestInclude, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def error(self, msg):
         self.state.document.settings.env.note_reread()
@@ -199,7 +198,9 @@ class BTestInclude(LiteralInclude):
 
         document = self.state.document
         if not document.settings.file_insertion_enabled:
-            return [document.reporter.warning('File insertion disabled', line=self.lineno)]
+            return [
+                document.reporter.warning("File insertion disabled", line=self.lineno)
+            ]
         env = document.settings.env
 
         expanded_arg = os.path.expandvars(self.arguments[0])
@@ -214,7 +215,8 @@ class BTestInclude(LiteralInclude):
         if ext in ExtMappings:
             self.options["language"] = ExtMappings[ext]
         else:
-            # Note that we always need to set a language, otherwise the lineos/emphasis don't seem to work.
+            # Note that we always need to set a language, otherwise the
+            # linenos/emphasis don't seem to work.
             self.options["language"] = "none"
 
         self.options["linenos"] = True
@@ -222,7 +224,7 @@ class BTestInclude(LiteralInclude):
         self.options["emphasize-lines"] = "1,1"
         self.options["style"] = "X"
 
-        retnode = super(BTestInclude, self).run()
+        retnode = super().run()
 
         os.chdir(BTestBase)
 
@@ -234,7 +236,7 @@ class BTestInclude(LiteralInclude):
         if tag.startswith("_"):
             tag = tag[1:]
 
-        test_path = ("include-" + tag + ".btest")
+        test_path = "include-" + tag + ".btest"
 
         if BTestTests:
             test_path = os.path.join(BTestTests, test_path)
@@ -265,14 +267,14 @@ class BTestInclude(LiteralInclude):
         return retnode
 
 
-directives.register_directive('btest', BTest)
-directives.register_directive('btest-include', BTestInclude)
+directives.register_directive("btest", BTest)
+directives.register_directive("btest-include", BTestInclude)
 
 
 def setup(app):
     global App
     App = app
 
-    app.add_config_value('btest_base', None, 'env')
-    app.add_config_value('btest_tests', None, 'env')
-    app.add_config_value('btest_tmp', None, 'env')
+    app.add_config_value("btest_base", None, "env")
+    app.add_config_value("btest_tests", None, "env")
+    app.add_config_value("btest_tmp", None, "env")

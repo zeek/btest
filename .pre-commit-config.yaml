@@ -10,9 +10,9 @@ repos:
 - repo: https://github.com/maxwinterstein/shfmt-py
   rev: v3.4.3.1
   hooks:
-    - id: shfmt
-      exclude: examples/t6.sh
-      args: ["-w", "-i", "4", "-ci"]
+  - id: shfmt
+    exclude: examples/t6.sh
+    args: ["-w", "-i", "4", "-ci"]
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.3.0
@@ -22,7 +22,20 @@ repos:
   - id: end-of-file-fixer
     exclude: ^testing/Baseline|examples/.*Baseline.*
 
-- repo: https://github.com/pre-commit/mirrors-yapf
-  rev: v0.32.0
+- repo: https://github.com/psf/black
+  rev: 23.1a1
   hooks:
-  - id: yapf
+  - id: black
+
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.3.1
+  hooks:
+  - id: pyupgrade
+    args: ["--py37-plus"]
+
+- repo: https://github.com/pycqa/flake8
+  rev: 5.0.4  # 6.0.0 requires Python 3.8
+  hooks:
+  - id: flake8
+
+exclude: examples/sphinx/conf.py
