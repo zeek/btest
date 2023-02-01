@@ -1,0 +1,40 @@
+# This verifies that retried TEST-START-NEXT "subtests" run correctly.
+#
+# The following test contains a failure in its third (and last) subtest,
+# so the following will retry it once:
+# %TEST-EXEC-FAIL: btest -z 1 test
+#
+# The first and second subtests do not fail, so no output should remain.
+# (This used to be a bug: btest always retried the first subtest.)
+# %TEST-EXEC-FAIL: test -d .tmp/test
+# %TEST-EXEC-FAIL: test -d .tmp/test-2
+# %TEST-EXEC: test -d .tmp/test-3
+#
+# The retry's .diag for the third subtest shows the failure -- canonify it:
+# %TEST-EXEC: cat .tmp/test-3/.diag | grep -v '^---' | grep -v '^+++' >diag
+# %TEST-EXEC: btest-diff diag
+#
+# The toplevel .stderr traces executed subtests and their outcome:
+# %TEST-EXEC: btest-diff .stderr
+
+%TEST-START-FILE Baseline/test/output
+aaa
+%TEST-END-FILE
+
+%TEST-START-FILE Baseline/test-2/output
+bbb
+%TEST-END-FILE
+
+%TEST-START-FILE Baseline/test-3/output
+ddd
+%TEST-END-FILE
+
+%TEST-START-FILE test
+@TEST-EXEC: cat %INPUT | grep -v @ >output
+@TEST-EXEC: btest-diff output
+aaa
+@TEST-START-NEXT
+bbb
+@TEST-START-NEXT
+ccc
+%TEST-END-FILE
