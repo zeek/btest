@@ -1069,11 +1069,12 @@ class Test:
         clone = self.__class__("")
         clone.number = self.number
         clone.basename = self.basename
-        clone.name = self.basename
 
         if increment:
             clone.number = self.number + 1
             clone.name = "%s-%d" % (self.basename, clone.number)
+        elif self.name:
+            clone.name = self.name
 
         clone.requires = self.requires
         clone.reruns = self.reruns
