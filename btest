@@ -1232,7 +1232,7 @@ class Test:
                 self.parseProgress()
                 time.sleep(0.1)
 
-        self.monitor = threading.Thread(target=monitor_cb)
+        self.monitor = threading.Thread(target=monitor_cb, daemon=True)
         self.monitor_quit = threading.Event()
         self.monitor.start()
 
