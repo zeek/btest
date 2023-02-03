@@ -1,0 +1,6 @@
+# %TEST-EXEC-FAIL: btest -d %INPUT 2>&1
+# %TEST-EXEC: btest-diff .stdout
+
+@TEST-EXEC: bash -c 'echo -e "Hey \xed\xee\xef!" >&2'
+@TEST-EXEC: bash -c 'echo -e "Whoa, what was that?" >&2'
+@TEST-EXEC: false
