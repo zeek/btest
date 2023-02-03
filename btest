@@ -1210,8 +1210,16 @@ class Test:
             out.close()
 
         self.log = open(os.path.join(self.tmpdir, ".log"), "w", encoding="utf-8")
-        self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "a", encoding="utf-8")
-        self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "a", encoding="utf-8")
+
+        # These file handles are given to child processes as stdout/stderr
+        # when executing CmdLine instances. In fact, just the underlying fd
+        # is used as stdout/stderr of the child (see subprocess.py).
+        # Therefore, we do neither control nor can we assume any encoding
+        # the child process may produce. Consequently, care has to be taken
+        # reading these files. So, while not strictly necessary, open them
+        # in binary mode for documentation purposes.
+        self.stdout = open(os.path.join(self.tmpdir, ".stdout"), "ab")
+        self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "ab")
 
         for cmd in self.requires:
             (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
@@ -2029,7 +2037,7 @@ class Diag(OutputHandler):
 
             if os.path.isfile(f):
                 self.output(test, "  % cat " + os.path.basename(f), True, self._file)
-                for line in open(f):
+                for line in open(f, encoding="utf-8", errors="backslashreplace"):
                     self.output(test, "  " + line.rstrip(), True, self._file)
                 self.output(test, "", True, self._file)
 
@@ -2125,7 +2133,9 @@ class SphinxOutput(OutputHandler):
 
             if os.path.isfile(f):
                 print("  % cat " + os.path.basename(f), file=out)
-                for line in open(f, newline="\n"):
+                for line in open(
+                    f, newline="\n", encoding="utf-8", errors="backslashreplace"
+                ):
                     print("   %s" % line.strip(), file=out)
                 print(file=out)
 
@@ -2194,7 +2204,9 @@ class XMLReport(OutputHandler):
 
             if os.path.isfile(f):
                 context += "  % cat " + os.path.basename(f) + "\n"
-                for line in open(f, newline="\n"):
+                for line in open(
+                    f, newline="\n", encoding="utf-8", errors="backslashreplace"
+                ):
                     context += "  " + line.strip() + "\n"
 
         return context
