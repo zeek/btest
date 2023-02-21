@@ -661,6 +661,14 @@ Running ``btest`` with ``--alternative=myalternative`` will now make
 the ``CFLAGS`` environment variable available to all commands
 executed.
 
+Prefixing the name of an environment variable with ``-`` in an alternative
+section removes the respective variable from the environment::
+
+    [environment-myalternative]
+    -CFLAGS=
+
+It is an error to provide a value when prefixing with ``-``.
+
 As a special case, one can override two specific environment
 variables---``BTEST_TEST_BASE`` and ``BTEST_BASELINE_DIR``---inside an
 alternative's environment section to have them not only be passed on

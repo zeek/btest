@@ -1530,9 +1530,17 @@ class Test:
         env["TEST_BASE"] = TestBase
 
         for key, val in addl.items():
-            # Convert val to string since otherwise os.environ (and our clone)
-            # trigger a TypeError upon insertion, and the caller may be unaware.
-            env[key] = str(val)
+            # Environment variables with a leading "-" are to be
+            # removed from the environment.
+            if key.startswith("-"):
+                try:
+                    env.pop(key[1:])
+                except KeyError:
+                    pass
+            else:
+                # Convert val to string since otherwise os.environ (and our clone)
+                # trigger a TypeError upon insertion, and the caller may be unaware.
+                env[key] = str(val)
 
         for idx, key in enumerate(sorted(self.ports)):
             env[key] = str(self.bound_ports[idx]) + "/tcp"
@@ -3108,6 +3116,11 @@ if __name__ == "__main__":
 
             try:
                 for name, value in Config.itemsNoDefaults("environment-%s" % tag):
+                    if name.startswith("-") and value.strip():
+                        error(
+                            f'expected empty value for "{name}" in section environment-{tag}'
+                        )
+
                     a.envs[name] = value
 
             except configparser.NoSectionError:
