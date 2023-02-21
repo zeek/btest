@@ -1,3 +1,28 @@
+1.0-4 | 2023-02-21 10:20:20 +0100
+
+  * stderr/stdout: Do not assume well-formed UTF-8 output (Arne Welzel, Corelight)
+
+    The previous code opened stdout/stderr providing an explicit encoding="utf-8"
+    argument. This has no effect when the file handles are passed as stderr/stdout
+    to a subprocess: Only the underlying fds are passed and there's no way to
+    control the encoding (if any) used by the subprocess for the bytes it
+    produces on these streams.
+
+    So, switch things around: Remove the misleading encoding arguments for the
+    stdout, stderr files, open them in binary mode and be careful when
+    opening .stderr for displaying purposes. Do try UTF-8, but also set error
+    strategy to "backslashreplace" to avoid errors.
+
+  * monitor_cb: Start thread with daemon=True (Arne Welzel, Corelight)
+
+    When an unexpected exception happened in a child process, nothing would
+    stop the monitor_cb thread and in turn the child process would never
+    finish. Use daemon=True on the monitor_cb thread to prevent this.
+
+    There should never be unhandled exceptions in child processes, because
+    it may then not close all resources properly etc, but a non-terminating
+    btest is worse, specifically when btest is run in CI unattended.
+
 1.0 | 2023-02-01 16:07:31 -0700
 
   * Release 1.0.
