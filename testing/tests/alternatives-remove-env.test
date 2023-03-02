@@ -1,0 +1,22 @@
+# %TEST-DOC: Support removal of environment variables through prefixing with "-"
+#
+# %TEST-REQUIRES: ! ${SCRIPTS}/is-windows
+# %TEST-EXEC: btest -dv %INPUT
+# %TEST-EXEC: btest -a nofoo -dv %INPUT
+# %TEST-EXEC: btest -a nobar -dv %INPUT
+# %TEST-EXEC: btest-diff child-output
+
+# %TEST-START-FILE btest.cfg
+[environment]
+FOO=foo
+BAR=bar
+
+[environment-nofoo]
+-FOO=
+
+[environment-nobar]
+-BAR=
+# %TEST-END-FILE
+
+@TEST-EXEC: echo "===" >>../../child-output
+@TEST-EXEC: env | grep -E 'FOO|BAR' | sort >>../../child-output

@@ -1,3 +1,7 @@
+1.0-6 | 2023-03-02 10:47:08 +0100
+
+  * GH-60: Support environment variable removal in alternatives (Arne Welzel, Corelight)
+
 1.0-4 | 2023-02-21 10:20:20 +0100
 
   * stderr/stdout: Do not assume well-formed UTF-8 output (Arne Welzel, Corelight)

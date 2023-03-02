@@ -1,0 +1,19 @@
+# %TEST-DOC: Error on environment variable removal with value.
+#
+# %TEST-REQUIRES: ! ${SCRIPTS}/is-windows
+# %TEST-EXEC: btest -dv %INPUT > output
+# %TEST-EXEC-FAIL: btest -a nofoo -dv %INPUT >output 2>&1
+# %TEST-EXEC: btest-diff child-output
+# %TEST-EXEC: btest-diff output
+
+# %TEST-START-FILE btest.cfg
+[environment]
+FOO=foo
+BAR=bar
+
+[environment-nofoo]
+-FOO=no
+# %TEST-END-FILE
+
+@TEST-EXEC: echo "===" >>../../child-output
+@TEST-EXEC: env | grep -E 'FOO|BAR' | sort >>../../child-output
