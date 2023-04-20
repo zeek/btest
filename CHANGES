@@ -1,3 +1,11 @@
+1.0-10 | 2023-04-20 13:10:09 -0700
+
+  * Add sphinx-related directory to gitignore (Christian Kreibich, Corelight)
+
+  * Recognize "date" without nanosecond support in btest-progress (Christian Kreibich, Corelight)
+
+  * Avoid diff --strip-trailing-cr since it's not available everywhere. (Christian Kreibich, Corelight)
+
 1.0-6 | 2023-03-02 10:47:08 +0100
 
   * GH-60: Support environment variable removal in alternatives (Arne Welzel, Corelight)
