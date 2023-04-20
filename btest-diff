@@ -225,7 +225,10 @@ if [ -n "$baseline" ]; then
         if is_binary_mode; then
             diff -s "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
         else
-            diff -au --strip-trailing-cr "$@" "$canon_baseline" "$canon_output" >>$TEST_DIAGNOSTICS
+            # We'd use --strip-trailing-cr in the following, but it's not guaranteed.
+            diff -au "$@" \
+                <(sed 's/\r$//' "$canon_baseline") \
+                <(sed 's/\r$//' "$canon_output") >>$TEST_DIAGNOSTICS
         fi
         result=$?
     fi
