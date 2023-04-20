@@ -11,6 +11,20 @@ EOF
     exit 1
 }
 
+function get_date {
+    # Some date versions don't provide nanosecond substitution, yielding various
+    # strings instead ("." on Alpine, ".3NZ" on FreeBSD). Check if we got three
+    # digits and a "Z", otherwise fake the nanoseconds.
+    local res
+    res=$(date -u +'%Y-%m-%dT%H:%M:%S.%3NZ')
+
+    if echo "$res" | grep -q '[0-9][0-9][0-9]Z$'; then
+        echo "$res"
+    else
+        date -u +'%Y-%m-%dT%H:%M:%S.000Z'
+    fi
+}
+
 ### Main.
 
 quiet=0
@@ -41,7 +55,7 @@ if [ "${quiet}" -eq 0 ]; then
     if [ "${time}" -eq 0 ]; then
         echo "${msg}" >&2
     else
-        echo "${msg} -- $(date -u +'%Y-%m-%dT%H:%M:%S.%3NZ') " >&2
+        echo "${msg} -- $(get_date) " >&2
     fi
 fi
 
