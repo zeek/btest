@@ -1,3 +1,7 @@
+1.0-12 | 2023-07-05 09:52:33 -0700
+
+  * CI: automatically push to PyPI when pushing a git tag (Christian Kreibich, Corelight)
+
 1.0-10 | 2023-04-20 13:10:09 -0700
 
   * Add sphinx-related directory to gitignore (Christian Kreibich, Corelight)
