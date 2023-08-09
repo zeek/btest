@@ -13,4 +13,4 @@ for i in "${PARTS[@]}"; do
     new_list+=":"
 done
 
-echo ${new_list%?}
+echo "${new_list%?}"
