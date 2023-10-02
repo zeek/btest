@@ -186,7 +186,7 @@ if [ -z "$TEST_DIFF_CANONIFIER" ] || is_binary_mode; then
     TEST_DIFF_CANONIFIER="cat"
 fi
 
-canon_output=/tmp/test-diff.$$.$canon.tmp
+canon_output=$(mktemp -t "test-diff.$canon.tmp.XXXXXX")
 tmpfiles="$tmpfiles $canon_output"
 error=0
 
@@ -201,7 +201,7 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ -n "$baseline" ]; then
-    canon_baseline=/tmp/test-diff.$$.$canon.baseline.tmp
+    canon_baseline=$(mktemp -t "test-diff.$canon.baseline.tmp.XXXXXX")
     tmpfiles="$tmpfiles $canon_baseline"
 
     # Prepare the baseline. When created by a recent btest-diff, we
