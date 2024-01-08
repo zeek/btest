@@ -193,12 +193,12 @@ def getOption(key, default, section="btest"):
 reBackticks = re.compile(r"`(([^`]|`)*)`")
 
 
-def readStateFile():
+def readTestsFile(file):
     try:
         # Read state file.
         tests = []
 
-        for line in open(StateFile):
+        for line in open(file, encoding="utf-8"):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
@@ -2937,6 +2937,15 @@ def parse_options():
             "Can be specified multiple times."
         ),
     )
+    optparser.add_option(
+        "-i",
+        "--tests-file",
+        action="store",
+        type="string",
+        dest="tests_file",
+        default="",
+        help=("Load list of tests to execute from file."),
+    )
 
     optparser.set_defaults(mode="TEST")
 
@@ -3201,11 +3210,17 @@ if __name__ == "__main__":
         Config.configured_tests = findTests(testdirs, True)
 
     if args:
+        if Options.tests_file:
+            error("cannot specify tests both on command line and with --tests-file")
+
         tests = findTests(args)
 
     else:
         if Options.rerun:
-            (success, tests) = readStateFile()
+            if Options.tests_file:
+                error("cannot specify both --rerun and --tests-file")
+
+            (success, tests) = readTestsFile(StateFile)
 
             if success:
                 if not tests:
@@ -3215,6 +3230,12 @@ if __name__ == "__main__":
             else:
                 warning("cannot read state file, executing all tests")
                 tests = Config.configured_tests
+
+        elif Options.tests_file:
+            (success, tests) = readTestsFile(Options.tests_file)
+
+            if not success:
+                warning("cannot read file with tests: %s" % Options.tests_file)
 
         else:
             tests = Config.configured_tests
