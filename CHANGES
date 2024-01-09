@@ -1,3 +1,17 @@
+1.1-6 | 2024-01-09 09:16:00 +0100
+
+  * Add option to read lists of tests from file. (Robin Sommer)
+
+    ```
+    -i FILE, --tests-file=FILE
+        Loads the list of tests to execute from a file. Each line in the
+        file is interpreted as the name of a test, or a group of tests, to
+        execute, just like the tests would be specified on the command
+        line. Empty lines and lines starting with ``#`` are ignored. (This
+        format is compatible with that of the ``btest`` `StateFile
+        <state_file_>`_.)
+    ```
+
 1.1-4 | 2023-10-04 11:30:31 +0200
 
   * Simplify generation of temporary files (Benjamin Bannier, Corelight)

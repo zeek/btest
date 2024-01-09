@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 1.1-4
+.. |version| replace:: 1.1-6
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -400,6 +400,14 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     Retry any failed tests up to this many times to determine if
     they are unstable.
 
+-i FILE, --tests-file=FILE
+    Loads the list of tests to execute from a file. Each line in the
+    file is interpreted as the name of a test, or a group of tests, to
+    execute, just like the tests would be specified on the command
+    line. Empty lines and lines starting with ``#`` are ignored. (This
+    format is compatible with that of the ``btest`` `StateFile
+    <state_file_>`_.)
+
 .. _configuration file: configuration_
 .. _configuration:
 
@@ -558,6 +566,8 @@ configuration file:
     range.  The default range is "1024-65535".
 
 ``StateFile``
+    .. _state_file:
+
     The name of the state file to record the names of failing tests. Default is
     ``.btest.failed.dat``.
 
