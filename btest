@@ -57,7 +57,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "1.1-6"  # Automatically filled in.
+VERSION = "1.1-8"  # Automatically filled in.
 
 Name = "btest"
 Config = None
