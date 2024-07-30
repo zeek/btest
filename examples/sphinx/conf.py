@@ -10,7 +10,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys
 
 sys.path.append("../../sphinx")
 sys.path.append("../../../sphinx")
