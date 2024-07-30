@@ -49,7 +49,7 @@ if sys.platform == "win32":
             "    pip install multiprocess\n"
             "\n"
             "Also check the following exception output for possible alternate explanations:\n\n"
-            "{}: {}".format(type(error).__name__, error),
+            f"{type(error).__name__}: {error}",
             file=sys.stderr,
         )
 else:
@@ -161,7 +161,7 @@ def validate_version_requirement(required: str, present: str):
             xyz = [int(x) for x in re.split(r"[.-]", v)]
         except ValueError:
             error(
-                "invalid version %s: versions must contain only numeric identifiers" % v
+                f"invalid version {v}: versions must contain only numeric identifiers"
             )
 
         return xyz
@@ -171,8 +171,7 @@ def validate_version_requirement(required: str, present: str):
 
     if v_present < v_required:
         error(
-            "%s requires at least BTest %s, this is %s. Please upgrade."
-            % (Options.config, min_version, VERSION)
+            f"{Options.config} requires at least BTest {min_version}, this is {VERSION}. Please upgrade."
         )
 
 
@@ -476,9 +475,7 @@ class TestManager(mp_managers.SyncManager):
 
         if max_test_ports > port_range_hi - port_range_lo + 1:
             error(
-                "PortRange {} cannot satisfy requirement of {} ports in test {}".format(
-                    port_range, max_test_ports, test_with_most_ports.name
-                )
+                f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
             )
 
         self._ports = self.list([p for p in range(port_range_lo, port_range_hi + 1)])
@@ -524,7 +521,7 @@ class TestManager(mp_managers.SyncManager):
             try:
                 state = open(StateFile, "w", encoding="utf-8")
             except OSError:
-                error("cannot open state file %s" % StateFile)
+                error(f"cannot open state file {StateFile}")
 
             for t in sorted(self._failed_tests):
                 print(t, file=state)
@@ -1136,9 +1133,7 @@ class Test:
                 error(f"failed to obtain {count} ports for test {self.name}")
 
             warning(
-                "failed to obtain {} ports for test {}, will try {} more times".format(
-                    count, self.name, attempts
-                )
+                f"failed to obtain {count} ports for test {self.name}, will try {attempts} more times"
             )
 
             time.sleep(15)
@@ -1369,8 +1364,7 @@ class Test:
 
             if self.utime_exceeded and not Options.update_times:
                 self.diagmsgs += [
-                    "'%s' exceeded permitted execution time deviation%s"
-                    % (self.name, self.timePostfix())
+                    f"'{self.name}' exceeded permitted execution time deviation{self.timePostfix()}"
                 ]
                 self.mgr.testFailed(self)
 
@@ -1431,7 +1425,7 @@ class Test:
             # This is not quite correct as it does not necessarily need to be
             # the %INPUT file which we are filtering ...
             filtered = normalize_path_join(
-                self.tmpdir, "filtered-%s" % os.path.basename(localfile)
+                self.tmpdir, f"filtered-{os.path.basename(localfile)}"
             )
 
             filter = CmdLine(
@@ -1489,7 +1483,7 @@ class Test:
             if cmd.expect_success:
                 return (True, rc)
 
-            self.diagmsgs += ["'%s' succeeded unexpectedly (exit code 0)" % cmdline]
+            self.diagmsgs += [f"'{cmdline}' succeeded unexpectedly (exit code 0)"]
             return (False, 0)
 
         else:
@@ -1556,7 +1550,7 @@ class Test:
     # Otherwise, returns an empty string.
     def timePostfix(self):
         if self.utime_base >= 0 and self.utime >= 0:
-            return " (%+.1f%%)" % self.utime_perc
+            return f" ({self.utime_perc:+.1f}%)"
         else:
             return ""
 
@@ -1763,7 +1757,7 @@ class Standard(OutputHandler):
 
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "%s ..." % test.displayName(), nl=False)
+        self.output(test, f"{test.displayName()} ...", nl=False)
         test._std_nl = False
 
     def testCommand(self, test, cmdline):
@@ -1790,7 +1784,7 @@ class Standard(OutputHandler):
     def finalMsg(self, test, msg):
         if test._std_nl:
             self.output(test, self.threadPrefix(), nl=False)
-            self.output(test, "%s ..." % test.displayName(), nl=False)
+            self.output(test, f"{test.displayName()} ...", nl=False)
 
         self.output(test, msg)
 
@@ -1825,7 +1819,7 @@ class Console(OutputHandler):
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
-        msg = self.DarkGray + "(%s)" % msg + self.Normal
+        msg = self.DarkGray + f"({msg})" + self.Normal
         self.output(test, msg)
 
     def testSucceeded(self, test, msg):
@@ -1882,7 +1876,7 @@ class CompactConsole(Console):
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
-        msg = " " + self.DarkGray + "(%s)" % msg + self.Normal
+        msg = " " + self.DarkGray + f"({msg})" + self.Normal
         self._consoleAugment(test, msg)
 
     def testSucceeded(self, test, msg):
@@ -1929,13 +1923,13 @@ class CompactConsole(Console):
 
     def _consoleAugment(self, test, msg):
         self._outfile.write(self.EraseToEndOfLine)
-        self._outfile.write(" %s" % msg.strip())
-        self._outfile.write("\r%s" % test.console_last_line)
+        self._outfile.write(f" {msg.strip()}")
+        self._outfile.write(f"\r{test.console_last_line}")
         self._outfile.flush()
 
     def _consoleWrite(self, test, msg, sticky):
         self._outfile.write(chr(27) + "[2K")
-        self._outfile.write("\r%s" % msg.strip())
+        self._outfile.write(f"\r{msg.strip()}")
 
         if sticky:
             self._outfile.write("\n")
@@ -1977,7 +1971,7 @@ class Verbose(OutputHandler):
 
     def testStart(self, test):
         self.output(test, self.threadPrefix(), nl=False)
-        self.output(test, "%s ..." % test.displayName())
+        self.output(test, f"{test.displayName()} ...")
 
     def testCommand(self, test, cmdline):
         part = ""
@@ -2017,7 +2011,7 @@ class Verbose(OutputHandler):
             return
 
         for line in open(test.verbose):
-            self.output(test, "  > [test-verbose] %s" % line.strip())
+            self.output(test, f"  > [test-verbose] {line.strip()}")
 
 
 class Diag(OutputHandler):
@@ -2125,8 +2119,7 @@ class SphinxOutput(OutputHandler):
 
         print("\n.. code-block:: none ", file=out)
         print(
-            "\n  ERROR executing test '%s' (part %s)\n"
-            % (test.displayName(), self._part),
+            f"\n  ERROR executing test '{test.displayName()}' (part {self._part})\n",
             file=out,
         )
 
@@ -2144,7 +2137,7 @@ class SphinxOutput(OutputHandler):
                 for line in open(
                     f, newline="\n", encoding="utf-8", errors="backslashreplace"
                 ):
-                    print("   %s" % line.strip(), file=out)
+                    print(f"   {line.strip()}", file=out)
                 print(file=out)
 
     def testUnstable(self, test, msg):
@@ -2412,7 +2405,7 @@ class LinuxTimer(TimerBase):
 
         # Make sure it works.
         (success, rc) = runSubprocess(
-            "%s stat -o /dev/null true 2>/dev/null" % self.perf, shell=True
+            f"{self.perf} stat -o /dev/null true 2>/dev/null", shell=True
         )
         return success and rc == 0
 
@@ -2480,15 +2473,14 @@ def findTests(paths, expand_globs=False):
         m = RE_PART.match(rpath)
         if m:
             error(
-                "Do not specify files with part numbers directly, use the base test name (%s)"
-                % rpath
+                f"Do not specify files with part numbers directly, use the base test name ({rpath})"
             )
 
         if os.path.isfile(path):
             tests += readTestFile(path)
 
             # See if there are more parts.
-            for part in glob.glob("%s#*" % rpath):
+            for part in glob.glob(f"{rpath}#*"):
                 tests += readTestFile(part)
 
         elif os.path.isdir(path):
@@ -2524,12 +2516,12 @@ def findTests(paths, expand_globs=False):
 
             if not found:
                 # See if there are parts.
-                for part in glob.glob("%s#*" % rpath):
+                for part in glob.glob(f"{rpath}#*"):
                     tests += readTestFile(part)
                     found = True
 
                 if not found:
-                    error("cannot read %s" % path)
+                    error(f"cannot read {path}")
 
     return tests
 
@@ -2572,7 +2564,7 @@ def readTestFile(filename):
     try:
         input = open(filename, encoding="utf-8", newline="")
     except OSError as e:
-        error("cannot read test file: %s" % e)
+        error(f"cannot read test file: {e}")
 
     tests = []
     files = []
@@ -2631,7 +2623,7 @@ def readTestFile(filename):
             file = (file[0], file[1] + [line])
 
         else:
-            error("internal: unknown state %s" % state)
+            error(f"internal: unknown state {state}")
 
     if state == "file":
         files += [file]
@@ -2692,7 +2684,7 @@ def outputDocumentation(tests, fmt):
         tests = sections[s]
 
         if fmt == "rst":
-            print("%s" % s)
+            print(f"{s}")
             print("-" * len(s))
             print()
 
@@ -2703,11 +2695,11 @@ def outputDocumentation(tests, fmt):
                 print()
 
         if fmt == "md":
-            print("# %s" % s)
+            print(f"# {s}")
             print()
 
             for t in tests:
-                print("* `%s`:" % t.name)
+                print(f"* `{t.name}`:")
                 for d in doc(t):
                     print(f"{indent(1)}{d}")
 
@@ -2957,7 +2949,7 @@ def parse_options():
         options.threads = 1
 
     if not os.path.exists(options.config):
-        error("configuration file '%s' not found" % options.config)
+        error(f"configuration file '{options.config}' not found")
 
     return options, parsed_args
 
@@ -3040,7 +3032,7 @@ if __name__ == "__main__":
         # If multiple alternatives set it, we pick the value from the first.
         def get_env_from_alternative(env, opt, default, transform=None):
             for tag in Options.alternatives:
-                value = getOption(env, None, section="environment-%s" % tag)
+                value = getOption(env, None, section=f"environment-{tag}")
                 if value is not None:
                     if transform:
                         value = transform(value)
@@ -3110,21 +3102,21 @@ if __name__ == "__main__":
             a = Alternative(tag)
 
             try:
-                for name, value in Config.itemsNoDefaults("filter-%s" % tag):
+                for name, value in Config.itemsNoDefaults(f"filter-{tag}"):
                     a.filters[name] = value
 
             except configparser.NoSectionError:
                 pass
 
             try:
-                for name, value in Config.itemsNoDefaults("substitution-%s" % tag):
+                for name, value in Config.itemsNoDefaults(f"substitution-{tag}"):
                     a.substitutions[name] = value
 
             except configparser.NoSectionError:
                 pass
 
             try:
-                for name, value in Config.itemsNoDefaults("environment-%s" % tag):
+                for name, value in Config.itemsNoDefaults(f"environment-{tag}"):
                     if name.startswith("-") and value.strip():
                         error(
                             f'expected empty value for "{name}" in section environment-{tag}'
@@ -3136,7 +3128,7 @@ if __name__ == "__main__":
                 pass
 
             if a.is_empty() and not a.is_default():
-                error('alternative "%s" is undefined' % tag)
+                error(f'alternative "{tag}" is undefined')
 
             Alternatives[tag] = a
 
@@ -3235,7 +3227,7 @@ if __name__ == "__main__":
             (success, tests) = readTestsFile(Options.tests_file)
 
             if not success:
-                warning("cannot read file with tests: %s" % Options.tests_file)
+                warning(f"cannot read file with tests: {Options.tests_file}")
 
         else:
             tests = Config.configured_tests
@@ -3284,11 +3276,11 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         # On win32 we have to use a named pipe so that python's multiprocessing
         # chooses AF_PIPE as the family type.
-        addr = "\\\\.\\pipe\\btest-pipe-%s" % (os.getpid())
+        addr = f"\\\\.\\pipe\\btest-pipe-{os.getpid()}"
     else:
         # Building our own path to avoid "error: AF_UNIX path too long" on
         # some platforms. See BIT-862.
-        sname = "btest-socket-%s" % (os.getpid())
+        sname = f"btest-socket-{os.getpid()}"
         addr = os.path.join(tempfile.gettempdir(), sname)
 
         # Check if the pathname is too long to fit in struct sockaddr_un (the
@@ -3321,7 +3313,7 @@ if __name__ == "__main__":
     # Ctrl-C can lead to broken pipe (e.g. FreeBSD), so include IOError here:
     except (Abort, KeyboardInterrupt, OSError) as exc:
         output_handler.finished()
-        print(str(exc) or "Aborted with %s." % type(exc).__name__, file=sys.stderr)
+        print(str(exc) or f"Aborted with {type(exc).__name__}.", file=sys.stderr)
         sys.stderr.flush()
         # Explicitly shut down sync manager to avoid leaking manager
         # processes, particularly with --abort-on-failure:

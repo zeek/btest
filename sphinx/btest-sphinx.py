@@ -43,14 +43,12 @@ def init(settings, reporter):
         raise SphinxError("error: btest_tests not set in config")
 
     if not os.path.exists(BTestBase):
-        raise SphinxError(
-            "error: btest_base directory '%s' does not exists" % BTestBase
-        )
+        raise SphinxError(f"error: btest_base directory '{BTestBase}' does not exists")
 
     joined = os.path.join(BTestBase, BTestTests)
 
     if not os.path.exists(joined):
-        raise SphinxError("error: btest_tests directory '%s' does not exists" % joined)
+        raise SphinxError(f"error: btest_tests directory '{joined}' does not exists")
 
     if not BTestTmp:
         BTestTmp = os.path.join(App.outdir, ".tmp/rst_output")
@@ -77,23 +75,23 @@ class Test:
         if self.has_run:
             return
 
-        logger.info("running test %s ..." % darkgreen(self.path))
+        logger.info(f"running test {darkgreen(self.path)} ...")
 
-        self.rst_output = os.path.join(BTestTmp, "%s" % self.tag)
+        self.rst_output = os.path.join(BTestTmp, f"{self.tag}")
         os.environ["BTEST_RST_OUTPUT"] = self.rst_output
 
         self.cleanTmps()
 
         try:
-            subprocess.check_call("btest -S %s" % self.path, shell=True)
+            subprocess.check_call(f"btest -S {self.path}", shell=True)
         except (OSError, subprocess.CalledProcessError) as e:
             # Equivalent to Directive.error(); we don't have an
             # directive object here and can't pass it in because
             # it doesn't pickle.
-            logger.warning(red("BTest error: %s" % e))
+            logger.warning(red(f"BTest error: {e}"))
 
     def cleanTmps(self):
-        subprocess.call("rm %s#* 2>/dev/null" % self.rst_output, shell=True)
+        subprocess.call(f"rm {self.rst_output}#* 2>/dev/null", shell=True)
 
 
 class BTestTransform(Transform):
@@ -167,7 +165,7 @@ class BTest(Directive):
 
         out = open(file, "w")
         for line in self.content:
-            out.write("%s\n" % line)
+            out.write(f"{line}\n")
 
         out.close()
 
@@ -220,7 +218,7 @@ class BTestInclude(LiteralInclude):
             self.options["language"] = "none"
 
         self.options["linenos"] = True
-        self.options["prepend"] = "%s\n" % os.path.basename(self.arguments[0])
+        self.options["prepend"] = f"{os.path.basename(self.arguments[0])}\n"
         self.options["emphasize-lines"] = "1,1"
         self.options["style"] = "X"
 

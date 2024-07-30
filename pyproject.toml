@@ -71,3 +71,6 @@ ignore="E203,W503"
 per-file-ignores = """
     btest: E266
 """
+
+[tool.ruff.lint]
+select = ["UP"]
