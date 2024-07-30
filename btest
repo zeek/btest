@@ -478,7 +478,7 @@ class TestManager(mp_managers.SyncManager):
                 f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
             )
 
-        self._ports = self.list([p for p in range(port_range_lo, port_range_hi + 1)])
+        self._ports = self.list(list(range(port_range_lo, port_range_hi + 1)))
 
         threads = []
 
@@ -1378,7 +1378,7 @@ class Test:
 
     def finish(self):
         if self.bound_ports:
-            self.mgr.returnPorts([p for p in self.bound_ports])
+            self.mgr.returnPorts(list(self.bound_ports))
 
         self.bound_ports = []
 
@@ -2543,7 +2543,7 @@ def mergeTestParts(tests):
         except KeyError:
             out[t.name] = t
 
-    return sorted([t for t in out.values()], key=key)
+    return sorted(out.values(), key=key)
 
 
 # Read the given test file and instantiate one or more tests from it.
@@ -2576,7 +2576,7 @@ def readTestFile(filename):
     state = "test"
 
     try:
-        lines = [line for line in input]
+        lines = list(input)
     except UnicodeDecodeError as e:
         # This error is caused by either a test file with an invalid UTF-8 byte
         # sequence, or if python makes the wrong assumption about the encoding
