@@ -1,15 +1,16 @@
 import os
 import os.path
-import subprocess
 import re
+import subprocess
 
 from docutils import nodes, utils
-from docutils.parsers.rst import directives, Directive, Parser
+from docutils.parsers.rst import Directive, Parser, directives
 from docutils.transforms import Transform
-from sphinx.util.console import darkgreen, red
-from sphinx.errors import SphinxError
+
 from sphinx.directives.code import LiteralInclude
+from sphinx.errors import SphinxError
 from sphinx.util import logging
+from sphinx.util.console import darkgreen, red
 
 logger = logging.getLogger(__name__)
 
