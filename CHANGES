@@ -1,3 +1,31 @@
+1.1-17 | 2024-07-31 14:15:38 +0200
+
+  * ci: Drop python-3.7, add python-3.12 (Benjamin Bannier, Corelight)
+
+    Even though python-3.7 remains our minimal Python version it is not
+    support by GH actions anymore so this commit drops it from CI. We also
+    add a setup for the now released python-3.12.
+
+  * Activate flake8-implicit-str-concat linter (Benjamin Bannier, Corelight)
+
+  * Activate isort linter (Benjamin Bannier, Corelight)
+
+  * Activate pyflakes linter (Benjamin Bannier, Corelight)
+
+    We previously linted with flake8 so this contains no code changes.
+
+  * Active linter for style around comprehensions (Benjamin Bannier, Corelight)
+
+  * Use ruff for pyupgrade functionality (Benjamin Bannier, Corelight)
+
+  * Move project configuration to `pyproject.toml` (Benjamin Bannier, Corelight)
+
+    This centralizes most project configuration from `setup.py` and
+    `setup.cfg` into the existing `pyproject.toml` so it can be picked up by
+    more tools.
+
+  * Bump pre-commit hooks (Benjamin Bannier, Corelight)
+
 1.1-8 | 2024-04-10 09:35:28 -0700
 
   * Standardize on ruff for python formatting/linting via pre-commits (Tim Wojtulewicz, Corelight)

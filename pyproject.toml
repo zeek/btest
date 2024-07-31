@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools"]
+
+[project]
+name = "btest"
+description = "A powerful system testing framework"
+readme = "See https://github.com/zeek/btest"
+dynamic = ["version"]
+
+license = { text = "3-clause BSD License" }
+
+requires-python = ">=3.7"
+
+keywords=[
+    "system",
+    "tests",
+    "testing",
+    "framework",
+    "baselines",
+]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+
+dependencies = [
+    # We require the external multiprocess library on Windows due to pickling
+    # issues with the standard one.
+    "multiprocess>=0.70.16",
+]
+
+[project.urls]
+Repository = "https://github.com/zeek/btest"
+
+[[project.maintainers]]
+name = "The Zeek Team"
+email = "info@zeek.org"
+
+[tool.setuptools]
+# When making changes to the following list, remember to keep
+# CMakeLists.txt in sync.
+script-files = [
+    "btest",
+    "btest-ask-update",
+    "btest-bg-run",
+    "btest-bg-run-helper",
+    "btest-bg-wait",
+    "btest-diff",
+    "btest-setsid",
+    "btest-progress",
+    "sphinx/btest-diff-rst",
+    "sphinx/btest-rst-cmd",
+    "sphinx/btest-rst-include",
+    "sphinx/btest-rst-pipe",
+]
+
+package-dir = { "" = "sphinx"}
+
+[tool.flake8]
+max_line_length = 100
+# E203: whitespace before ':' (black / flake8 disagreement)
+# W503: line break before binary operator (black / flake8 disagreement)
+ignore="E203,W503"
+# E266: too many leading '#' for block comment
+per-file-ignores = """
+    btest: E266
+"""
+
+[tool.ruff.lint]
+select = ["C4", "F", "I", "ISC", "UP"]

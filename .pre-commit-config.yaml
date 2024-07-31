@@ -2,34 +2,28 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 - repo: https://github.com/shellcheck-py/shellcheck-py
-  rev: v0.9.0.5
+  rev: v0.10.0.1
   hooks:
   - id: shellcheck
     exclude: examples/|testing/tests/.*\.sh
 
 - repo: https://github.com/maxwinterstein/shfmt-py
-  rev: v3.4.3.1
+  rev: v3.7.0.1
   hooks:
   - id: shfmt
     exclude: examples/t6.sh
     args: ["-w", "-i", "4", "-ci"]
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.4.0
+  rev: v4.6.0
   hooks:
   - id: trailing-whitespace
     exclude: ^testing/Baseline
   - id: end-of-file-fixer
     exclude: ^testing/Baseline|examples/.*Baseline.*
 
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.15.1
-  hooks:
-  - id: pyupgrade
-    args: ["--py37-plus"]
-
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.3.0
+  rev: v0.5.5
   hooks:
     - id: ruff
       args: [--fix]
