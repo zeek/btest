@@ -6,6 +6,10 @@
 # and spawns <cmdline> in there in the background. It also records
 # a set of meta information that btest-bg-wait will read.
 
+# Sleep this many seconds after creating the process and before
+# returning from btest-bg-run.
+BTEST_BG_RUN_SLEEP=${BTEST_BG_RUN_SLEEP:-1}
+
 if [ "$#" -le 1 ]; then
     echo "usage: $(basename "$0") <tag> <cmdline>"
     exit 1
@@ -33,4 +37,4 @@ echo "$@" >.cmdline
 
 $setsid "$helper" "$@" >.stdout 2>.stderr &
 
-sleep 1
+sleep "$BTEST_BG_RUN_SLEEP"
