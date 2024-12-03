@@ -27,8 +27,7 @@ Prerequisites
 
 BTest has the following prerequisites:
 
-- Python version >= 3.7 (older versions may work, but are not
-  well-tested).
+- Python version >= 3.9 (older versions may work, but are not well-tested).
 
 - Bash. Note that on FreeBSD and Alpine Linux, bash is not installed by
   default. This is also required on Windows, in the form of Git's msys2, Cygwin,
