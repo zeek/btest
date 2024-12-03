@@ -109,7 +109,7 @@ class BTestTransform(Transform):
             BTestTransform._run.add(test.tag)
 
         try:
-            rawtext = open("%s#%d" % (test.rst_output, part)).read()
+            rawtext = open(f"{test.rst_output}#{part}").read()
         except OSError:
             rawtext = ""
 
@@ -162,7 +162,7 @@ class BTest(Directive):
         if part == 1:
             file = test.path
         else:
-            file = test.path + "#%d" % part
+            file = f"{test.path}#{part}"
 
         out = open(file, "w")
         for line in self.content:
@@ -247,7 +247,7 @@ class BTestInclude(LiteralInclude):
         while test_path in Includes:
             i += 1
 
-            test_path = "%s@%d" % (base, i)
+            test_path = f"{base}@{i}"
             if ext:
                 test_path += ext
 
