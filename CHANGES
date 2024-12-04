@@ -1,3 +1,9 @@
+1.1-20 | 2024-12-04 08:46:27 -0700
+
+  * Fix ruff UP check findings (Tim Wojtulewicz, Corelight)
+
+  * Upgrade python requirement to 3.9 (Tim Wojtulewicz, Corelight)
+
 1.1-17 | 2024-07-31 14:15:38 +0200
 
   * ci: Drop python-3.7, add python-3.12 (Benjamin Bannier, Corelight)
