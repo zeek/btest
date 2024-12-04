@@ -493,7 +493,7 @@ class TestManager(mp_managers.SyncManager):
                 # zeek processes, but runner processes executing individual test commands.
                 for i in range(Options.threads):
                     t = mp.Process(
-                        name="#%d" % (i + 1), target=lambda: self.threadRun(i, mgr_data)
+                        name=f"#{i+1}", target=lambda: self.threadRun(i, mgr_data)
                     )
                     t.start()
                     threads += [t]
@@ -829,7 +829,7 @@ class TestManager(mp_managers.SyncManager):
             out = open(path, "w")
 
             for k, v in timing.items():
-                print("%s %u" % (k, v), file=out)
+                print(f"{k} {v}", file=out)
 
             out.close()
 
@@ -1068,7 +1068,7 @@ class Test:
 
         if increment:
             clone.number = self.number + 1
-            clone.name = "%s-%d" % (self.basename, clone.number)
+            clone.name = f"{self.basename}-{clone.number}"
         elif self.name:
             clone.name = self.name
 
@@ -1607,8 +1607,8 @@ class OutputHandler:
             # TestManager.run() defines the process names to "#<n>".  Align the
             # prefixes by using enough space for the number of threads
             # requested, plus 1 for "#".
-            pat = "[%%+%ds]" % (len(str(self.options().threads)) + 1)
-            return pat % mp.current_process().name
+            width = len(str(self.options().threads)) + 1
+            return f"[%+{mp.current_process().name:>{width}}]"
         else:
             return ""
 
@@ -1813,7 +1813,7 @@ class Console(OutputHandler):
         OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
 
     def testStart(self, test):
-        msg = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
+        msg = f"[{test.mgr.percentage():>3}%] {test.displayName()} ..."
         self.output(test, msg, nl=False)
 
     def testProgress(self, test, msg):
@@ -1912,7 +1912,7 @@ class CompactConsole(Console):
         self._outfile.flush()
 
     def _consoleOutput(self, test, msg, sticky):
-        line = "[%3d%%] %s ..." % (test.mgr.percentage(), test.displayName())
+        line = f"[{test.mgr.percentage():>3.0f}%] {test.displayName()} ..."
 
         if msg:
             line += " " + msg
@@ -1976,7 +1976,7 @@ class Verbose(OutputHandler):
         part = ""
 
         if cmdline.part > 1:
-            part = " [part #%d]" % cmdline.part
+            part = f" [part #{cmdline.part}]"
 
         self.output(test, self.threadPrefix(), nl=False)
         self.output(test, f"  > {cmdline.cmdline}{part}")
@@ -3319,17 +3319,16 @@ if __name__ == "__main__":
         mgr.shutdown()
         sys.exit(1)
 
-    skip = (", %d skipped" % skipped) if skipped > 0 else ""
-    unstablestr = (", %d unstable" % unstable) if unstable > 0 else ""
+    skip = f", {skipped} skipped" if skipped > 0 else ""
+    unstablestr = f", {unstable} unstable" if unstable > 0 else ""
     failed_expectedstr = (
-        (" (with %d expected to fail)" % failed_expected) if failed_expected > 0 else ""
+        f" (with {failed_expected} expected to fail)" if failed_expected > 0 else ""
     )
 
     if failed > 0:
         if not Options.quiet:
             output(
-                "%d of %d test%s failed%s%s%s"
-                % (
+                "{} of {} test{} failed{}{}{}".format(
                     failed,
                     total,
                     "s" if total > 1 else "",
@@ -3347,14 +3346,15 @@ if __name__ == "__main__":
     elif skipped > 0 or unstable > 0:
         if not Options.quiet:
             output(
-                "%d test%s successful%s%s"
-                % (succeeded, "s" if succeeded != 1 else "", skip, unstablestr)
+                "{} test{} successful{}{}".format(
+                    succeeded, "s" if succeeded != 1 else "", skip, unstablestr
+                )
             )
 
         sys.exit(0)
 
     else:
         if not Options.quiet:
-            output("all %d tests successful" % total)
+            output(f"all {total} tests successful")
 
         sys.exit(0)
