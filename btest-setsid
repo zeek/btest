@@ -5,8 +5,9 @@ import sys
 
 try:
     os.setsid()
-except Exception:
-    pass
+except Exception as e:
+    print(f"btest-setsid failed: {e!r}", file=sys.stderr)
+    exit(1)
 
 prog = sys.argv[1]
 args = sys.argv[1:]

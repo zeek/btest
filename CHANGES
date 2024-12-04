@@ -1,3 +1,13 @@
+1.1-23 | 2024-12-04 19:18:04 +0100
+
+  * btest-setsid: Fail on setsid() error (Arne Welzel, Corelight)
+
+  * btest-bg-run-helper: Ignore SIGTERM to self during cleanup (Arne Welzel, Corelight)
+
+    The kill 0 invocation would kill the btest-bg-run-helper itself,
+    causing the subsequent logic to not be executed, resulting in
+    runaway processes on the system.
+
 1.1-20 | 2024-12-04 08:46:27 -0700
 
   * Fix ruff UP check findings (Tim Wojtulewicz, Corelight)
