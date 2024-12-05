@@ -15,7 +15,7 @@ repos:
     args: ["-w", "-i", "4", "-ci"]
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v5.0.0
   hooks:
   - id: trailing-whitespace
     exclude: ^testing/Baseline
@@ -23,7 +23,7 @@ repos:
     exclude: ^testing/Baseline|examples/.*Baseline.*
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.5.5
+  rev: v0.8.1
   hooks:
     - id: ruff
       args: [--fix]

@@ -1,3 +1,13 @@
+1.1-28 | 2024-12-05 12:37:47 -0700
+
+  * Bump used GH actions (Benjamin Bannier, Corelight)
+
+  * Add python-3.13 to CI (Benjamin Bannier, Corelight)
+
+  * Bump pre-commit hooks (Benjamin Bannier, Corelight)
+
+  * Prefer format or f-strings over percent formatting (Benjamin Bannier, Corelight)
+
 1.1-23 | 2024-12-04 19:18:04 +0100
 
   * btest-setsid: Fail on setsid() error (Arne Welzel, Corelight)
