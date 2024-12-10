@@ -1813,7 +1813,7 @@ class Console(OutputHandler):
         OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
 
     def testStart(self, test):
-        msg = f"[{test.mgr.percentage():>3}%] {test.displayName()} ..."
+        msg = f"[{test.mgr.percentage():>3.0f}%] {test.displayName()} ..."
         self.output(test, msg, nl=False)
 
     def testProgress(self, test, msg):
