@@ -1608,7 +1608,7 @@ class OutputHandler:
             # prefixes by using enough space for the number of threads
             # requested, plus 1 for "#".
             width = len(str(self.options().threads)) + 1
-            return f"[%+{mp.current_process().name:>{width}}]"
+            return f"[{mp.current_process().name:>{width}}]"
         else:
             return ""
 
