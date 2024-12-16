@@ -1,3 +1,9 @@
+1.2 | 2024-12-10 14:36:06 -0700
+
+  * Fix formatting of output when threading (Tim Wojtulewicz, Corelight)
+
+  * Fix formatting bug with output of percentage complete (Tim Wojtulewicz, Corelight)
+
 1.1-28 | 2024-12-05 12:37:47 -0700
 
   * Bump used GH actions (Benjamin Bannier, Corelight)
