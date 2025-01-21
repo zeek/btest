@@ -1,3 +1,7 @@
+1.2-2 | 2025-01-21 09:08:38 -0700
+
+  * Enforce using the right bash.exe on Windows (Tim Wojtulewicz)
+
 1.2 | 2024-12-10 14:36:06 -0700
 
   * Fix formatting of output when threading (Tim Wojtulewicz, Corelight)

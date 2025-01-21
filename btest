@@ -56,7 +56,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "1.2"  # Automatically filled in.
+VERSION = "1.2-2"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -228,7 +228,10 @@ def _build_win_subprocess_cmd_script(cmd, tmpdir=None):
     tf.write(fcontents)
     tf.flush()
 
-    bash_cmd = ["bash.exe", "-c", normalize_path(tf.name)]
+    # If you have Windows 11 and WSL2, it defaults to calling "Microsoft Bash Launcher"
+    # even if gitbash is in your path first. Who knows why. Using shutil.which here
+    # forces it to call the right thing.
+    bash_cmd = [shutil.which("bash.exe"), "-c", normalize_path(tf.name)]
     return tf, bash_cmd
 
 
