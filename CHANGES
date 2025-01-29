@@ -1,3 +1,7 @@
+1.2-4 | 2025-01-29 09:03:57 -0700
+
+  * Require CMake 3.15, inline with other Zeek projects (Tim Wojtulewicz, Corelight)
+
 1.2-2 | 2025-01-21 09:08:38 -0700
 
   * Enforce using the right bash.exe on Windows (Tim Wojtulewicz)
