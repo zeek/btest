@@ -1,3 +1,17 @@
+1.2-7 | 2025-03-20 10:09:16 +0100
+
+  * Make btest-bg-run delay configurable (Arne Welzel, Corelight)
+
+    Allow users to remove the unconditional sleep 1 by introducing
+    a new environment variable BTEST_BG_RUN_SLEEP that specifies the
+    amount of seconds to sleep. If tests are written robustly, setting
+    this to 0 can speed up execution of btest-bg-run heavy test suites.
+
+  * Make btest-bg-wait more responsive (Arne Welzel, Corelight)
+
+    Sleep 10 msec instead of 1 second to check for process termination to
+    make detecting process termination a bit more timely.
+
 1.2-4 | 2025-01-29 09:03:57 -0700
 
   * Require CMake 3.15, inline with other Zeek projects (Tim Wojtulewicz, Corelight)
