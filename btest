@@ -496,7 +496,7 @@ class TestManager(mp_managers.SyncManager):
                 # zeek processes, but runner processes executing individual test commands.
                 for i in range(Options.threads):
                     t = mp.Process(
-                        name=f"#{i+1}", target=lambda: self.threadRun(i, mgr_data)
+                        name=f"#{i + 1}", target=lambda: self.threadRun(i, mgr_data)
                     )
                     t.start()
                     threads += [t]
