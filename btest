@@ -61,10 +61,9 @@ VERSION = "1.2-9"  # Automatically filled in.
 Name = "btest"
 Config = None
 
-try:
-    ConfigDefault = os.environ["BTEST_CFG"]
-except KeyError:
-    ConfigDefault = "btest.cfg"
+DEFAULT_CONFIG_NAME = "btest.cfg"
+
+ConfigDefault = os.environ.get("BTEST_CFG", DEFAULT_CONFIG_NAME)
 
 
 def normalize_path(path):
@@ -2708,6 +2707,21 @@ def outputDocumentation(tests, fmt):
             print()
 
 
+# Finds a file, recursing to parent directories if not found
+def find_file(filename, *, recurse):
+    current_dir = pathlib.Path.cwd()
+
+    for d in [current_dir, *current_dir.parents]:
+        f = d / filename
+        if f.is_file():
+            return str(f)
+
+        if not recurse:
+            break
+
+    return None
+
+
 def parse_options():
     optparser = optparse.OptionParser(
         usage="%prog [options] <directories>", version=VERSION
@@ -2950,9 +2964,6 @@ def parse_options():
         warning("ignoring requested parallelism in interactive-update mode")
         options.threads = 1
 
-    if not os.path.exists(options.config):
-        error(f"configuration file '{options.config}' not found")
-
     return options, parsed_args
 
 
@@ -2991,18 +3002,22 @@ if __name__ == "__main__":
 
     (Options, args) = parse_options()
 
+    btest_cfg = find_file(Options.config, recurse=Options.config == DEFAULT_CONFIG_NAME)
+    if not btest_cfg:
+        error(f"configuration file '{Options.config}' not found")
+
     # The defaults come from environment variables, plus a few additional items.
     defaults = {}
     # Changes to defaults should not change os.environ
     defaults.update(os.environ)
     defaults["default_path"] = os.environ["PATH"]
 
-    dirname = os.path.dirname(Options.config)
+    dirname = os.path.dirname(btest_cfg)
     if not dirname:
         dirname = os.getcwd()
 
     # If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
-    # If not, we'll use the current directory.
+    # If not, we'll use the config file's directory.
     TestBase = normalize_path(os.environ.get("BTEST_TEST_BASE", dirname))
     defaults["testbase"] = TestBase
     defaults["baselinedir"] = normalize_path(
@@ -3012,7 +3027,7 @@ if __name__ == "__main__":
 
     # Parse our config
     Config = getcfgparser(defaults)
-    Config.read(Options.config, encoding="utf-8")
+    Config.read(btest_cfg, encoding="utf-8")
 
     defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
@@ -3044,7 +3059,7 @@ if __name__ == "__main__":
                     # At this point, our defaults have changed, so we
                     # reread the configuration.
                     new_config = getcfgparser(defaults)
-                    new_config.read(Options.config)
+                    new_config.read(btest_cfg)
                     return new_config, value
 
             return Config, default

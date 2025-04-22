@@ -5,4 +5,4 @@ btest-cfg ... ok
 all 1 tests successful
 btest-cfg ... ok
 all 1 tests successful
-configuration file 'btest.cfg' not found
+configuration file 'nonexistant' not found
