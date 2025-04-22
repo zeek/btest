@@ -2445,7 +2445,7 @@ class LinuxTimer(TimerBase):
 
 
 # Walk the given directory and return all test files.
-def findTests(paths, expand_globs=False):
+def findTests(paths, *, cwd=None, expand_globs=False):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
@@ -2454,14 +2454,20 @@ def findTests(paths, expand_globs=False):
     expanded = set()
 
     for p in paths:
-        p = os.path.join(TestBase, p)
+        anchored = os.path.join(TestBase, p)
 
         if expand_globs:
-            for d in glob.glob(p):
+            for d in glob.glob(anchored):
                 if os.path.isdir(d):
                     expanded.add(d)
         else:
-            expanded.add(p)
+            # Allow relative directories if this one does not exist
+            if cwd and not os.path.exists(anchored):
+                from_cwd = cwd / p
+                if from_cwd.exists():
+                    anchored = str(from_cwd)
+
+            expanded.add(anchored)
 
     for path in expanded:
         rpath = os.path.relpath(path, TestBase)
@@ -3081,6 +3087,7 @@ if __name__ == "__main__":
             transform=lambda x: normalize_path(x),
         )
 
+    orig_cwd = pathlib.Path.cwd()
     os.chdir(TestBase)
 
     if Options.sphinx:
@@ -3216,13 +3223,13 @@ if __name__ == "__main__":
 
     testdirs = getOption("TestDirs", "").split()
     if testdirs:
-        Config.configured_tests = findTests(testdirs, True)
+        Config.configured_tests = findTests(testdirs, expand_globs=True)
 
     if args:
         if Options.tests_file:
             error("cannot specify tests both on command line and with --tests-file")
 
-        tests = findTests(args)
+        tests = findTests(args, cwd=orig_cwd)
 
     else:
         if Options.rerun:

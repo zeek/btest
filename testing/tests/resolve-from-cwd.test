@@ -1,0 +1,8 @@
+# %TEST-DOC: Ensure btest can find tests from a path relative to the current directory
+#
+# %TEST-EXEC: mkdir -p my/relative/dir
+# %TEST-EXEC: cat %INPUT >> my/relative/dir/a-relative-test.test
+# %TEST-EXEC: cd my/relative/dir && btest a-relative-test.test
+# %TEST-EXEC: cd my/relative && btest dir/a-relative-test.test
+
+@TEST-EXEC: exit 0
