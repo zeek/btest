@@ -56,7 +56,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "1.2-7"  # Automatically filled in.
+VERSION = "1.2-9"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -496,7 +496,7 @@ class TestManager(mp_managers.SyncManager):
                 # zeek processes, but runner processes executing individual test commands.
                 for i in range(Options.threads):
                     t = mp.Process(
-                        name=f"#{i+1}", target=lambda: self.threadRun(i, mgr_data)
+                        name=f"#{i + 1}", target=lambda: self.threadRun(i, mgr_data)
                     )
                     t.start()
                     threads += [t]
