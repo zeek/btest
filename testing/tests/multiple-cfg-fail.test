@@ -1,0 +1,20 @@
+# %TEST-DOC: Test that you can run btest from outside of the directory with btest.cfg
+#
+# %TEST-EXEC: mkdir -p base/tests/no-cfg
+# %TEST-EXEC: mkdir -p base/tests/with-cfg/tests
+# %TEST-EXEC: cat %INPUT >> base/tests/no-cfg/no-cfg.test
+# %TEST-EXEC: mv btest.cfg base/
+# %TEST-EXEC: echo "## RUNNING NO CFG TEST ALONE" >>output
+# %TEST-EXEC: btest -v base/tests/no-cfg/no-cfg.test >>output 2>&1
+#
+# %TEST-EXEC: cp base/btest.cfg base/tests/with-cfg
+# %TEST-EXEC: cat %INPUT >> base/tests/with-cfg/tests/with-cfg.test
+# %TEST-EXEC: echo "## RUNNING WITH CFG TEST ALONE" >>output
+# %TEST-EXEC: btest -v base/tests/with-cfg/tests/with-cfg.test >>output 2>&1
+#
+# But fail together
+# %TEST-EXEC: echo "## RUNNING TESTS TOGETHER" >>output
+# %TEST-EXEC-FAIL: btest -v base/tests/no-cfg/no-cfg.test base/tests/with-cfg/tests/with-cfg.test >>output 2>&1
+# %TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
+
+@TEST-EXEC: exit 0

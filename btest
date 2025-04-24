@@ -2713,17 +2713,23 @@ def outputDocumentation(tests, fmt):
             print()
 
 
-# Finds a file, recursing to parent directories if not found
-def find_file(filename, *, recurse):
-    current_dir = pathlib.Path.cwd()
+# Finds the config file 'filename', recursing to parent directories from the
+# 'start_dir' if not found.
+def find_config_file(filename, *, start_dir, recurse):
+    # First check current dir
+    f = pathlib.Path(filename)
+    if f.is_file():
+        return str(f.absolute())
+
+    if not recurse:
+        return None
+
+    current_dir = start_dir.absolute()
 
     for d in [current_dir, *current_dir.parents]:
         f = d / filename
         if f.is_file():
             return str(f)
-
-        if not recurse:
-            break
 
     return None
 
@@ -3008,19 +3014,49 @@ if __name__ == "__main__":
 
     (Options, args) = parse_options()
 
-    btest_cfg = find_file(Options.config, recurse=Options.config == DEFAULT_CONFIG_NAME)
-    if not btest_cfg:
+    found_configs = set()
+
+    if args:
+        for arg in args:
+            if found_config := find_config_file(
+                Options.config,
+                start_dir=pathlib.Path(arg).absolute(),
+                recurse=Options.config == DEFAULT_CONFIG_NAME,
+            ):
+                found_configs.add(found_config)
+    else:
+        if found_config := find_config_file(
+            Options.config,
+            start_dir=pathlib.Path.cwd(),
+            recurse=Options.config == DEFAULT_CONFIG_NAME,
+        ):
+            found_configs.add(found_config)
+
+    if len(found_configs) == 0:
         error(f"configuration file '{Options.config}' not found")
+
+    if len(found_configs) > 1:
+        conflicting_configs = ", ".join(
+            sorted(f"'{config}'" for config in found_configs)
+        )
+        error(
+            f"cannot execute tests using different configuration files together: {conflicting_configs}"
+        )
+
+    btest_cfg = found_configs.pop()
+
+    dirname = os.path.dirname(btest_cfg)
+
+    # Special case for providing just a single path to btest that happens
+    # to be the TestBase. Reset args, assuming the user wants to run all tests.
+    if len(args) == 1 and os.path.abspath(args[0]) == dirname:
+        args = []
 
     # The defaults come from environment variables, plus a few additional items.
     defaults = {}
     # Changes to defaults should not change os.environ
     defaults.update(os.environ)
     defaults["default_path"] = os.environ["PATH"]
-
-    dirname = os.path.dirname(btest_cfg)
-    if not dirname:
-        dirname = os.getcwd()
 
     # If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
     # If not, we'll use the config file's directory.
