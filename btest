@@ -263,9 +263,7 @@ def ExpandBackticks(origvalue):
 
         return out.strip()
 
-    value = reBackticks.sub(_exec, origvalue)
-
-    return value
+    return reBackticks.sub(_exec, origvalue)
 
 
 # We monkey-patch the config parser to provide an alternative method that
@@ -1488,12 +1486,11 @@ class Test:
             self.diagmsgs += [f"'{cmdline}' succeeded unexpectedly (exit code 0)"]
             return (False, 0)
 
-        else:
-            if not cmd.expect_success:
-                return (True, rc)
+        if not cmd.expect_success:
+            return (True, rc)
 
-            self.diagmsgs += [f"'{cmdline}' failed unexpectedly (exit code {rc})"]
-            return (False, rc)
+        self.diagmsgs += [f"'{cmdline}' failed unexpectedly (exit code {rc})"]
+        return (False, rc)
 
     def rmTmp(self, *, with_close=False):
         if with_close:
@@ -1553,8 +1550,8 @@ class Test:
     def timePostfix(self):
         if self.utime_base >= 0 and self.utime >= 0:
             return f" ({self.utime_perc:+.1f}%)"
-        else:
-            return ""
+
+        return ""
 
     # Picks up any progress output that has a test has written out.
     def parseProgress(self):
@@ -1612,8 +1609,8 @@ class OutputHandler:
             # requested, plus 1 for "#".
             width = len(str(self.options().threads)) + 1
             return f"[{mp.current_process().name:>{width}}]"
-        else:
-            return ""
+
+        return ""
 
     def _output(self, msg, nl=True, file=None):
         if not file:
@@ -2555,10 +2552,10 @@ def readTestFile(filename):
             t = Test(filename)
             if t.parse(content, filename):
                 return t
-            else:
-                return None
-        else:
-            return previous.clone(content)
+
+            return None
+
+        return previous.clone(content)
 
     if os.path.basename(filename) == ".btest-ignore":
         return []

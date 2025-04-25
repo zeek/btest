@@ -73,4 +73,4 @@ per-file-ignores = """
 """
 
 [tool.ruff.lint]
-select = ["C4", "F", "I", "ISC", "UP"]
+select = ["C4", "F", "I", "ISC", "RET", "UP"]
