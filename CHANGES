@@ -1,3 +1,15 @@
+1.2-11 | 2025-04-28 11:42:33 +0200
+
+  * Enable lints around return statements (Benjamin Bannier, Corelight)
+
+    This enables a class of return-related lints[^1] around return
+    statements. I mainly came here for redundant returns after `else`[^2],
+    but they all seemed useful. In general this seems to reduce nesting, and
+    also make overall flow clearer.
+
+    [^1]: https://docs.astral.sh/ruff/rules/#flake8-return-ret
+    [^2]: https://docs.astral.sh/ruff/rules/superfluous-else-return/
+
 1.2-9 | 2025-04-22 17:56:49 +0200
 
   * Bump pre-commit hooks (Benjamin Bannier, Corelight)
