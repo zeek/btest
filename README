@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 1.2-11
+.. |version| replace:: 1.2-15
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -414,10 +414,11 @@ Configuration
 -------------
 
 Specifics of ``btest``'s execution can be tuned with a configuration
-file, which by default is ``btest.cfg`` if that's found in the
-current directory. It can alternatively be specified with the
-``--config`` command line option, or a ``BTEST_CFG`` environment
-variable. The configuration file is
+file, which by default is ``btest.cfg`` if that's found in the current
+directory or parent directories. It can alternatively be specified
+with the ``--config`` command line option (which will not search
+parent directories), or a ``BTEST_CFG`` environment variable.
+The configuration file is
 "INI-style", and an example comes with the distribution, see
 ``btest.cfg.example``. A configuration file has one main section,
 ``btest``, that defines most options; as well as an optional section

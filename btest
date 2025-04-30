@@ -56,15 +56,14 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "1.2-11"  # Automatically filled in.
+VERSION = "1.2-15"  # Automatically filled in.
 
 Name = "btest"
 Config = None
 
-try:
-    ConfigDefault = os.environ["BTEST_CFG"]
-except KeyError:
-    ConfigDefault = "btest.cfg"
+DEFAULT_CONFIG_NAME = "btest.cfg"
+
+ConfigDefault = os.environ.get("BTEST_CFG", DEFAULT_CONFIG_NAME)
 
 
 def normalize_path(path):
@@ -2443,7 +2442,7 @@ class LinuxTimer(TimerBase):
 
 
 # Walk the given directory and return all test files.
-def findTests(paths, expand_globs=False):
+def findTests(paths, *, cwd=None, expand_globs=False):
     tests = []
 
     ignore_files = getOption("IgnoreFiles", "").split()
@@ -2452,14 +2451,20 @@ def findTests(paths, expand_globs=False):
     expanded = set()
 
     for p in paths:
-        p = os.path.join(TestBase, p)
+        anchored = os.path.join(TestBase, p)
 
         if expand_globs:
-            for d in glob.glob(p):
+            for d in glob.glob(anchored):
                 if os.path.isdir(d):
                     expanded.add(d)
         else:
-            expanded.add(p)
+            # Allow relative directories if this one does not exist
+            if cwd and not os.path.exists(anchored):
+                from_cwd = cwd / p
+                if from_cwd.exists():
+                    anchored = str(from_cwd)
+
+            expanded.add(anchored)
 
     for path in expanded:
         rpath = os.path.relpath(path, TestBase)
@@ -2705,6 +2710,27 @@ def outputDocumentation(tests, fmt):
             print()
 
 
+# Finds the config file 'filename', recursing to parent directories from the
+# 'start_dir' if not found.
+def find_config_file(filename, *, start_dir, recurse):
+    # First check current dir
+    f = pathlib.Path(filename)
+    if f.is_file():
+        return str(f.absolute())
+
+    if not recurse:
+        return None
+
+    current_dir = start_dir.absolute()
+
+    for d in [current_dir, *current_dir.parents]:
+        f = d / filename
+        if f.is_file():
+            return str(f)
+
+    return None
+
+
 def parse_options():
     optparser = optparse.OptionParser(
         usage="%prog [options] <directories>", version=VERSION
@@ -2947,9 +2973,6 @@ def parse_options():
         warning("ignoring requested parallelism in interactive-update mode")
         options.threads = 1
 
-    if not os.path.exists(options.config):
-        error(f"configuration file '{options.config}' not found")
-
     return options, parsed_args
 
 
@@ -2988,18 +3011,52 @@ if __name__ == "__main__":
 
     (Options, args) = parse_options()
 
+    found_configs = set()
+
+    if args:
+        for arg in args:
+            if found_config := find_config_file(
+                Options.config,
+                start_dir=pathlib.Path(arg).absolute(),
+                recurse=Options.config == DEFAULT_CONFIG_NAME,
+            ):
+                found_configs.add(found_config)
+    else:
+        if found_config := find_config_file(
+            Options.config,
+            start_dir=pathlib.Path.cwd(),
+            recurse=Options.config == DEFAULT_CONFIG_NAME,
+        ):
+            found_configs.add(found_config)
+
+    if len(found_configs) == 0:
+        error(f"configuration file '{Options.config}' not found")
+
+    if len(found_configs) > 1:
+        conflicting_configs = ", ".join(
+            sorted(f"'{config}'" for config in found_configs)
+        )
+        error(
+            f"cannot execute tests using different configuration files together: {conflicting_configs}"
+        )
+
+    btest_cfg = found_configs.pop()
+
+    dirname = os.path.dirname(btest_cfg)
+
+    # Special case for providing just a single path to btest that happens
+    # to be the TestBase. Reset args, assuming the user wants to run all tests.
+    if len(args) == 1 and os.path.abspath(args[0]) == dirname:
+        args = []
+
     # The defaults come from environment variables, plus a few additional items.
     defaults = {}
     # Changes to defaults should not change os.environ
     defaults.update(os.environ)
     defaults["default_path"] = os.environ["PATH"]
 
-    dirname = os.path.dirname(Options.config)
-    if not dirname:
-        dirname = os.getcwd()
-
     # If the BTEST_TEST_BASE envirnoment var is set, we'll use that as the testbase.
-    # If not, we'll use the current directory.
+    # If not, we'll use the config file's directory.
     TestBase = normalize_path(os.environ.get("BTEST_TEST_BASE", dirname))
     defaults["testbase"] = TestBase
     defaults["baselinedir"] = normalize_path(
@@ -3009,7 +3066,7 @@ if __name__ == "__main__":
 
     # Parse our config
     Config = getcfgparser(defaults)
-    Config.read(Options.config, encoding="utf-8")
+    Config.read(btest_cfg, encoding="utf-8")
 
     defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
@@ -3041,7 +3098,7 @@ if __name__ == "__main__":
                     # At this point, our defaults have changed, so we
                     # reread the configuration.
                     new_config = getcfgparser(defaults)
-                    new_config.read(Options.config)
+                    new_config.read(btest_cfg)
                     return new_config, value
 
             return Config, default
@@ -3063,6 +3120,7 @@ if __name__ == "__main__":
             transform=lambda x: normalize_path(x),
         )
 
+    orig_cwd = pathlib.Path.cwd()
     os.chdir(TestBase)
 
     if Options.sphinx:
@@ -3198,13 +3256,13 @@ if __name__ == "__main__":
 
     testdirs = getOption("TestDirs", "").split()
     if testdirs:
-        Config.configured_tests = findTests(testdirs, True)
+        Config.configured_tests = findTests(testdirs, expand_globs=True)
 
     if args:
         if Options.tests_file:
             error("cannot specify tests both on command line and with --tests-file")
 
-        tests = findTests(args)
+        tests = findTests(args, cwd=orig_cwd)
 
     else:
         if Options.rerun:

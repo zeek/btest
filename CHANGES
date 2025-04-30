@@ -1,3 +1,40 @@
+1.2-15 | 2025-04-30 10:11:52 -0400
+
+  * Allow executing tests from outside the suite (Evan Typanski, Corelight)
+
+    If btest.cfg is in the `testing/btest` relative directory, this allows
+    the user to call btest with `btest testing/btest/tests`, which will use
+    the btest.cfg file in testing/btest. It will also check its parents, so
+    you may use `btest testing/btest/language/while.zeek` - for example.
+
+    The first complication is that previously-valid uses of btest should
+    remain the same. This is done by always checking the current directory
+    for btest.cfg first.
+
+    The second is if there is a conflict between two tests' btest.cfg file.
+    For example, the following may choose two different btest.cfg files:
+
+    .
+    └── multiple-cfg
+        ├── Baseline
+        ├── btest.cfg
+        └── tests
+            ├── no-cfg
+            │   └── test2.test
+            └── with-cfg
+                ├── btest.cfg
+                └── tests
+                    └── test1.test
+
+    If there is a conflicting config file, then btest should raise an error,
+    as it can currently only execute with one config file per run.
+
+  * Check if current directory has tests before erroring (Evan Typanski, Corelight)
+
+    After this, btest can execute tests relative to the current directory.
+
+  * Check parent directories for `btest.cfg` (Evan Typanski, Corelight)
+
 1.2-11 | 2025-04-28 11:42:33 +0200
 
   * Enable lints around return statements (Benjamin Bannier, Corelight)

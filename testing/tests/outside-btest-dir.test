@@ -1,0 +1,18 @@
+# %TEST-DOC: Test that you can run btest from outside of the directory with btest.cfg
+#
+# %TEST-EXEC: mkdir -p base/tests/one
+# %TEST-EXEC: mkdir -p base/tests/two
+# %TEST-EXEC: cat %INPUT >> base/tests/one/a-relative-test.test
+# %TEST-EXEC: cat %INPUT >> base/tests/two/another-relative-test.test
+# %TEST-EXEC: mv btest.cfg base/
+# %TEST-EXEC: btest base/tests/one/a-relative-test.test
+# %TEST-EXEC: btest base/tests/one/a-relative-test.test base/tests/two/another-relative-test.test
+#
+# Test the special case of running all tests from outside
+# %TEST-EXEC: echo "## RUNNING DIRECTLY ON DIRECTORY WITH CONFIG:" >>output
+# %TEST-EXEC: btest -v base/ >>output 2>&1
+# %TEST-EXEC: echo "## RUNNING DIRECTLY ON TESTS DIRECTORY:" >>output
+# %TEST-EXEC: btest -v base/tests >>output 2>&1
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: exit 0
