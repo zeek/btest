@@ -1,0 +1,27 @@
+# %TEST-DOC: Validates values from DEFAULT can be used for interpolation in environment sections. Regression test for #119.
+#
+# %TEST-EXEC: btest -dv test
+# %TEST-EXEC: btest -a alt -dv test
+
+# %TEST-START-FILE btest.cfg
+[DEFAULT]
+val1 = abcd
+val2 = dcba
+
+[btest]
+option1=%(val1)s
+option2=%(val2)s
+
+[environment]
+ENV_VALUE1=%(val1)s
+ENV_VALUE2=%(val2)s
+
+[environment-alt]
+ENV_VALUE1=%(val1)s
+ENV_VALUE2=%(val2)s
+# %TEST-END-FILE
+
+# %TEST-START-FILE test
+# @TEST-EXEC: env | grep ENV_VALUE1=abcd
+# @TEST-EXEC: env | grep ENV_VALUE2=dcba
+# %TEST-END-FILE
