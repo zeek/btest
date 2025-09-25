@@ -1,0 +1,16 @@
+# %TEST-DOC: Validates error messaging when the config file contains an invalid Python interpolation.
+#
+# %TEST-EXEC-FAIL: btest -dv test >output 2>&1
+# %TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
+
+# %TEST-START-FILE btest.cfg
+[DEFAULT]
+val1 = abcd
+
+[btest]
+option1=%(val1)
+# %TEST-END-FILE
+
+# %TEST-START-FILE test
+# @TEST-EXEC: true
+# %TEST-END-FILE
