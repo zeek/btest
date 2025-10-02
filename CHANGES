@@ -1,3 +1,9 @@
+1.2-19 | 2025-10-02 09:40:38 -0700
+
+  * Check btest.cfg for Python configparser interpolation errors (Christian Kreibich, Corelight)
+
+  * GH-119: tests: Add env-var-default.test (Arne Welzel, Corelight)
+
 1.2-15 | 2025-04-30 10:11:52 -0400
 
   * Allow executing tests from outside the suite (Evan Typanski, Corelight)

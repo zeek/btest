@@ -56,7 +56,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "1.2-15"  # Automatically filled in.
+VERSION = "1.2-19"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -3067,6 +3067,20 @@ if __name__ == "__main__":
     # Parse our config
     Config = getcfgparser(defaults)
     Config.read(btest_cfg, encoding="utf-8")
+
+    # Make sure at this point that any Python-level %()s substitution patterns
+    # resolve. Cleaner to error now than in mid-processing when we retrieve an
+    # option. We use itemsNoDefaults() for this since falling back on defaults
+    # pulls in all of os.environ, some of which may well not be formatted for
+    # Python substitution.
+    try:
+        for section in Config.sections():
+            for _, _ in Config.itemsNoDefaults(section):
+                pass
+    except configparser.InterpolationError as err:
+        error(
+            f"{btest_cfg} contains invalid Python configparser interpolation in {err.section}.{err.option}: {err}"
+        )
 
     defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
