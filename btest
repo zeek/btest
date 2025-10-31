@@ -542,6 +542,14 @@ class TestManager(mp_managers.SyncManager):
         count = self._succeeded.value + self._failed.value + self._skipped.value
         return 100.0 * count / self._num_tests
 
+    # Returns true if there's at least one unexpected failure so far.
+    def hasFailure(self):
+        return (self._failed.value - self._failed_expected.value) > 0
+
+    # Returns true if there's at least one unstable test so far.
+    def hasUnstable(self):
+        return self._unstable.value > 0
+
     # Worker method for each of the "threads" specified by the "-j" argument passed
     # at run time. This basically segments the list of tests into chunks and runs
     # until we're out of chunks.
@@ -2313,6 +2321,42 @@ class ChromeTracing(OutputHandler):
         self._file.close()
 
 
+class OSC94ProgressBar(OutputHandler):
+    """
+    Displays a progress bar using OSC 9;4 escape sequences.
+    """
+
+    # OSC 9;4 (https://learn.microsoft.com/en-us/windows/terminal/tutorials/progress-bar-sequences)
+    ProgressHide = "\033]9;4;0;0\007"
+    ProgressDefault = "\033]9;4;1;{percentage:d}\007"
+    ProgressError = "\033]9;4;2;{percentage:d}\007"
+    ProgressWarning = "\033]9;4;4;{percentage:d}\007"
+
+    def __init__(self, options):
+        OutputHandler.__init__(self, options)
+
+        def cleanup():
+            sys.stdout.write(self.ProgressHide)
+            sys.stdout.flush()
+
+        atexit.register(cleanup)
+
+    def testFinished(self, test, msg):
+        fmt = self.ProgressDefault
+
+        if test.mgr.hasFailure():
+            fmt = self.ProgressError
+        elif test.mgr.hasUnstable():
+            fmt = self.ProgressWarning
+
+        progress = fmt.format(percentage=int(test.mgr.percentage()))
+        sys.stdout.write(progress)
+        sys.stdout.flush()
+
+    def finished(self):
+        sys.stdout.write(self.ProgressHide)
+        sys.stdout.flush()
+
 def create_output_handler(options):
     output_handlers = []
 
@@ -2367,6 +2411,9 @@ def create_output_handler(options):
 
         except OSError as e:
             print(f"cannot open {options.tracefile}: {e}", file=sys.stderr)
+
+    if options.osc94_progress and sys.stdout.isatty():
+        output_handlers += [OSC94ProgressBar(options)]
 
     return Forwarder(options, output_handlers)
 
@@ -2962,6 +3009,14 @@ def parse_options():
         dest="tests_file",
         default="",
         help=("Load list of tests to execute from file."),
+    )
+    optparser.add_option(
+        "-P",
+        "--progress-bar",
+        action="store_true",
+        dest="osc94_progress",
+        default=os.environ.get("BTEST_OSC94_PROGRESS", ""),
+        help="display progress bar using OSC 9;4 escape sequences (set BTEST_OSC94_PROGRESS to permanently enable)",
     )
 
     optparser.set_defaults(mode="TEST")
