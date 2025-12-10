@@ -25,5 +25,5 @@ MYTEST_Y=`echo Y installation >&2; echo Yinstallation`
 
 # %TEST-START-FILE test
 # # This writes into the outer test directory.
-# @TEST-EXEC: env | grep MYTEST >> ../../test.out
+# @TEST-EXEC: env | grep MYTEST | sort >> ../../test.out
 # %TEST-END-FILE
