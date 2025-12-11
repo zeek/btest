@@ -1,3 +1,18 @@
+1.2-21 | 2025-12-11 16:13:47 +0100
+
+  * Add option to display progress via `OSC 9;4` escape codes. (Robin Sommer, Corelight)
+
+    When running with `-P`/`--progress-bar` and the console is a TTY,
+    btest now now signals test progress via OSC 9;4 escape codes.[^1] A
+    number of terminal emulators support those these days, and those who
+    don't should just be ignoring them.[^2]
+
+    [^1] https://learn.microsoft.com/en-us/windows/terminal/tutorials/progress-bar-sequences
+
+    [^2] However, older versions of iTerm2 and Kitty (and maybe others)
+    are known to end up triggering notifications for these escape codes
+    instead of showing a progress bar.
+
 1.2-19 | 2025-10-02 09:40:38 -0700
 
   * Check btest.cfg for Python configparser interpolation errors (Christian Kreibich, Corelight)

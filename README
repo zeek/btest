@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 1.2-19
+.. |version| replace:: 1.2-21
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -325,6 +325,11 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     concurrently without further constraints. One can however
     ensure serialization of subsets by assigning them to the same
     serialization set, see `@TEST-SERIALIZE`_.
+
+-P, --progress-bar
+    Displays a progress bar using ``OSC 9;4`` escape codes if
+    connected to a TTY. This option can also be permanently enabled by
+    setting the ``BTEST_OSC94_PROGRESS`` environment variable.
 
 -q, --quiet
     Suppress information output other than about failed tests.
