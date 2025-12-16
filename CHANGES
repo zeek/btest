@@ -1,3 +1,16 @@
+1.2-23 | 2025-12-16 19:30:51 +0100
+
+  * GH-122: Skip interpolation checks for non-selected alternative sections (Arne Welzel, Corelight)
+
+    In #122 there's spurious stderr output for Spicy's test suite reported.
+    This is due to the new code from #121 eagerly reading all keys in all
+    sections, even if some, like [environment-<tag>] sections for
+    alternatives, would never be used if not selected explicitly.
+
+    Move the interpolation check below Options.alternative wrangling and
+    skip sections that won't be used. This squelches the spurious stderr
+    output. I've added a test, though it's a bit opaque.
+
 1.2-21 | 2025-12-11 16:13:47 +0100
 
   * Add option to display progress via `OSC 9;4` escape codes. (Robin Sommer, Corelight)

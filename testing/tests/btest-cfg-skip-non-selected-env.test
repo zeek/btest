@@ -1,0 +1,29 @@
+# %TEST-DOC: Validates that a environment-<tag> section isn't interpolated/evaluated
+# it is not not selected.
+#
+# %TEST-EXEC: echo "default" >>test.out
+# %TEST-EXEC: btest -dt test >output 2>&1
+# %TEST-EXEC: echo "installation" >>test.out
+# %TEST-EXEC: btest -dt -a installation test >>output 2>&1
+# %TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
+# %TEST-EXEC: btest-diff test.out
+
+# %TEST-START-FILE btest.cfg
+[DEFAULT]
+val1 = abcd
+
+[btest]
+option1=%(val1)s
+
+[environment]
+MYTEST_X=`echo X default >&2; echo Xdefault`
+
+[environment-installation]
+MYTEST_X=`echo X installation >&2; echo Xinstallation`
+MYTEST_Y=`echo Y installation >&2; echo Yinstallation`
+# %TEST-END-FILE
+
+# %TEST-START-FILE test
+# # This writes into the outer test directory.
+# @TEST-EXEC: env | grep MYTEST | sort >> ../../test.out
+# %TEST-END-FILE

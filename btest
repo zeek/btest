@@ -56,7 +56,7 @@ else:
     import multiprocessing.managers as mp_managers
     import multiprocessing.sharedctypes as mp_sharedctypes
 
-VERSION = "1.2-21"  # Automatically filled in.
+VERSION = "1.2-23"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -3123,20 +3123,6 @@ if __name__ == "__main__":
     Config = getcfgparser(defaults)
     Config.read(btest_cfg, encoding="utf-8")
 
-    # Make sure at this point that any Python-level %()s substitution patterns
-    # resolve. Cleaner to error now than in mid-processing when we retrieve an
-    # option. We use itemsNoDefaults() for this since falling back on defaults
-    # pulls in all of os.environ, some of which may well not be formatted for
-    # Python substitution.
-    try:
-        for section in Config.sections():
-            for _, _ in Config.itemsNoDefaults(section):
-                pass
-    except configparser.InterpolationError as err:
-        error(
-            f"{btest_cfg} contains invalid Python configparser interpolation in {err.section}.{err.option}: {err}"
-        )
-
     defaults["baselinedir"] = getOption("BaselineDir", defaults["baselinedir"])
 
     min_version = getOption("MinVersion", None)
@@ -3144,7 +3130,7 @@ if __name__ == "__main__":
         validate_version_requirement(min_version, VERSION)
 
     if Options.alternatives:
-        # Preprocess to split into list. "-" refers to the default setup, as a
+        # Preprocess to split into list. "-" refers to the default alternative, as a
         # shorthand for "default", to allow combination with select alternatives.
         Options.alternatives = [alt.strip() for alt in Options.alternatives.split(",")]
         Options.alternatives = [
@@ -3187,6 +3173,34 @@ if __name__ == "__main__":
             "baselinedir",
             None,
             transform=lambda x: normalize_path(x),
+        )
+    else:
+        Options.alternatives = []
+
+    # Make sure at this point that any Python-level %()s substitution patterns
+    # resolve. Cleaner to error now than in mid-processing when we retrieve an
+    # option. We use itemsNoDefaults() for this since falling back on defaults
+    # pulls in all of os.environ, some of which may well not be formatted for
+    # Python substitution.
+    try:
+        for section in Config.sections():
+            # Skip interpolating sections of alternatives that aren't selected
+            # via -a / --alternatives. They aren't needed to run tests
+            # and aren't expected to properly interpolatable.
+            if (
+                section.startswith("environment-")
+                or section.startswith("filter-")
+                or section.startswith("substitution-")
+            ):
+                tag = section.split("-", 1)[-1]
+                if tag not in Options.alternatives:
+                    continue
+
+            for _, _ in Config.itemsNoDefaults(section):
+                pass
+    except configparser.InterpolationError as err:
+        error(
+            f"{btest_cfg} contains invalid Python configparser interpolation in {err.section}.{err.option}: {err}"
         )
 
     orig_cwd = pathlib.Path.cwd()
