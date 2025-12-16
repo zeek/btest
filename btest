@@ -2357,6 +2357,7 @@ class OSC94ProgressBar(OutputHandler):
         sys.stdout.write(self.ProgressHide)
         sys.stdout.flush()
 
+
 def create_output_handler(options):
     output_handlers = []
 
