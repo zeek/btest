@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+
+"""
+Preprocesses file and runs btest-diff on the result
+
+A typical use case in the Zeek ecosystem is to run `zeek-cut` on a log
+file to select only "interesting" columns and baseline the result. This
+script simplifies that.
+
+The concrete file preprocessor is not fixed and defaults to `cut`. It can be
+overriden via the environment variable `TEST_DIFF_CUTTER`, e.g., to baseline
+just the originator and responder from a Zeek `conn.log`:
+
+    TEST_DIFF_CUTTER=zeek-cut %(prog)s -m id.orig_h id.resp_h conn.log
+
+The file to work on needs to be passed as last argument; all other
+arguments are passed through to the preprocessor.
+"""
+
+import argparse
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        usage="%(prog)s [-h] [CUTTER_ARGS] file",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    _, remaining_args = parser.parse_known_args()
+
+    if not remaining_args:
+        parser.error("the following arguments are required: file")
+
+    *cutter_args, filename = remaining_args
+
+    cutter = os.environ.get("TEST_DIFF_CUTTER", "cut")
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_file = os.path.join(tmp_dir, os.path.basename(filename))
+        with open(tmp_file, mode="w") as stdout, open(filename) as stdin:
+            try:
+                subprocess.run(
+                    [cutter, *cutter_args],
+                    stdin=stdin,
+                    stdout=stdout,
+                    check=True,
+                )
+            except FileNotFoundError as err:
+                sys.exit(str(err))
+            except subprocess.CalledProcessError as err:
+                sys.exit(f"Error running '{shlex.join(err.cmd)}'")
+
+        shutil.move(tmp_file, filename)
+
+    try:
+        subprocess.run(["btest-diff", filename], check=True)
+    except subprocess.CalledProcessError:
+        sys.exit(1)

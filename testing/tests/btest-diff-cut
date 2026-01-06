@@ -1,0 +1,15 @@
+# %TEST-DOC: Check basic functionality of btest-diff-cut
+#
+# This test misbehaves under Windows where it cannot find `btest-diff`.
+# %TEST-REQUIRES: ! ${SCRIPTS}/is-windows
+#
+# %TEST-EXEC: sh %INPUT > sample.dat
+# %TEST-EXEC: btest-diff-cut -d' ' -f2 sample.dat
+#
+# %TEST-EXEC-FAIL: TEST_DIFF_CUTTER=does_not_exit_4711 btest-diff-cut sample.dat >output 2>&1
+# %TEST-EXEC: btest-diff output
+
+# Create sample data
+for i in $(seq 3); do
+	echo "$i" "$i$i" "$i$i$i"
+done

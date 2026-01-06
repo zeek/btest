@@ -52,6 +52,7 @@ script-files = [
     "btest-bg-run-helper",
     "btest-bg-wait",
     "btest-diff",
+    "btest-diff-cut",
     "btest-setsid",
     "btest-progress",
     "sphinx/btest-diff-rst",
