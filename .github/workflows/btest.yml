@@ -13,11 +13,11 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
         os: [macos-latest, ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
@@ -59,11 +59,11 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
         os: [ubuntu-latest]
 
     runs-on: ${{ matrix.os }}

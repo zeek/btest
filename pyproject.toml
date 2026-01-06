@@ -7,9 +7,9 @@ description = "A powerful system testing framework"
 readme = "See https://github.com/zeek/btest"
 dynamic = ["version"]
 
-license = { text = "3-clause BSD License" }
+license = "BSD-3-Clause"
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 keywords=[
     "system",
@@ -22,7 +22,6 @@ keywords=[
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
     "Programming Language :: Python :: 3",
