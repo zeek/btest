@@ -1,3 +1,10 @@
+1.2-24 | 2025-12-16 19:32:59 +0100
+
+  * Run pre-commit run -a to fix formatting (Arne Welzel, Corelight)
+
+    I didn't have pre-commit hooks on and master wasn't properly
+    formatted, so doing it as a direct push.
+
 1.2-23 | 2025-12-16 19:30:51 +0100
 
   * GH-122: Skip interpolation checks for non-selected alternative sections (Arne Welzel, Corelight)
