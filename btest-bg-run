@@ -18,7 +18,11 @@ fi
 cwd=$(pwd)
 cd "$(dirname "$0")" || exit 1
 helper=$(pwd)/btest-bg-run-helper
-setsid=$(pwd)/btest-setsid
+# btest-setsid calls os.setsid() via Python, which is unavailable on Windows.
+case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*) setsid="" ;;
+    *) setsid=$(pwd)/btest-setsid ;;
+esac
 cd "$cwd" || exit 1
 
 dir=$1

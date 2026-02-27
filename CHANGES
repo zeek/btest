@@ -1,3 +1,7 @@
+1.3-2 | 2026-02-27 10:55:29 -0700
+
+  * [windows] support unix commands using bash (Maor Hamami)
+
 1.3 | 2026-01-07 10:36:41 -0700
 
   * Release 1.3.

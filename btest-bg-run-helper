@@ -16,7 +16,14 @@ cleanup() {
         # This should terminate any well-behaved background
         # commands that were spawned by the program under test
         # unless they started their own process group.
-        kill 0 &>/dev/null
+        #
+        # On Windows (without setsid) the helper shares a process
+        # group with the parent, so kill 0 would take out the
+        # entire test harness.  Only kill the child directly.
+        case "$(uname -s)" in
+            MINGW* | MSYS* | CYGWIN*) ;;
+            *) kill 0 &>/dev/null ;;
+        esac
 
         if [ -n "$pid" ]; then
             kill -0 "$pid" &>/dev/null && kill "$pid"
