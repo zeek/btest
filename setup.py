@@ -5,6 +5,6 @@ from setuptools import setup
 py_modules = ["btest-sphinx"]
 
 setup(
-    version="1.3.dev4",  # Filled in automatically.
+    version="1.3.dev6",  # Filled in automatically.
     py_modules=py_modules,
 )
