@@ -2,6 +2,24 @@
 #
 # Internal helper for btest-bg-run.
 
+is_windows=0
+case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*) is_windows=1 ;;
+esac
+
+# On Windows, kill the child's process tree using its Windows PID.
+# taskkill /T terminates the process and all its descendants.
+# MSYS_NO_PATHCONV prevents MSYS from interpreting /F, /T, /PID as paths.
+win_kill_tree() {
+    local wpid
+    if [ $is_windows -eq 1 ] && [ -f .winpid ]; then
+        wpid=$(cat .winpid)
+        if [ -n "$wpid" ]; then
+            MSYS_NO_PATHCONV=1 taskkill /F /T /PID "$wpid" &>/dev/null
+        fi
+    fi
+}
+
 cleanup() {
     # Ignore SIGTERM during cleanup to prevent terminating
     # this process when sending signals to the process group.
@@ -20,16 +38,19 @@ cleanup() {
         # On Windows (without setsid) the helper shares a process
         # group with the parent, so kill 0 would take out the
         # entire test harness.  Only kill the child directly.
-        case "$(uname -s)" in
-            MINGW* | MSYS* | CYGWIN*) ;;
-            *) kill 0 &>/dev/null ;;
-        esac
+        if [ $is_windows -eq 0 ]; then
+            kill 0 &>/dev/null
+        fi
 
         if [ -n "$pid" ]; then
             kill -0 "$pid" &>/dev/null && kill "$pid"
             sleep 1
             kill -0 "$pid" &>/dev/null && kill -9 "$pid" && echo 9 >.exitcode
         fi
+
+        # Fallback: on Windows, use taskkill to ensure the entire
+        # process tree is terminated even if kill missed descendants.
+        win_kill_tree
     fi
 }
 
@@ -39,6 +60,12 @@ eval "$* &"
 
 pid=$!
 echo $$ >.pid
+
+# Record the child's Windows PID so that btest-bg-wait can
+# reliably terminate it even if MSYS PIDs become stale.
+if [ $is_windows -eq 1 ] && [ -f /proc/$pid/winpid ]; then
+    cat /proc/$pid/winpid >.winpid
+fi
 
 wait $pid
 echo $? >.exitcode
