@@ -43,6 +43,11 @@ function check_procs {
     return 0
 }
 
+is_windows=0
+case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*) is_windows=1 ;;
+esac
+
 function kill_procs {
     for p in $procs; do
         if [ ! -e "$p/.exitcode" ]; then
@@ -62,6 +67,21 @@ function kill_procs {
             sleep 1
         fi
     done
+
+    # On Windows, use taskkill as a fallback to ensure child
+    # processes and their descendants are terminated even if
+    # MSYS signals did not reach them.
+    if [ $is_windows -eq 1 ]; then
+        for p in $procs; do
+            if [ -f "$p/.winpid" ]; then
+                local wpid
+                wpid=$(cat "$p/.winpid")
+                if [ -n "$wpid" ]; then
+                    MSYS_NO_PATHCONV=1 taskkill /F /T /PID "$wpid" &>/dev/null
+                fi
+            fi
+        done
+    fi
 }
 
 function collect_output {
