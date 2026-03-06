@@ -85,7 +85,11 @@ function kill_procs {
 }
 
 function collect_output {
-    rm -f .stdout .stderr
+    # Truncate rather than rm: on Windows the parent process (btest)
+    # still holds these files open and rm would fail with EBUSY.
+    # Truncation is allowed because btest opens them with write-sharing.
+    : >.stdout
+    : >.stderr
 
     if [ $timeout_ok != 1 ] && [ -s .timeout ]; then
         {

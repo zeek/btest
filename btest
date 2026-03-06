@@ -1188,7 +1188,7 @@ class Test:
                 error(f"cannot write test's additional file '{fname}'")
 
             for line in lines:
-                ffile.write(line)
+                ffile.write(line.replace("\r\n", "\n"))
 
             ffile.close()
 
