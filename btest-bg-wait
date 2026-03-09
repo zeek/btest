@@ -72,6 +72,7 @@ function kill_procs {
     # processes and their descendants are terminated even if
     # MSYS signals did not reach them.
     if [ $is_windows -eq 1 ]; then
+        local msys_pids=""
         for p in $procs; do
             if [ -f "$p/.winpid" ]; then
                 local wpid
@@ -80,7 +81,28 @@ function kill_procs {
                     MSYS_NO_PATHCONV=1 taskkill /F /T /PID "$wpid" &>/dev/null
                 fi
             fi
+            if [ -f "$p/.pid" ]; then
+                msys_pids="$msys_pids $(cat "$p/.pid")"
+            fi
         done
+
+        # Wait for killed processes to fully exit so that ports
+        # and file handles are released before the next test.
+        if [ -n "$msys_pids" ]; then
+            local attempts=0
+            while [ $attempts -lt 20 ]; do
+                local any_alive=0
+                for mpid in $msys_pids; do
+                    if kill -0 "$mpid" 2>/dev/null; then
+                        any_alive=1
+                        break
+                    fi
+                done
+                [ $any_alive -eq 0 ] && break
+                sleep 0.1
+                attempts=$((attempts + 1))
+            done
+        fi
     fi
 }
 
