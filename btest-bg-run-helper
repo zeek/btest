@@ -68,5 +68,16 @@ if [ $is_windows -eq 1 ] && [ -f /proc/$pid/winpid ]; then
 fi
 
 wait $pid
-echo $? >.exitcode
+rc=$?
+
+# On Windows, TerminateProcess cannot invoke clean signal handlers the
+# way Unix signals do.  A process killed by SIGTERM exits with code 15,
+# which bash maps to 128+15=143.  When a test intentionally kills a
+# process (e.g., supervisor shutdown), this is the expected outcome, so
+# treat it as success.
+if [ $is_windows -eq 1 ] && [ $rc -eq 143 ]; then
+    rc=0
+fi
+
+echo $rc >.exitcode
 pid=""
