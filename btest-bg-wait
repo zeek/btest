@@ -86,9 +86,9 @@ function kill_procs {
             # pre-exec Windows PID.  Look up the *current* Windows
             # PID from /proc using the child's MSYS PID, which
             # remains valid and tracks the native process after exec.
-            if [ -f "$p/.child_pid" ]; then
+            if [ -f "$p/.winchildpid" ]; then
                 local cpid
-                cpid=$(cat "$p/.child_pid")
+                cpid=$(cat "$p/.winchildpid")
                 if [ -n "$cpid" ] && [ -f /proc/"$cpid"/winpid ]; then
                     local live_wpid
                     live_wpid=$(cat /proc/"$cpid"/winpid)
