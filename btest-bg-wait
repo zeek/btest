@@ -81,6 +81,23 @@ function kill_procs {
                     MSYS_NO_PATHCONV=1 taskkill /F /T /PID "$wpid" &>/dev/null
                 fi
             fi
+
+            # The .winpid captured at startup may hold a stale
+            # pre-exec Windows PID.  Look up the *current* Windows
+            # PID from /proc using the child's MSYS PID, which
+            # remains valid and tracks the native process after exec.
+            if [ -f "$p/.winchildpid" ]; then
+                local cpid
+                cpid=$(cat "$p/.winchildpid")
+                if [ -n "$cpid" ] && [ -f /proc/"$cpid"/winpid ]; then
+                    local live_wpid
+                    live_wpid=$(cat /proc/"$cpid"/winpid)
+                    if [ -n "$live_wpid" ]; then
+                        MSYS_NO_PATHCONV=1 taskkill /F /T /PID "$live_wpid" &>/dev/null
+                    fi
+                fi
+            fi
+
             if [ -f "$p/.pid" ]; then
                 msys_pids="$msys_pids $(cat "$p/.pid")"
             fi

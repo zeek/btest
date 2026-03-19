@@ -11,9 +11,15 @@ esac
 # taskkill /T terminates the process and all its descendants.
 # MSYS_NO_PATHCONV prevents MSYS from interpreting /F, /T, /PID as paths.
 win_kill_tree() {
-    local wpid
-    if [ $is_windows -eq 1 ] && [ -f .winpid ]; then
-        wpid=$(cat .winpid)
+    if [ $is_windows -eq 1 ]; then
+        local wpid=""
+        # Prefer the live /proc lookup: after exec the Windows PID may
+        # differ from the value captured at startup in .winpid.
+        if [ -n "$pid" ] && [ -f /proc/"$pid"/winpid ]; then
+            wpid=$(cat /proc/"$pid"/winpid)
+        elif [ -f .winpid ]; then
+            wpid=$(cat .winpid)
+        fi
         if [ -n "$wpid" ]; then
             MSYS_NO_PATHCONV=1 taskkill /F /T /PID "$wpid" &>/dev/null
         fi
@@ -63,8 +69,14 @@ echo $$ >.pid
 
 # Record the child's Windows PID so that btest-bg-wait can
 # reliably terminate it even if MSYS PIDs become stale.
+# Also record the child's MSYS PID (.winchildpid): btest-bg-wait
+# can use it to look up the *current* Windows PID via /proc at kill
+# time, which is more reliable than .winpid because exec may change
+# the Windows PID.
+# Guard: /proc entry disappears if the child exits before we get here.
 if [ $is_windows -eq 1 ] && [ -f /proc/$pid/winpid ]; then
     cat /proc/$pid/winpid >.winpid
+    echo $pid >.winchildpid
 fi
 
 wait $pid
