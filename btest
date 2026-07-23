@@ -31,27 +31,6 @@ import uuid
 import xml.dom.minidom
 from datetime import datetime
 
-# We require the external multiprocess library on Windows due to pickling issues
-# with the standard one.
-if sys.platform == "win32":
-    try:
-        import multiprocess as mp
-    except ImportError as error:
-        print(
-            "error: btest failed to import the 'multiprocess' library\n"
-            "\n"
-            "This library is required for btest to function on Windows. "
-            "It can be installed from pip like:\n"
-            "\n"
-            "    pip install multiprocess\n"
-            "\n"
-            "Also check the following exception output for possible alternate explanations:\n\n"
-            f"{type(error).__name__}: {error}",
-            file=sys.stderr,
-        )
-else:
-    import multiprocessing as mp
-
 VERSION = "1.3-28"  # Automatically filled in.
 
 Name = "btest"
@@ -2352,7 +2331,7 @@ class ChromeTracing(OutputHandler):
             {
                 "name": test.name,
                 "ts": test.start * 1e6,
-                "tid": mp.current_process().pid,
+                "tid": os.getpid(),
                 "pid": 1,
                 "ph": "X",
                 "cat": "test",
@@ -2728,7 +2707,7 @@ def readTestFile(filename):
 
 
 def jOption(option, _, __, parser):
-    val = mp.cpu_count()
+    val = os.cpu_count()
 
     if parser.rargs and not parser.rargs[0].startswith("-"):
         try:
@@ -3443,7 +3422,7 @@ if __name__ == "__main__":
             sys.exit(0)
         else:
             (succeeded, failed, skipped, unstable, failed_expected), user_abort = (
-                mgr.run(copy.deepcopy(tests), output_handler)
+                mgr.run(tests, output_handler)
             )
             total = succeeded + failed + skipped
 
