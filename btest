@@ -678,7 +678,7 @@ async def run_test(test, state):
     state.testReplayOutput(test)
 
 
-async def _async_run_all(tests, state, n):
+async def _async_run_all(state, n):
     async def worker(thread_num):
         all_tests = []
         while True:
@@ -695,146 +695,71 @@ async def _async_run_all(tests, state, n):
     await asyncio.gather(*[worker(i) for i in range(n)])
 
 
-# Main class distributing the work across threads.
-class TestManager:
-    def __init__(self):
-        self._run_state = None
+def run_tests(tests, output_handler):
+    tests = list(tests)
+    failed_tests = []
 
-    def run(self, tests, output_handler):
-        proxy_tests = list(tests)
-        proxy_failed_tests = []
+    port_range = getOption("PortRange", "1024-65535")
+    port_range_lo = int(port_range.split("-")[0])
+    port_range_hi = int(port_range.split("-")[1])
 
-        port_range = getOption("PortRange", "1024-65535")
-        port_range_lo = int(port_range.split("-")[0])
-        port_range_hi = int(port_range.split("-")[1])
+    if port_range_lo > port_range_hi:
+        error(f"invalid PortRange value: {port_range}")
 
-        if port_range_lo > port_range_hi:
-            error(f"invalid PortRange value: {port_range}")
+    max_test_ports = 0
+    test_with_most_ports = None
 
-        max_test_ports = 0
-        test_with_most_ports = None
+    for t in tests:
+        if len(t.ports) > max_test_ports:
+            max_test_ports = len(t.ports)
+            test_with_most_ports = t
 
-        for t in proxy_tests:
-            if len(t.ports) > max_test_ports:
-                max_test_ports = len(t.ports)
-                test_with_most_ports = t
-
-        if max_test_ports > port_range_hi - port_range_lo + 1:
-            error(
-                f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
-            )
-
-        proxy_ports = list(range(port_range_lo, port_range_hi + 1))
-
-        # loadTiming needs a RunState with a lock to guard file access.
-        # Create a temporary state just to load timing before the full state is ready.
-        timing = RunState(
-            output_handler, proxy_tests, proxy_failed_tests, proxy_ports, {}
-        ).loadTiming()
-
-        output_handler.prepare(self)
-        self._run_state = RunState(
-            output_handler, proxy_tests, proxy_failed_tests, proxy_ports, timing
+    if max_test_ports > port_range_hi - port_range_lo + 1:
+        error(
+            f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
         )
 
-        user_abort = False
+    ports = list(range(port_range_lo, port_range_hi + 1))
 
+    state = RunState(output_handler, tests, failed_tests, ports, {})
+    state._timing = state.loadTiming()
+    output_handler.prepare()
+
+    user_abort = False
+
+    try:
+        asyncio.run(_async_run_all(state, Options.threads))
+    except Abort:
+        user_abort = True
+
+    if (
+        Options.abort_on_failure
+        and state._failed > 0
+        and state._failed > state._failed_expected
+    ):
+        raise Abort("Aborted after first failure.")
+
+    # Record failed tests if not updating.
+    if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
         try:
-            asyncio.run(
-                _async_run_all(list(proxy_tests), self._run_state, Options.threads)
-            )
-        except Abort:
-            user_abort = True
+            state_file = open(StateFile, "w", encoding="utf-8")
+        except OSError:
+            error(f"cannot open state file {StateFile}")
 
-        state = self._run_state
+        for t in sorted(state._failed_tests):
+            print(t, file=state_file)
 
-        if (
-            Options.abort_on_failure
-            and state._failed > 0
-            and state._failed > state._failed_expected
-        ):
-            # Signal abort. The child processes will already have
-            # finished because the join() above still ran.
-            raise Abort("Aborted after first failure.")
+        state_file.close()
 
-        # Record failed tests if not updating.
-        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
-            try:
-                state_file = open(StateFile, "w", encoding="utf-8")
-            except OSError:
-                error(f"cannot open state file {StateFile}")
+    counts = (
+        state._succeeded,
+        state._failed,
+        state._skipped,
+        state._unstable,
+        state._failed_expected,
+    )
 
-            for t in sorted(state._failed_tests):
-                print(t, file=state_file)
-
-            state_file.close()
-
-        counts = (
-            state._succeeded,
-            state._failed,
-            state._skipped,
-            state._unstable,
-            state._failed_expected,
-        )
-
-        if user_abort:
-            return counts, True
-
-        return counts, False
-
-    def percentage(self):
-        return self._run_state.percentage()
-
-    def hasFailure(self):
-        return self._run_state.hasFailure()
-
-    def hasUnstable(self):
-        return self._run_state.hasUnstable()
-
-    def rerun(self, test):
-        self._run_state.rerun(test)
-
-    def nextTests(self, thread_num):
-        return self._run_state.nextTests(thread_num)
-
-    def returnPorts(self, ports):
-        self._run_state.returnPorts(ports)
-
-    def getAvailablePorts(self, count):
-        return self._run_state.getAvailablePorts(count)
-
-    def testStart(self, test):
-        self._run_state.testStart(test)
-
-    def testCommand(self, test, cmdline):
-        self._run_state.testCommand(test, cmdline)
-
-    def testProgress(self, test, msg):
-        self._run_state.testProgress(test, msg)
-
-    def testSucceeded(self, test):
-        self._run_state.testSucceeded(test)
-
-    def testFailed(self, test):
-        self._run_state.testFailed(test)
-
-    def testSkipped(self, test):
-        self._run_state.testSkipped(test)
-
-    def testReplayOutput(self, test):
-        self._run_state.testReplayOutput(test)
-
-    def testTimingBaseline(self, test):
-        return self._run_state.testTimingBaseline(test)
-
-    def timingPath(self):
-        return self._run_state.timingPath()
-
-    def loadTiming(self):
-        return self._run_state.loadTiming()
-
-    def saveTiming(self, tests):
-        self._run_state.saveTiming(tests)
+    return counts, user_abort
 
 
 class CmdLine:
@@ -1582,9 +1507,7 @@ class OutputHandler:
         self._options = options
         self._outfile = outfile
 
-    def prepare(self, mgr):
-        """The TestManager calls this with itself as an argument just before
-        it starts running tests."""
+    def prepare(self):
         pass
 
     def options(self):
@@ -1679,10 +1602,9 @@ class Forwarder(OutputHandler):
         OutputHandler.__init__(self, options)
         self._handlers = handlers
 
-    def prepare(self, mgr):
-        """Called just before test manager starts running tests."""
+    def prepare(self):
         for h in self._handlers:
-            h.prepare(mgr)
+            h.prepare()
 
     def testStart(self, test):
         """Called just before a test begins."""
@@ -2149,7 +2071,7 @@ class XMLReport(OutputHandler):
         self._timestamp = datetime.now().isoformat()
         self._results = None
 
-    def prepare(self, mgr):
+    def prepare(self):
         self._results = []
 
     def testStart(self, test):
@@ -2278,7 +2200,7 @@ class ChromeTracing(OutputHandler):
         self._file = tracefile
         self._results = None
 
-    def prepare(self, mgr):
+    def prepare(self):
         self._results = []
 
     def testFinished(self, test, _):
@@ -3367,8 +3289,6 @@ if __name__ == "__main__":
 
     mkdir(TmpDir)
 
-    mgr = TestManager()
-
     try:
         if Options.list:
             for test in sorted(tests):
@@ -3377,7 +3297,7 @@ if __name__ == "__main__":
             sys.exit(0)
         else:
             (succeeded, failed, skipped, unstable, failed_expected), user_abort = (
-                mgr.run(tests, output_handler)
+                run_tests(tests, output_handler)
             )
             total = succeeded + failed + skipped
 
