@@ -38,7 +38,6 @@ if sys.platform == "win32":
     try:
         import multiprocess as mp
         import multiprocess.managers as mp_managers
-        import multiprocess.sharedctypes as mp_sharedctypes
     except ImportError as error:
         print(
             "error: btest failed to import the 'multiprocess' library\n"
@@ -55,7 +54,6 @@ if sys.platform == "win32":
 else:
     import multiprocessing as mp
     import multiprocessing.managers as mp_managers
-    import multiprocessing.sharedctypes as mp_sharedctypes
 
 VERSION = "1.3-28"  # Automatically filled in.
 
@@ -436,18 +434,15 @@ class Abort(Exception):
     pass
 
 
-# Holds the mutable state shared across worker processes during a test run.
-# All fields are proxy objects (RLock, list, RawValue) created by the
-# SyncManager so workers can safely access them across process boundaries.
 class RunState:
     def __init__(self, output_handler, lock, tests, failed_tests, ports, timing):
         self._output_handler = output_handler
         self._lock = lock
-        self._succeeded = mp_sharedctypes.RawValue("i", 0)
-        self._failed = mp_sharedctypes.RawValue("i", 0)
-        self._failed_expected = mp_sharedctypes.RawValue("i", 0)
-        self._unstable = mp_sharedctypes.RawValue("i", 0)
-        self._skipped = mp_sharedctypes.RawValue("i", 0)
+        self._succeeded = 0
+        self._failed = 0
+        self._failed_expected = 0
+        self._unstable = 0
+        self._skipped = 0
         self._tests = tests
         self._failed_tests = failed_tests
         self._num_tests = len(tests)
@@ -458,14 +453,14 @@ class RunState:
         if not self._num_tests:
             return 0
 
-        count = self._succeeded.value + self._failed.value + self._skipped.value
+        count = self._succeeded + self._failed + self._skipped
         return 100.0 * count / self._num_tests
 
     def hasFailure(self):
-        return (self._failed.value - self._failed_expected.value) > 0
+        return (self._failed - self._failed_expected) > 0
 
     def hasUnstable(self):
-        return self._unstable.value > 0
+        return self._unstable > 0
 
     def rerun(self, test):
         test.reruns += 1
@@ -475,8 +470,8 @@ class RunState:
         with self._lock:
             if (
                 Options.abort_on_failure
-                and self._failed.value > 0
-                and self._failed.value > self._failed_expected.value
+                and self._failed > 0
+                and self._failed > self._failed_expected
             ):
                 # Don't hand out any more tests if we are to abort after
                 # first failure. Doing so will let all the processes terminate.
@@ -621,14 +616,14 @@ class RunState:
 
         with self._lock:
             if test.reruns == 0:
-                self._succeeded.value += 1
+                self._succeeded += 1
                 self._output_handler.testSucceeded(test, msg)
             else:
-                self._failed.value -= 1
+                self._failed -= 1
                 if test.known_failure:
-                    self._failed_expected.value -= 1
+                    self._failed_expected -= 1
 
-                self._unstable.value += 1
+                self._unstable += 1
                 msg += f" on retry #{test.reruns}, unstable"
                 self._output_handler.testUnstable(test, msg)
 
@@ -652,10 +647,10 @@ class RunState:
             self._output_handler.testFinished(test, msg)
 
             if test.reruns == 0:
-                self._failed.value += 1
+                self._failed += 1
 
                 if test.known_failure:
-                    self._failed_expected.value += 1
+                    self._failed_expected += 1
                 else:
                     self._failed_tests += [test.name]
 
@@ -667,7 +662,7 @@ class RunState:
 
         with self._lock:
             self._output_handler.testSkipped(test, msg)
-            self._skipped.value += 1
+            self._skipped += 1
 
     def testReplayOutput(self, test):
         with self._lock:
@@ -821,8 +816,8 @@ class TestManager(mp_managers.SyncManager):
 
         if (
             Options.abort_on_failure
-            and state._failed.value > 0
-            and state._failed.value > state._failed_expected.value
+            and state._failed > 0
+            and state._failed > state._failed_expected
         ):
             # Signal abort. The child processes will already have
             # finished because the join() above still ran.
@@ -841,11 +836,11 @@ class TestManager(mp_managers.SyncManager):
             state_file.close()
 
         counts = (
-            state._succeeded.value,
-            state._failed.value,
-            state._skipped.value,
-            state._unstable.value,
-            state._failed_expected.value,
+            state._succeeded,
+            state._failed,
+            state._skipped,
+            state._unstable,
+            state._failed_expected,
         )
 
         if user_abort:
