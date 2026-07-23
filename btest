@@ -398,127 +398,23 @@ class Abort(Exception):
     pass
 
 
-# Main class distributing the work across threads.
-class TestManager(mp_managers.SyncManager):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._output_handler = None
-        self._lock = None
-        self._succeeded = None
-        self._failed = None
-        self._failed_expected = None
-        self._unstable = None
-        self._skipped = None
-        self._tests = None
-        self._failed_tests = None
-        self._num_tests = None
-        self._timing = None
-        self._ports = None
-
-    def run(self, tests, output_handler):
-        self.start()
-
-        mgr_data = self.dict()
-        mgr_data["Alternatives"] = Alternatives
-        mgr_data["BaselineDirs"] = BaselineDirs
-        mgr_data["Initializer"] = Initializer
-        mgr_data["Finalizer"] = Finalizer
-        mgr_data["Teardown"] = Teardown
-        mgr_data["Options"] = Options
-        mgr_data["TestBase"] = TestBase
-        mgr_data["TmpDir"] = TmpDir
-
-        output_handler.prepare(self)
+# Holds the mutable state shared across worker processes during a test run.
+# All fields are proxy objects (RLock, list, RawValue) created by the
+# SyncManager so workers can safely access them across process boundaries.
+class RunState:
+    def __init__(self, output_handler, lock, tests, failed_tests, ports, timing):
         self._output_handler = output_handler
-        self._lock = self.RLock()
+        self._lock = lock
         self._succeeded = mp_sharedctypes.RawValue("i", 0)
         self._failed = mp_sharedctypes.RawValue("i", 0)
         self._failed_expected = mp_sharedctypes.RawValue("i", 0)
         self._unstable = mp_sharedctypes.RawValue("i", 0)
         self._skipped = mp_sharedctypes.RawValue("i", 0)
-        self._tests = self.list(tests)
-        self._failed_tests = self.list([])
-        self._num_tests = len(self._tests)
-        self._timing = self.loadTiming()
-
-        port_range = getOption("PortRange", "1024-65535")
-        port_range_lo = int(port_range.split("-")[0])
-        port_range_hi = int(port_range.split("-")[1])
-
-        if port_range_lo > port_range_hi:
-            error(f"invalid PortRange value: {port_range}")
-
-        max_test_ports = 0
-        test_with_most_ports = None
-
-        for t in self._tests:
-            if len(t.ports) > max_test_ports:
-                max_test_ports = len(t.ports)
-                test_with_most_ports = t
-
-        if max_test_ports > port_range_hi - port_range_lo + 1:
-            error(
-                f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
-            )
-
-        self._ports = self.list(list(range(port_range_lo, port_range_hi + 1)))
-
-        threads = []
-
-        # With interactive input possibly required, we run tests
-        # directly. This avoids noisy output appearing from detached
-        # processes post-btest-exit when using CTRL-C during the input
-        # stage.
-        if Options.mode == "UPDATE_INTERACTIVE":
-            self.threadRun(0, mgr_data)
-        else:
-            try:
-                # Create a set of processes for running each of the tests. This isn't the actual
-                # zeek processes, but runner processes executing individual test commands.
-                for i in range(Options.threads):
-                    t = mp.Process(
-                        name=f"#{i + 1}", target=lambda: self.threadRun(i, mgr_data)
-                    )
-                    t.start()
-                    threads += [t]
-
-                for t in threads:
-                    t.join()
-
-            except KeyboardInterrupt:
-                for t in threads:
-                    t.terminate()
-                    t.join()
-
-        if (
-            Options.abort_on_failure
-            and self._failed.value > 0
-            and self._failed.value > self._failed_expected.value
-        ):
-            # Signal abort. The child processes will already have
-            # finished because the join() above still ran.
-            raise Abort("Aborted after first failure.")
-
-        # Record failed tests if not updating.
-        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
-            try:
-                state = open(StateFile, "w", encoding="utf-8")
-            except OSError:
-                error(f"cannot open state file {StateFile}")
-
-            for t in sorted(self._failed_tests):
-                print(t, file=state)
-
-            state.close()
-
-        return (
-            self._succeeded.value,
-            self._failed.value,
-            self._skipped.value,
-            self._unstable.value,
-            self._failed_expected.value,
-        )
+        self._tests = tests
+        self._failed_tests = failed_tests
+        self._num_tests = len(tests)
+        self._timing = timing
+        self._ports = ports
 
     def percentage(self):
         if not self._num_tests:
@@ -527,57 +423,11 @@ class TestManager(mp_managers.SyncManager):
         count = self._succeeded.value + self._failed.value + self._skipped.value
         return 100.0 * count / self._num_tests
 
-    # Returns true if there's at least one unexpected failure so far.
     def hasFailure(self):
         return (self._failed.value - self._failed_expected.value) > 0
 
-    # Returns true if there's at least one unstable test so far.
     def hasUnstable(self):
         return self._unstable.value > 0
-
-    # Worker method for each of the "threads" specified by the "-j" argument passed
-    # at run time. This basically segments the list of tests into chunks and runs
-    # until we're out of chunks.
-    def threadRun(self, thread_num, mgr_data):
-        # This should prevent the child processes from receiving SIGINT signals and
-        # let the KeyboardInterrupt handler in the manager's run() method handle
-        # those.
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        all_tests = []
-
-        # Globals get lost moving from the parent to the child on Windows, so we need to use
-        # the data proxied from the manager to rebuild the dict of globals before continuing.
-        if sys.platform == "win32":
-            for global_key, global_value in mgr_data.items():
-                globals()[global_key] = global_value
-
-            # multiprocess/dill may reconstruct this method with its own globals
-            # dict, separate from the module-level globals used by functions like
-            # replaceEnvs. Also set globals in __mp_main__, which is where
-            # multiprocess imports the script in spawned child processes.
-            mp_main = sys.modules.get("__mp_main__")
-            if mp_main is not None:
-                for global_key, global_value in mgr_data.items():
-                    setattr(mp_main, global_key, global_value)
-
-        while True:
-            # Pull the next test from the list that was built at startup. This may
-            # be more than one test if there were alternatives requested in the
-            # arguments passed to btest.
-            thread_tests = self.nextTests(thread_num)
-            if thread_tests is None:
-                # No more work for us.
-                return
-
-            all_tests += thread_tests
-
-            for t in thread_tests:
-                t.run(self)
-                self.testReplayOutput(t)
-
-            if Options.update_times:
-                self.saveTiming(all_tests)
 
     def rerun(self, test):
         test.reruns += 1
@@ -788,29 +638,24 @@ class TestManager(mp_managers.SyncManager):
     def testTimingBaseline(self, test):
         return self._timing.get(test.name, -1)
 
-    # Returns the name of the file to store the timing baseline in for this host.
     def timingPath(self):
         id = uuid.uuid3(uuid.NAMESPACE_DNS, str(uuid.getnode()))
         return os.path.abspath(os.path.join(BaselineTimingDir, id.hex))
 
-    # Loads baseline timing information for this host if available. Returns
-    # empty directory if not.
     def loadTiming(self):
-        timing = {}
-
         with self._lock:
             path = self.timingPath()
 
             if not os.path.exists(path):
                 return {}
 
+            timing = {}
             for line in open(path):
                 (k, v) = line.split()
                 timing[k] = float(v)
 
         return timing
 
-    # Updates the timing baseline for the given tests on this host.
     def saveTiming(self, tests):
         with self._lock:
             changed = False
@@ -834,6 +679,223 @@ class TestManager(mp_managers.SyncManager):
                 print(f"{k} {v}", file=out)
 
             out.close()
+
+
+# Main class distributing the work across threads.
+class TestManager(mp_managers.SyncManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._run_state = None
+
+    def run(self, tests, output_handler):
+        self.start()
+
+        mgr_data = self.dict()
+        mgr_data["Alternatives"] = Alternatives
+        mgr_data["BaselineDirs"] = BaselineDirs
+        mgr_data["Initializer"] = Initializer
+        mgr_data["Finalizer"] = Finalizer
+        mgr_data["Teardown"] = Teardown
+        mgr_data["Options"] = Options
+        mgr_data["TestBase"] = TestBase
+        mgr_data["TmpDir"] = TmpDir
+
+        lock = self.RLock()
+        proxy_tests = self.list(tests)
+        proxy_failed_tests = self.list([])
+
+        port_range = getOption("PortRange", "1024-65535")
+        port_range_lo = int(port_range.split("-")[0])
+        port_range_hi = int(port_range.split("-")[1])
+
+        if port_range_lo > port_range_hi:
+            error(f"invalid PortRange value: {port_range}")
+
+        max_test_ports = 0
+        test_with_most_ports = None
+
+        for t in proxy_tests:
+            if len(t.ports) > max_test_ports:
+                max_test_ports = len(t.ports)
+                test_with_most_ports = t
+
+        if max_test_ports > port_range_hi - port_range_lo + 1:
+            error(
+                f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
+            )
+
+        proxy_ports = self.list(list(range(port_range_lo, port_range_hi + 1)))
+
+        # loadTiming needs a RunState with a lock to guard file access.
+        # Create a temporary state just to load timing before the full state is ready.
+        tmp_state = RunState(
+            output_handler, lock, proxy_tests, proxy_failed_tests, proxy_ports, {}
+        )
+        timing = tmp_state.loadTiming()
+
+        output_handler.prepare(self)
+        self._run_state = RunState(
+            output_handler, lock, proxy_tests, proxy_failed_tests, proxy_ports, timing
+        )
+
+        threads = []
+
+        # With interactive input possibly required, we run tests
+        # directly. This avoids noisy output appearing from detached
+        # processes post-btest-exit when using CTRL-C during the input
+        # stage.
+        if Options.mode == "UPDATE_INTERACTIVE":
+            self.threadRun(0, mgr_data)
+        else:
+            try:
+                # Create a set of processes for running each of the tests. This isn't the actual
+                # zeek processes, but runner processes executing individual test commands.
+                for i in range(Options.threads):
+                    t = mp.Process(
+                        name=f"#{i + 1}", target=lambda: self.threadRun(i, mgr_data)
+                    )
+                    t.start()
+                    threads += [t]
+
+                for t in threads:
+                    t.join()
+
+            except KeyboardInterrupt:
+                for t in threads:
+                    t.terminate()
+                    t.join()
+
+        state = self._run_state
+
+        if (
+            Options.abort_on_failure
+            and state._failed.value > 0
+            and state._failed.value > state._failed_expected.value
+        ):
+            # Signal abort. The child processes will already have
+            # finished because the join() above still ran.
+            raise Abort("Aborted after first failure.")
+
+        # Record failed tests if not updating.
+        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
+            try:
+                state_file = open(StateFile, "w", encoding="utf-8")
+            except OSError:
+                error(f"cannot open state file {StateFile}")
+
+            for t in sorted(state._failed_tests):
+                print(t, file=state_file)
+
+            state_file.close()
+
+        return (
+            state._succeeded.value,
+            state._failed.value,
+            state._skipped.value,
+            state._unstable.value,
+            state._failed_expected.value,
+        )
+
+    # Worker method for each of the "threads" specified by the "-j" argument passed
+    # at run time. This basically segments the list of tests into chunks and runs
+    # until we're out of chunks.
+    def threadRun(self, thread_num, mgr_data):
+        # This should prevent the child processes from receiving SIGINT signals and
+        # let the KeyboardInterrupt handler in the manager's run() method handle
+        # those.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        all_tests = []
+
+        # Globals get lost moving from the parent to the child on Windows, so we need to use
+        # the data proxied from the manager to rebuild the dict of globals before continuing.
+        if sys.platform == "win32":
+            for global_key, global_value in mgr_data.items():
+                globals()[global_key] = global_value
+
+            # multiprocess/dill may reconstruct this method with its own globals
+            # dict, separate from the module-level globals used by functions like
+            # replaceEnvs. Also set globals in __mp_main__, which is where
+            # multiprocess imports the script in spawned child processes.
+            mp_main = sys.modules.get("__mp_main__")
+            if mp_main is not None:
+                for global_key, global_value in mgr_data.items():
+                    setattr(mp_main, global_key, global_value)
+
+        while True:
+            # Pull the next test from the list that was built at startup. This may
+            # be more than one test if there were alternatives requested in the
+            # arguments passed to btest.
+            thread_tests = self.nextTests(thread_num)
+            if thread_tests is None:
+                # No more work for us.
+                return
+
+            all_tests += thread_tests
+
+            for t in thread_tests:
+                t.run(self)
+                self.testReplayOutput(t)
+
+            if Options.update_times:
+                self.saveTiming(all_tests)
+
+    def percentage(self):
+        return self._run_state.percentage()
+
+    def hasFailure(self):
+        return self._run_state.hasFailure()
+
+    def hasUnstable(self):
+        return self._run_state.hasUnstable()
+
+    def rerun(self, test):
+        self._run_state.rerun(test)
+
+    def nextTests(self, thread_num):
+        return self._run_state.nextTests(thread_num)
+
+    def returnPorts(self, ports):
+        self._run_state.returnPorts(ports)
+
+    def getAvailablePorts(self, count):
+        return self._run_state.getAvailablePorts(count)
+
+    def lock(self):
+        return self._run_state.lock()
+
+    def testStart(self, test):
+        self._run_state.testStart(test)
+
+    def testCommand(self, test, cmdline):
+        self._run_state.testCommand(test, cmdline)
+
+    def testProgress(self, test, msg):
+        self._run_state.testProgress(test, msg)
+
+    def testSucceeded(self, test):
+        self._run_state.testSucceeded(test)
+
+    def testFailed(self, test):
+        self._run_state.testFailed(test)
+
+    def testSkipped(self, test):
+        self._run_state.testSkipped(test)
+
+    def testReplayOutput(self, test):
+        self._run_state.testReplayOutput(test)
+
+    def testTimingBaseline(self, test):
+        return self._run_state.testTimingBaseline(test)
+
+    def timingPath(self):
+        return self._run_state.timingPath()
+
+    def loadTiming(self):
+        return self._run_state.loadTiming()
+
+    def saveTiming(self, tests):
+        self._run_state.saveTiming(tests)
 
 
 class CmdLine:
