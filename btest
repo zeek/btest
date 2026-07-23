@@ -21,7 +21,6 @@ import platform as pform
 import re
 import shlex
 import shutil
-import signal
 import socket
 import subprocess
 import sys
@@ -781,21 +780,14 @@ class TestManager:
             output_handler, lock, proxy_tests, proxy_failed_tests, proxy_ports, timing
         )
 
-        # With interactive input possibly required, we run tests
-        # directly. This avoids noisy output appearing from detached
-        # processes post-btest-exit when using CTRL-C during the input
-        # stage.
         user_abort = False
 
-        if Options.mode == "UPDATE_INTERACTIVE":
-            self.threadRun(0)
-        else:
-            try:
-                asyncio.run(
-                    _async_run_all(list(proxy_tests), self._run_state, Options.threads)
-                )
-            except Abort:
-                user_abort = True
+        try:
+            asyncio.run(
+                _async_run_all(list(proxy_tests), self._run_state, Options.threads)
+            )
+        except Abort:
+            user_abort = True
 
         state = self._run_state
 
@@ -832,31 +824,6 @@ class TestManager:
             return counts, True
 
         return counts, False
-
-    # Worker method for each of the "threads" specified by the "-j" argument passed
-    # at run time. This basically segments the list of tests into chunks and runs
-    # until we're out of chunks.
-    def threadRun(self, thread_num):
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        all_tests = []
-
-        while True:
-            # Pull the next test from the list that was built at startup. This may
-            # be more than one test if there were alternatives requested in the
-            # arguments passed to btest.
-            thread_tests = self.nextTests(thread_num)
-            if thread_tests is None:
-                # No more work for us.
-                return
-
-            all_tests += thread_tests
-
-            for t in thread_tests:
-                asyncio.run(run_test(t, self))
-
-            if Options.update_times:
-                self.saveTiming(all_tests)
 
     def percentage(self):
         return self._run_state.percentage()
@@ -3102,16 +3069,7 @@ def parse_options():
 ### Main
 
 if __name__ == "__main__":
-    # Python 3.8+ on macOS no longer uses "fork" as the default start-method
-    # See https://github.com/zeek/btest/issues/26
-    pyver_maj = sys.version_info[0]
-    pyver_min = sys.version_info[1]
-
     if sys.platform == "win32":
-        # The "fork" method doesn't exist at all on Windows, so force over to
-        # "spawn" instead.
-        mp.set_start_method("spawn")
-
         # Double-check that `bash.exe` exists and is executable, since it's
         # required for pretty much anything here to work on Windows. Note we're
         # doing this prior to parsing the config file because it's required for
@@ -3128,9 +3086,6 @@ if __name__ == "__main__":
                 file=sys.stderr,
             )
             sys.exit(1)
-
-    elif (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
-        mp.set_start_method("fork")
 
     (Options, args) = parse_options()
 
