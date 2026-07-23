@@ -37,7 +37,6 @@ from datetime import datetime
 if sys.platform == "win32":
     try:
         import multiprocess as mp
-        import multiprocess.managers as mp_managers
     except ImportError as error:
         print(
             "error: btest failed to import the 'multiprocess' library\n"
@@ -53,7 +52,6 @@ if sys.platform == "win32":
         )
 else:
     import multiprocessing as mp
-    import multiprocessing.managers as mp_managers
 
 VERSION = "1.3-28"  # Automatically filled in.
 
@@ -740,17 +738,14 @@ async def _async_run_all(tests, state, n):
 
 
 # Main class distributing the work across threads.
-class TestManager(mp_managers.SyncManager):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class TestManager:
+    def __init__(self):
         self._run_state = None
 
     def run(self, tests, output_handler):
-        self.start()
-
-        lock = self.RLock()
-        proxy_tests = self.list(tests)
-        proxy_failed_tests = self.list([])
+        lock = threading.Lock()
+        proxy_tests = list(tests)
+        proxy_failed_tests = []
 
         port_range = getOption("PortRange", "1024-65535")
         port_range_lo = int(port_range.split("-")[0])
@@ -772,7 +767,7 @@ class TestManager(mp_managers.SyncManager):
                 f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
             )
 
-        proxy_ports = self.list(list(range(port_range_lo, port_range_hi + 1)))
+        proxy_ports = list(range(port_range_lo, port_range_hi + 1))
 
         # loadTiming needs a RunState with a lock to guard file access.
         # Create a temporary state just to load timing before the full state is ready.
@@ -2254,7 +2249,7 @@ class XMLReport(OutputHandler):
         self._results = None
 
     def prepare(self, mgr):
-        self._results = mgr.list([])
+        self._results = []
 
     def testStart(self, test):
         pass
@@ -2383,7 +2378,7 @@ class ChromeTracing(OutputHandler):
         self._results = None
 
     def prepare(self, mgr):
-        self._results = mgr.list([])
+        self._results = []
 
     def testFinished(self, test, _):
         self._results.append(
@@ -3483,28 +3478,7 @@ if __name__ == "__main__":
 
     mkdir(TmpDir)
 
-    if sys.platform == "win32":
-        # On win32 we have to use a named pipe so that python's multiprocessing
-        # chooses AF_PIPE as the family type.
-        addr = f"\\\\.\\pipe\\btest-pipe-{os.getpid()}"
-    else:
-        # Building our own path to avoid "error: AF_UNIX path too long" on
-        # some platforms. See BIT-862.
-        sname = f"btest-socket-{os.getpid()}"
-        addr = os.path.join(tempfile.gettempdir(), sname)
-
-        # Check if the pathname is too long to fit in struct sockaddr_un (the
-        # maximum length is system-dependent, so here we just use 100, which seems
-        # a safe default choice).
-        if len(addr) > 100:
-            # Try relative path to TmpDir (which would usually be ".tmp").
-            addr = os.path.join(os.path.relpath(TmpDir), sname)
-
-            # If the path is still too long, then use the global tmp directory.
-            if len(addr) > 100:
-                addr = os.path.join("/tmp", sname)
-
-    mgr = TestManager(address=addr)
+    mgr = TestManager()
 
     try:
         if Options.list:
@@ -3528,9 +3502,6 @@ if __name__ == "__main__":
         elif not isinstance(exc, Abort):
             print(f"Aborted with {type(exc).__name__}.", file=sys.stderr)
         sys.stderr.flush()
-        # Explicitly shut down sync manager to avoid leaking manager
-        # processes, particularly with --abort-on-failure:
-        mgr.shutdown()
         sys.exit(1)
 
     skip = f", {skipped} skipped" if skipped > 0 else ""
