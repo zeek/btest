@@ -5,6 +5,7 @@
 # pylint: disable=line-too-long,too-many-lines,invalid-name,missing-function-docstring,
 # pylint: disable=missing-class-docstring
 
+import asyncio
 import atexit
 import binascii
 import configparser
@@ -335,15 +336,14 @@ def replaceEnvs(s):
 # Execute one of test's command line *cmdline*. *measure_time* indicates if
 # timing measurement is desired. *kw_args* are further keyword arguments
 # interpreted the same way as with subprocess.check_call().
-# Returns a 3-tuple (success, rc, time) where the former two likewise
-# have the same meaning as with runSubprocess(), and 'time' is an integer
-# value corresponding to the commands execution time measured in some
-# appropiate integer measure. If 'time' is negative, that's an indicator
-# that time measurement wasn't possible and the value is to be ignored.
-def runTestCommandLine(cmdline, measure_time, **kwargs):
+async def asyncRunTestCommandLine(cmdline, measure_time, *, cwd, env, stdout, stderr):
     if measure_time and Timer:
-        return Timer.timeSubprocess(cmdline, **kwargs)
-    (success, rc) = runSubprocess(cmdline, **kwargs)
+        return await Timer.asyncTimeSubprocess(
+            cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+        )
+    (success, rc) = await asyncRunSubprocess(
+        cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+    )
     return (success, rc, -1)
 
 
@@ -360,8 +360,16 @@ def runSubprocess(*args, **kwargs):
         tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, tmpdir)
         with tf:
             proc = subprocess.Popen(bash_cmd, **kwargs)
-    else:
-        proc = subprocess.Popen(*args, **kwargs)
+            try:
+                proc.wait()
+            except KeyboardInterrupt:
+                proc.kill()
+                proc.wait()
+                raise
+        if proc.returncode != 0:
+            return (False, proc.returncode)
+        return (True, 0)
+    proc = subprocess.Popen(*args, **kwargs)
 
     try:
         proc.wait()
@@ -373,6 +381,36 @@ def runSubprocess(*args, **kwargs):
     if proc.returncode != 0:
         return (False, proc.returncode)
     return (True, 0)
+
+
+async def asyncRunSubprocess(cmdline, *, cwd, env, stdout, stderr):
+    async def _result(proc):
+        try:
+            await proc.wait()
+        except asyncio.CancelledError:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+            await proc.wait()
+            raise
+
+        if proc.returncode != 0:
+            return (False, proc.returncode)
+        return (True, 0)
+
+    if sys.platform == "win32":
+        tmpdir = normalize_path(cwd)
+        tf, bash_cmd = _build_win_subprocess_cmd_script(cmdline, tmpdir)
+        with tf:
+            proc = await asyncio.create_subprocess_exec(
+                *bash_cmd, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+            )
+            return await _result(proc)
+    proc = await asyncio.create_subprocess_shell(
+        cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+    )
+    return await _result(proc)
 
 
 # Description of an alternative configuration.
@@ -1535,14 +1573,15 @@ class Test:
             Options.update_times or self.utime_base >= 0
         )
 
-        (success, rc, utime) = runTestCommandLine(
-            cmdline,
-            measure_time,
-            cwd=self.tmpdir,
-            shell=True,
-            env=env,
-            stderr=self.stderr,
-            stdout=self.stdout,
+        (success, rc, utime) = asyncio.run(
+            asyncRunTestCommandLine(
+                cmdline,
+                measure_time,
+                cwd=self.tmpdir,
+                env=env,
+                stdout=self.stdout,
+                stderr=self.stderr,
+            )
         )
 
         if utime > 0:
@@ -2491,12 +2530,8 @@ class TimerBase:
     def available(self):
         raise NotImplementedError("Timer.available not implemented")
 
-    # Runs a subprocess and measures its execution time. Arguments are as with
-    # runSubprocess. Return value is the same with runTestCommandLine(). This
-    # method must only be called if available() returns True. Must be overidden
-    # by derived classes.
-    def timeSubprocess(self, *args, **kwargs):
-        raise NotImplementedError("Timer.timeSubprocess not implemented")
+    async def asyncTimeSubprocess(self, *args, **kwargs):
+        raise NotImplementedError("Timer.asyncTimeSubprocess not implemented")
 
 
 # Linux version of time measurements. Uses "perf".
@@ -2517,26 +2552,20 @@ class LinuxTimer(TimerBase):
         )
         return success and rc == 0
 
-    def timeSubprocess(self, *args, **kwargs):
+    async def asyncTimeSubprocess(self, cmdline, *, cwd, env, stdout, stderr):
         assert self.perf
 
-        cargs = args
-        ckwargs = kwargs
-
         # fmt: off
-        targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c"]
+        targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c", cmdline]
         # fmt: on
 
-        targs += [" ".join(cargs)]
-        cargs = [targs]
-        del ckwargs["shell"]
-
-        (success, rc) = runSubprocess(*cargs, **ckwargs)
+        (success, rc) = await asyncRunSubprocess(
+            " ".join(targs), cwd=cwd, env=env, stdout=stdout, stderr=stderr
+        )
 
         utime = -1
 
         try:
-            cwd = kwargs["cwd"] if "cwd" in kwargs else "."
             for line in open(os.path.join(cwd, ".timing")):
                 if "instructions" in line and "not supported" not in line:
                     try:
