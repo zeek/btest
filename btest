@@ -25,7 +25,6 @@ import socket
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 import uuid
 import xml.dom.minidom
@@ -411,9 +410,8 @@ class Abort(Exception):
 
 
 class RunState:
-    def __init__(self, output_handler, lock, tests, failed_tests, ports, timing):
+    def __init__(self, output_handler, tests, failed_tests, ports, timing):
         self._output_handler = output_handler
-        self._lock = lock
         self._succeeded = 0
         self._failed = 0
         self._failed_expected = 0
@@ -443,142 +441,133 @@ class RunState:
         self._tests += [test.clone(increment=False)]
 
     def nextTests(self, thread_num):
-        with self._lock:
-            if (
-                Options.abort_on_failure
-                and self._failed > 0
-                and self._failed > self._failed_expected
-            ):
-                # Don't hand out any more tests if we are to abort after
-                # first failure. Doing so will let all the processes terminate.
-                return None
+        if (
+            Options.abort_on_failure
+            and self._failed > 0
+            and self._failed > self._failed_expected
+        ):
+            # Don't hand out any more tests if we are to abort after
+            # first failure. Doing so will let all the processes terminate.
+            return None
 
-            for i in range(len(self._tests)):
-                t = self._tests[i]
+        for i in range(len(self._tests)):
+            t = self._tests[i]
 
-                if not t:
-                    continue
+            if not t:
+                continue
 
-                if t.serialize and t.serialize_hash() % Options.threads != thread_num:
-                    # Not ours.
-                    continue
+            if t.serialize and t.serialize_hash() % Options.threads != thread_num:
+                # Not ours.
+                continue
 
-                # We'll execute it, delete from queue.
-                del self._tests[i]
+            # We'll execute it, delete from queue.
+            del self._tests[i]
 
-                if Options.alternatives:
-                    tests = []
+            if Options.alternatives:
+                tests = []
 
-                    for alternative in Options.alternatives:
-                        if alternative in t.ignore_alternatives:
-                            continue
+                for alternative in Options.alternatives:
+                    if alternative in t.ignore_alternatives:
+                        continue
 
-                        if (
-                            t.include_alternatives
-                            and alternative not in t.include_alternatives
-                        ):
-                            continue
-
-                        alternative_test = copy.deepcopy(t)
-
-                        if alternative == Alternative.DEFAULT:
-                            alternative = ""
-
-                        alternative_test.setAlternative(alternative)
-                        tests += [alternative_test]
-
-                else:
                     if (
                         t.include_alternatives
-                        and Alternative.DEFAULT not in t.include_alternatives
+                        and alternative not in t.include_alternatives
                     ):
-                        tests = []
+                        continue
 
-                    elif Alternative.DEFAULT in t.ignore_alternatives:
-                        tests = []
+                    alternative_test = copy.deepcopy(t)
 
-                    else:
-                        tests = [t]
+                    if alternative == Alternative.DEFAULT:
+                        alternative = ""
 
-                return tests
+                    alternative_test.setAlternative(alternative)
+                    tests += [alternative_test]
+
+            else:
+                if (
+                    t.include_alternatives
+                    and Alternative.DEFAULT not in t.include_alternatives
+                ):
+                    tests = []
+
+                elif Alternative.DEFAULT in t.ignore_alternatives:
+                    tests = []
+
+                else:
+                    tests = [t]
+
+            return tests
 
         # No more tests for us.
         return None
 
     def returnPorts(self, ports):
-        with self._lock:
-            for p in ports:
-                self._ports.append(p)
+        for p in ports:
+            self._ports.append(p)
 
     def getAvailablePorts(self, count):
-        with self._lock:
-            if count > len(self._ports):
-                return []
+        if count > len(self._ports):
+            return []
 
-            first_port = -1
-            rval = []
+        first_port = -1
+        rval = []
 
-            for _ in range(count):
-                while True:
-                    if len(self._ports) == 0:
-                        for s in rval:
-                            s.close()
-                            self._ports.append(s.getsockname()[1])
-                        return []
+        for _ in range(count):
+            while True:
+                if len(self._ports) == 0:
+                    for s in rval:
+                        s.close()
+                        self._ports.append(s.getsockname()[1])
+                    return []
 
-                    next_port = self._ports[0]
+                next_port = self._ports[0]
 
-                    if next_port == first_port:
-                        # Looped over port pool once, bail out.
-                        for s in rval:
-                            s.close()
-                            self._ports.append(s.getsockname()[1])
+                if next_port == first_port:
+                    # Looped over port pool once, bail out.
+                    for s in rval:
+                        s.close()
+                        self._ports.append(s.getsockname()[1])
 
-                        return []
+                    return []
 
-                    if first_port == -1:
-                        first_port = next_port
+                if first_port == -1:
+                    first_port = next_port
 
-                    del self._ports[0]
+                del self._ports[0]
 
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-                    # Setting REUSEADDR would allow ports to be recycled
-                    # more quickly, but on macOS, seems to also have the
-                    # effect of allowing multiple sockets to bind to the
-                    # same port, even if REUSEPORT is off, so just try to
-                    # ensure both are off.
-                    if hasattr(socket, "SO_REUSEADDR"):
-                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
-                    if hasattr(socket, "SO_REUSEPORT"):
-                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+                # Setting REUSEADDR would allow ports to be recycled
+                # more quickly, but on macOS, seems to also have the
+                # effect of allowing multiple sockets to bind to the
+                # same port, even if REUSEPORT is off, so just try to
+                # ensure both are off.
+                if hasattr(socket, "SO_REUSEADDR"):
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+                if hasattr(socket, "SO_REUSEPORT"):
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
 
-                    try:
-                        sock.bind(("", next_port))
-                    except Exception:
-                        self._ports.append(next_port)
-                        continue
-                    else:
-                        break
+                try:
+                    sock.bind(("", next_port))
+                except Exception:
+                    self._ports.append(next_port)
+                    continue
+                else:
+                    break
 
-                rval.append(sock)
+            rval.append(sock)
 
-            return rval
-
-    def lock(self):
-        return self._lock
+        return rval
 
     def testStart(self, test):
-        with self._lock:
-            self._output_handler.testStart(test)
+        self._output_handler.testStart(test)
 
     def testCommand(self, test, cmdline):
-        with self._lock:
-            self._output_handler.testCommand(test, cmdline)
+        self._output_handler.testCommand(test, cmdline)
 
     def testProgress(self, test, msg):
-        with self._lock:
-            self._output_handler.testProgress(test, msg)
+        self._output_handler.testProgress(test, msg)
 
     def testSucceeded(self, test):
         test.parseProgress()
@@ -590,20 +579,19 @@ class RunState:
 
         msg += test.timePostfix()
 
-        with self._lock:
-            if test.reruns == 0:
-                self._succeeded += 1
-                self._output_handler.testSucceeded(test, msg)
-            else:
-                self._failed -= 1
-                if test.known_failure:
-                    self._failed_expected -= 1
+        if test.reruns == 0:
+            self._succeeded += 1
+            self._output_handler.testSucceeded(test, msg)
+        else:
+            self._failed -= 1
+            if test.known_failure:
+                self._failed_expected -= 1
 
-                self._unstable += 1
-                msg += f" on retry #{test.reruns}, unstable"
-                self._output_handler.testUnstable(test, msg)
+            self._unstable += 1
+            msg += f" on retry #{test.reruns}, unstable"
+            self._output_handler.testUnstable(test, msg)
 
-            self._output_handler.testFinished(test, msg)
+        self._output_handler.testFinished(test, msg)
 
     def testFailed(self, test):
         test.parseProgress()
@@ -618,31 +606,28 @@ class RunState:
 
         msg += test.timePostfix()
 
-        with self._lock:
-            self._output_handler.testFailed(test, msg)
-            self._output_handler.testFinished(test, msg)
+        self._output_handler.testFailed(test, msg)
+        self._output_handler.testFinished(test, msg)
 
-            if test.reruns == 0:
-                self._failed += 1
+        if test.reruns == 0:
+            self._failed += 1
 
-                if test.known_failure:
-                    self._failed_expected += 1
-                else:
-                    self._failed_tests += [test.name]
+            if test.known_failure:
+                self._failed_expected += 1
+            else:
+                self._failed_tests += [test.name]
 
-            if test.reruns < Options.retries and not test.known_failure:
-                self.rerun(test)
+        if test.reruns < Options.retries and not test.known_failure:
+            self.rerun(test)
 
     def testSkipped(self, test):
         msg = "not available, skipped"
 
-        with self._lock:
-            self._output_handler.testSkipped(test, msg)
-            self._skipped += 1
+        self._output_handler.testSkipped(test, msg)
+        self._skipped += 1
 
     def testReplayOutput(self, test):
-        with self._lock:
-            self._output_handler.replayOutput(test)
+        self._output_handler.replayOutput(test)
 
     def testTimingBaseline(self, test):
         return self._timing.get(test.name, -1)
@@ -652,42 +637,40 @@ class RunState:
         return os.path.abspath(os.path.join(BaselineTimingDir, id.hex))
 
     def loadTiming(self):
-        with self._lock:
-            path = self.timingPath()
+        path = self.timingPath()
 
-            if not os.path.exists(path):
-                return {}
+        if not os.path.exists(path):
+            return {}
 
-            timing = {}
-            for line in open(path):
-                (k, v) = line.split()
-                timing[k] = float(v)
+        timing = {}
+        for line in open(path):
+            (k, v) = line.split()
+            timing[k] = float(v)
 
         return timing
 
     def saveTiming(self, tests):
-        with self._lock:
-            changed = False
-            timing = self.loadTiming()
+        changed = False
+        timing = self.loadTiming()
 
-            for t in tests:
-                if t and t.measure_time and t.utime >= 0:
-                    changed = True
-                    timing[t.name] = t.utime
+        for t in tests:
+            if t and t.measure_time and t.utime >= 0:
+                changed = True
+                timing[t.name] = t.utime
 
-            if not changed:
-                return
+        if not changed:
+            return
 
-            path = self.timingPath()
-            (dir, base) = os.path.split(path)
-            mkdir(dir)
+        path = self.timingPath()
+        (dir, base) = os.path.split(path)
+        mkdir(dir)
 
-            out = open(path, "w")
+        out = open(path, "w")
 
-            for k, v in timing.items():
-                print(f"{k} {v}", file=out)
+        for k, v in timing.items():
+            print(f"{k} {v}", file=out)
 
-            out.close()
+        out.close()
 
 
 async def run_test(test, state):
@@ -696,8 +679,6 @@ async def run_test(test, state):
 
 
 async def _async_run_all(tests, state, n):
-    semaphore = asyncio.Semaphore(n)
-
     async def worker(thread_num):
         all_tests = []
         while True:
@@ -707,8 +688,7 @@ async def _async_run_all(tests, state, n):
             all_tests += thread_tests
             for t in thread_tests:
                 t.worker_num = thread_num
-                async with semaphore:
-                    await run_test(t, state)
+                await run_test(t, state)
             if Options.update_times:
                 state.saveTiming(all_tests)
 
@@ -721,7 +701,6 @@ class TestManager:
         self._run_state = None
 
     def run(self, tests, output_handler):
-        lock = threading.Lock()
         proxy_tests = list(tests)
         proxy_failed_tests = []
 
@@ -749,14 +728,13 @@ class TestManager:
 
         # loadTiming needs a RunState with a lock to guard file access.
         # Create a temporary state just to load timing before the full state is ready.
-        tmp_state = RunState(
-            output_handler, lock, proxy_tests, proxy_failed_tests, proxy_ports, {}
-        )
-        timing = tmp_state.loadTiming()
+        timing = RunState(
+            output_handler, proxy_tests, proxy_failed_tests, proxy_ports, {}
+        ).loadTiming()
 
         output_handler.prepare(self)
         self._run_state = RunState(
-            output_handler, lock, proxy_tests, proxy_failed_tests, proxy_ports, timing
+            output_handler, proxy_tests, proxy_failed_tests, proxy_ports, timing
         )
 
         user_abort = False
@@ -824,9 +802,6 @@ class TestManager:
 
     def getAvailablePorts(self, count):
         return self._run_state.getAvailablePorts(count)
-
-    def lock(self):
-        return self._run_state.lock()
 
     def testStart(self, test):
         self._run_state.testStart(test)
@@ -916,13 +891,12 @@ class Test:
         self.log = None
         self.measure_time = False
         self.mgr = None
-        self.monitor = None
-        self.monitor_quit = None
+
         self.name = None
         self.number = 1
+        self.worker_num = 0
         self.part = -1
         self.ports = set()
-        self.progress_lock = None
         self.requires = []
         self.reruns = 0
         self.serialize = []
@@ -1172,7 +1146,6 @@ class Test:
         for bs in bound_sockets:
             bs.close()
 
-        self.progress_lock = threading.Lock()
         self.start = time.time()
         self.mgr = mgr
         mgr.testStart(self)
@@ -1411,23 +1384,6 @@ class Test:
         self.stdout.close()
         self.stderr.close()
 
-        self._stop_progress_monitor()
-
-    def _start_progress_monitor(self):
-        def monitor_cb():
-            while not self.monitor_quit.is_set():
-                self.parseProgress()
-                time.sleep(0.1)
-
-        self.monitor_quit = threading.Event()
-        self.monitor = threading.Thread(target=monitor_cb, daemon=True)
-        self.monitor.start()
-
-    def _stop_progress_monitor(self):
-        if self.monitor:
-            self.monitor_quit.set()
-            self.monitor.join()
-
     async def _async_progress_monitor(self):
         try:
             while True:
@@ -1592,17 +1548,16 @@ class Test:
 
     # Picks up any progress output that has a test has written out.
     def parseProgress(self):
-        with self.progress_lock:
-            path = os.path.join(self.tmpdir, ".progress.*")
-            for file in sorted(glob.glob(path)):
-                try:
-                    for line in open(file):
-                        msg = line.strip()
-                        self.mgr.testProgress(self, msg)
+        path = os.path.join(self.tmpdir, ".progress.*")
+        for file in sorted(glob.glob(path)):
+            try:
+                for line in open(file):
+                    msg = line.strip()
+                    self.mgr.testProgress(self, msg)
 
-                    os.unlink(file)
-                except OSError:
-                    pass
+                os.unlink(file)
+            except OSError:
+                pass
 
 
 ### Output handlers.
