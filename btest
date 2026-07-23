@@ -350,7 +350,7 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
 # Runs a subprocess. Takes same arguments as subprocess.check_call()
 # and returns a 2-tuple (success, rc) where *success* is a boolean
 # indicating if the command executed, and *rc* is its exit code if it did.
-def runSubprocess(*args, **kwargs):
+def _run_subprocess_mp(*args, **kwargs):
     def child(q):
         try:
             if sys.platform == "win32":
@@ -391,6 +391,10 @@ def runSubprocess(*args, **kwargs):
         sys.exit(1)
 
     return result
+
+
+def runSubprocess(*args, **kwargs):
+    return _run_subprocess_mp(*args, **kwargs)
 
 
 # Description of an alternative configuration.
