@@ -748,16 +748,6 @@ class TestManager(mp_managers.SyncManager):
     def run(self, tests, output_handler):
         self.start()
 
-        mgr_data = self.dict()
-        mgr_data["Alternatives"] = Alternatives
-        mgr_data["BaselineDirs"] = BaselineDirs
-        mgr_data["Initializer"] = Initializer
-        mgr_data["Finalizer"] = Finalizer
-        mgr_data["Teardown"] = Teardown
-        mgr_data["Options"] = Options
-        mgr_data["TestBase"] = TestBase
-        mgr_data["TmpDir"] = TmpDir
-
         lock = self.RLock()
         proxy_tests = self.list(tests)
         proxy_failed_tests = self.list([])
@@ -803,7 +793,7 @@ class TestManager(mp_managers.SyncManager):
         user_abort = False
 
         if Options.mode == "UPDATE_INTERACTIVE":
-            self.threadRun(0, mgr_data)
+            self.threadRun(0)
         else:
             try:
                 asyncio.run(
@@ -851,28 +841,10 @@ class TestManager(mp_managers.SyncManager):
     # Worker method for each of the "threads" specified by the "-j" argument passed
     # at run time. This basically segments the list of tests into chunks and runs
     # until we're out of chunks.
-    def threadRun(self, thread_num, mgr_data):
-        # This should prevent the child processes from receiving SIGINT signals and
-        # let the KeyboardInterrupt handler in the manager's run() method handle
-        # those.
+    def threadRun(self, thread_num):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         all_tests = []
-
-        # Globals get lost moving from the parent to the child on Windows, so we need to use
-        # the data proxied from the manager to rebuild the dict of globals before continuing.
-        if sys.platform == "win32":
-            for global_key, global_value in mgr_data.items():
-                globals()[global_key] = global_value
-
-            # multiprocess/dill may reconstruct this method with its own globals
-            # dict, separate from the module-level globals used by functions like
-            # replaceEnvs. Also set globals in __mp_main__, which is where
-            # multiprocess imports the script in spawned child processes.
-            mp_main = sys.modules.get("__mp_main__")
-            if mp_main is not None:
-                for global_key, global_value in mgr_data.items():
-                    setattr(mp_main, global_key, global_value)
 
         while True:
             # Pull the next test from the list that was built at startup. This may
