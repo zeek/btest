@@ -39,8 +39,6 @@ DEFAULT_CONFIG_NAME = "btest.cfg"
 
 ConfigDefault = os.environ.get("BTEST_CFG", DEFAULT_CONFIG_NAME)
 
-# These regexes have fixed patterns and are used in child processes, so they
-# must be module-level constants to survive multiprocess spawn on Windows.
 RE_INPUT = re.compile(r"%INPUT")
 RE_DIR = re.compile(r"%DIR")
 RE_ENV = re.compile(r"\$\{(\w+)}")
@@ -446,8 +444,6 @@ class RunState:
             and self._failed > 0
             and self._failed > self._failed_expected
         ):
-            # Don't hand out any more tests if we are to abort after
-            # first failure. Doing so will let all the processes terminate.
             return None
 
         for i in range(len(self._tests)):
