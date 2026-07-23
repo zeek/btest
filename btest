@@ -350,51 +350,29 @@ def runTestCommandLine(cmdline, measure_time, **kwargs):
 # Runs a subprocess. Takes same arguments as subprocess.check_call()
 # and returns a 2-tuple (success, rc) where *success* is a boolean
 # indicating if the command executed, and *rc* is its exit code if it did.
-def _run_subprocess_mp(*args, **kwargs):
-    def child(q):
-        try:
-            if sys.platform == "win32":
-                tmpdir = normalize_path(kwargs.get("cwd", ""))
-                if len(args) > 1:
-                    cmd = shlex.join(args)
-                else:
-                    cmd = args[0]
-
-                tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, tmpdir)
-                with tf:
-                    subprocess.check_call(bash_cmd, **kwargs)
-            else:
-                subprocess.check_call(*args, **kwargs)
-            success = True
-            rc = 0
-
-        except subprocess.CalledProcessError as e:
-            success = False
-            rc = e.returncode
-
-        except KeyboardInterrupt:
-            success = False
-            rc = 0
-
-        q.put([success, rc])
+def runSubprocess(*args, **kwargs):
+    if sys.platform == "win32":
+        tmpdir = normalize_path(kwargs.get("cwd", ""))
+        if len(args) > 1:
+            cmd = shlex.join(args)
+        else:
+            cmd = args[0]
+        tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, tmpdir)
+        with tf:
+            proc = subprocess.Popen(bash_cmd, **kwargs)
+    else:
+        proc = subprocess.Popen(*args, **kwargs)
 
     try:
-        q = mp.Queue()
-        p = mp.Process(target=child, args=(q,))
-        p.start()
-        result = q.get()
-        p.join()
-
+        proc.wait()
     except KeyboardInterrupt:
-        # Bail out here directly as otherwise we'd get a bunch of errors.
-        # from all the childs.
-        sys.exit(1)
+        proc.kill()
+        proc.wait()
+        raise
 
-    return result
-
-
-def runSubprocess(*args, **kwargs):
-    return _run_subprocess_mp(*args, **kwargs)
+    if proc.returncode != 0:
+        return (False, proc.returncode)
+    return (True, 0)
 
 
 # Description of an alternative configuration.
