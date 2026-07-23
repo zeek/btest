@@ -1490,11 +1490,6 @@ class OutputHandler:
         several classes from this one, with the one being used depending on
         which output the users wants.
 
-        A handler's method are called from test TestMgr and may be called
-        interleaved from different tests. However, the TestMgr locks before
-        each call so that it's guaranteed that two calls don't run
-        concurrently.
-
         options: An optparser with the global options.
 
         outfile: The destination file object to write output to.
