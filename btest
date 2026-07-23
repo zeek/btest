@@ -19,7 +19,6 @@ import os.path
 import pathlib
 import platform as pform
 import re
-import shlex
 import shutil
 import socket
 import subprocess
@@ -316,42 +315,6 @@ async def asyncRunTestCommandLine(cmdline, measure_time, *, cwd, env, stdout, st
         cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
     )
     return (success, rc, -1)
-
-
-# Runs a subprocess. Takes same arguments as subprocess.check_call()
-# and returns a 2-tuple (success, rc) where *success* is a boolean
-# indicating if the command executed, and *rc* is its exit code if it did.
-def runSubprocess(*args, **kwargs):
-    if sys.platform == "win32":
-        tmpdir = normalize_path(kwargs.get("cwd", ""))
-        if len(args) > 1:
-            cmd = shlex.join(args)
-        else:
-            cmd = args[0]
-        tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, tmpdir)
-        with tf:
-            proc = subprocess.Popen(bash_cmd, **kwargs)
-            try:
-                proc.wait()
-            except KeyboardInterrupt:
-                proc.kill()
-                proc.wait()
-                raise
-        if proc.returncode != 0:
-            return (False, proc.returncode)
-        return (True, 0)
-    proc = subprocess.Popen(*args, **kwargs)
-
-    try:
-        proc.wait()
-    except KeyboardInterrupt:
-        proc.kill()
-        proc.wait()
-        raise
-
-    if proc.returncode != 0:
-        return (False, proc.returncode)
-    return (True, 0)
 
 
 async def asyncRunSubprocess(cmdline, *, cwd, env, stdout, stderr):
@@ -2337,10 +2300,12 @@ class LinuxTimer(TimerBase):
             return False
 
         # Make sure it works.
-        (success, rc) = runSubprocess(
-            f"{self.perf} stat -o /dev/null true 2>/dev/null", shell=True
+        return (
+            subprocess.call(
+                f"{self.perf} stat -o /dev/null true 2>/dev/null", shell=True
+            )
+            == 0
         )
-        return success and rc == 0
 
     async def asyncTimeSubprocess(self, cmdline, *, cwd, env, stdout, stderr):
         assert self.perf
