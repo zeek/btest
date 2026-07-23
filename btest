@@ -1293,18 +1293,7 @@ class Test:
                 self.finish()
                 return
 
-        # Spawn thread that monitors for progress updates.
-        # Note: We do indeed spawn a thread here, not a process, so
-        # that the callback can modify the test object to maintain
-        # state.
-        def monitor_cb():
-            while not self.monitor_quit.is_set():
-                self.parseProgress()
-                time.sleep(0.1)
-
-        self.monitor = threading.Thread(target=monitor_cb, daemon=True)
-        self.monitor_quit = threading.Event()
-        self.monitor.start()
+        self._start_progress_monitor()
 
         # Run test's commands. First, construct a series of command sequences:
         # each sequence consists of test commands with an optional teardown that
@@ -1411,7 +1400,7 @@ class Test:
         # and the user aborts the run.
         if rc == 200:
             # Abort all tests.
-            self.monitor_quit.set()
+            self._stop_progress_monitor()
             # Flush remaining command output prior to exit:
             mgr.testReplayOutput(self)
             sys.exit(1)
@@ -1461,6 +1450,19 @@ class Test:
         self.stdout.close()
         self.stderr.close()
 
+        self._stop_progress_monitor()
+
+    def _start_progress_monitor(self):
+        def monitor_cb():
+            while not self.monitor_quit.is_set():
+                self.parseProgress()
+                time.sleep(0.1)
+
+        self.monitor_quit = threading.Event()
+        self.monitor = threading.Thread(target=monitor_cb, daemon=True)
+        self.monitor.start()
+
+    def _stop_progress_monitor(self):
         if self.monitor:
             self.monitor_quit.set()
             self.monitor.join()
