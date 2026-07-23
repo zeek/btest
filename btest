@@ -719,9 +719,29 @@ class RunState:
             out.close()
 
 
-def run_test(test, state):
-    test.run(state)
+async def run_test(test, state):
+    await test.run(state)
     state.testReplayOutput(test)
+
+
+async def _async_run_all(tests, state, n):
+    semaphore = asyncio.Semaphore(n)
+
+    async def worker(thread_num):
+        all_tests = []
+        while True:
+            thread_tests = state.nextTests(thread_num)
+            if thread_tests is None:
+                return
+            all_tests += thread_tests
+            for t in thread_tests:
+                t.worker_num = thread_num
+                async with semaphore:
+                    await run_test(t, state)
+            if Options.update_times:
+                state.saveTiming(all_tests)
+
+    await asyncio.gather(*[worker(i) for i in range(n)])
 
 
 # Main class distributing the work across threads.
@@ -781,32 +801,21 @@ class TestManager(mp_managers.SyncManager):
             output_handler, lock, proxy_tests, proxy_failed_tests, proxy_ports, timing
         )
 
-        threads = []
-
         # With interactive input possibly required, we run tests
         # directly. This avoids noisy output appearing from detached
         # processes post-btest-exit when using CTRL-C during the input
         # stage.
+        user_abort = False
+
         if Options.mode == "UPDATE_INTERACTIVE":
             self.threadRun(0, mgr_data)
         else:
             try:
-                # Create a set of processes for running each of the tests. This isn't the actual
-                # zeek processes, but runner processes executing individual test commands.
-                for i in range(Options.threads):
-                    t = mp.Process(
-                        name=f"#{i + 1}", target=lambda: self.threadRun(i, mgr_data)
-                    )
-                    t.start()
-                    threads += [t]
-
-                for t in threads:
-                    t.join()
-
-            except KeyboardInterrupt:
-                for t in threads:
-                    t.terminate()
-                    t.join()
+                asyncio.run(
+                    _async_run_all(list(proxy_tests), self._run_state, Options.threads)
+                )
+            except Abort:
+                user_abort = True
 
         state = self._run_state
 
@@ -831,13 +840,18 @@ class TestManager(mp_managers.SyncManager):
 
             state_file.close()
 
-        return (
+        counts = (
             state._succeeded.value,
             state._failed.value,
             state._skipped.value,
             state._unstable.value,
             state._failed_expected.value,
         )
+
+        if user_abort:
+            return counts, True
+
+        return counts, False
 
     # Worker method for each of the "threads" specified by the "-j" argument passed
     # at run time. This basically segments the list of tests into chunks and runs
@@ -877,7 +891,7 @@ class TestManager(mp_managers.SyncManager):
             all_tests += thread_tests
 
             for t in thread_tests:
-                run_test(t, self)
+                asyncio.run(run_test(t, self))
 
             if Options.update_times:
                 self.saveTiming(all_tests)
@@ -1243,7 +1257,7 @@ class Test:
 
             time.sleep(15)
 
-    def run(self, mgr):
+    async def run(self, mgr):
         bound_sockets = self.getPorts(mgr, len(self.ports))
         self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
 
@@ -1322,7 +1336,7 @@ class Test:
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "ab")
 
         for cmd in self.requires:
-            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
+            (success, rc) = await self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
                 self.mgr.testSkipped(self)
@@ -1331,7 +1345,7 @@ class Test:
                 self.finish()
                 return
 
-        self._start_progress_monitor()
+        monitor_task = asyncio.create_task(self._async_progress_monitor())
 
         # Run test's commands. First, construct a series of command sequences:
         # each sequence consists of test commands with an optional teardown that
@@ -1357,7 +1371,7 @@ class Test:
 
         # Executes the provided Cmdseq command sequence. Helper function, so we
         # can recurse when a Cmdseq's command list includes other sequences.
-        def run_cmdseq(seq):
+        async def run_cmdseq(seq):
             nonlocal failures, rc
             need_teardown = False
 
@@ -1379,13 +1393,13 @@ class Test:
                     # isinstance(). So we take the class name as a sufficent
                     # signal.
                     if type(cmd).__name__ == "CmdSeq":
-                        need_teardown |= run_cmdseq(cmd)
+                        need_teardown |= await run_cmdseq(cmd)
                         continue
 
                     if skip_part >= 0 and skip_part == cmd.part:
                         continue
 
-                    (success, rc) = self.execute(
+                    (success, rc) = await self.execute(
                         cmd, apply_alternative=self.alternative
                     )
                     need_teardown = True
@@ -1407,7 +1421,7 @@ class Test:
                             break
 
             if need_teardown and seq.teardown:
-                (success, teardown_rc) = self.execute(
+                (success, teardown_rc) = await self.execute(
                     seq.teardown,
                     apply_alternative=self.alternative,
                     addl_envs={
@@ -1431,17 +1445,18 @@ class Test:
 
             return need_teardown
 
-        run_cmdseq(seq)
+        await run_cmdseq(seq)
+
+        monitor_task.cancel()
+        await monitor_task
 
         # Return code 200 aborts further processing, now that any teardowns have
         # run. btest-diff uses this code when we run with --update-interactive
         # and the user aborts the run.
         if rc == 200:
-            # Abort all tests.
-            self._stop_progress_monitor()
-            # Flush remaining command output prior to exit:
+            # Flush remaining command output before aborting the run.
             mgr.testReplayOutput(self)
-            sys.exit(1)
+            raise Abort("Aborted by user.")
 
         self.utime_perc = 0.0
         self.utime_exceeded = False
@@ -1505,7 +1520,15 @@ class Test:
             self.monitor_quit.set()
             self.monitor.join()
 
-    def execute(self, cmd, apply_alternative=None, addl_envs=None):
+    async def _async_progress_monitor(self):
+        try:
+            while True:
+                self.parseProgress()
+                await asyncio.sleep(0.1)
+        except asyncio.CancelledError:
+            pass
+
+    async def execute(self, cmd, apply_alternative=None, addl_envs=None):
         filter_cmd = None
         cmdline = cmd.cmdline
         env = {}
@@ -1539,12 +1562,12 @@ class Test:
                 f"{filter_cmd} {localfile} {filtered}", True, 1, "<Filter>"
             )
 
-            (success, rc) = self.execute(filter, apply_alternative=None)
+            (success, rc) = await self.execute(filter, apply_alternative=None)
             if not success:
                 return (False, rc)
 
             mv = CmdLine(f"mv {filtered} {localfile}", True, 1, "<Filter-Move>")
-            (success, rc) = self.execute(mv, apply_alternative=None)
+            (success, rc) = await self.execute(mv, apply_alternative=None)
 
             if not success:
                 return (False, rc)
@@ -1573,15 +1596,13 @@ class Test:
             Options.update_times or self.utime_base >= 0
         )
 
-        (success, rc, utime) = asyncio.run(
-            asyncRunTestCommandLine(
-                cmdline,
-                measure_time,
-                cwd=self.tmpdir,
-                env=env,
-                stdout=self.stdout,
-                stderr=self.stderr,
-            )
+        (success, rc, utime) = await asyncRunTestCommandLine(
+            cmdline,
+            measure_time,
+            cwd=self.tmpdir,
+            env=env,
+            stdout=self.stdout,
+            stderr=self.stderr,
         )
 
         if utime > 0:
@@ -1707,17 +1728,10 @@ class OutputHandler:
         """Returns the current optparser instance."""
         return self._options
 
-    def threadPrefix(self):
-        """With multiple threads, returns a string with the thread's name in
-        a form suitable to prefix output with. With a single thread, returns
-        the empty string."""
+    def threadPrefix(self, test):
         if self.options().threads > 1:
-            # TestManager.run() defines the process names to "#<n>".  Align the
-            # prefixes by using enough space for the number of threads
-            # requested, plus 1 for "#".
             width = len(str(self.options().threads)) + 1
-            return f"[{mp.current_process().name:>{width}}]"
-
+            return f"[{'#' + str(test.worker_num):>{width}}]"
         return ""
 
     def _output(self, msg, nl=True, file=None):
@@ -1863,7 +1877,7 @@ class Standard(OutputHandler):
     """
 
     def testStart(self, test):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ...", nl=False)
         test._std_nl = False
 
@@ -1890,7 +1904,7 @@ class Standard(OutputHandler):
 
     def finalMsg(self, test, msg):
         if test._std_nl:
-            self.output(test, self.threadPrefix(), nl=False)
+            self.output(test, self.threadPrefix(test), nl=False)
             self.output(test, f"{test.displayName()} ...", nl=False)
 
         self.output(test, msg)
@@ -2062,11 +2076,11 @@ class Brief(OutputHandler):
         pass
 
     def testFailed(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ... {msg}")
 
     def testUnstable(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ... {msg}")
 
     def testSkipped(self, test, msg):
@@ -2077,7 +2091,7 @@ class Verbose(OutputHandler):
     """Output handler for producing the verbose output format."""
 
     def testStart(self, test):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ...")
 
     def testCommand(self, test, cmdline):
@@ -2086,7 +2100,7 @@ class Verbose(OutputHandler):
         if cmdline.part > 1:
             part = f" [part #{cmdline.part}]"
 
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.output(test, f"  > {cmdline.cmdline}{part}")
 
     def testProgress(self, test, msg):
@@ -2094,22 +2108,22 @@ class Verbose(OutputHandler):
         self.output(test, "  - " + msg)
 
     def testSucceeded(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testFailed(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testUnstable(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testSkipped(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.threadPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
@@ -3532,8 +3546,8 @@ if __name__ == "__main__":
                     print(test.name)
             sys.exit(0)
         else:
-            (succeeded, failed, skipped, unstable, failed_expected) = mgr.run(
-                copy.deepcopy(tests), output_handler
+            (succeeded, failed, skipped, unstable, failed_expected), user_abort = (
+                mgr.run(copy.deepcopy(tests), output_handler)
             )
             total = succeeded + failed + skipped
 
@@ -3542,7 +3556,10 @@ if __name__ == "__main__":
     # Ctrl-C can lead to broken pipe (e.g. FreeBSD), so include IOError here:
     except (Abort, KeyboardInterrupt, OSError) as exc:
         output_handler.finished()
-        print(str(exc) or f"Aborted with {type(exc).__name__}.", file=sys.stderr)
+        if str(exc):
+            print(str(exc), file=sys.stderr)
+        elif not isinstance(exc, Abort):
+            print(f"Aborted with {type(exc).__name__}.", file=sys.stderr)
         sys.stderr.flush()
         # Explicitly shut down sync manager to avoid leaking manager
         # processes, particularly with --abort-on-failure:
@@ -3568,7 +3585,7 @@ if __name__ == "__main__":
                 )
             )
 
-        if failed == failed_expected:
+        if not user_abort and failed == failed_expected:
             sys.exit(0)
         else:
             sys.exit(1)
@@ -3581,10 +3598,10 @@ if __name__ == "__main__":
                 )
             )
 
-        sys.exit(0)
+        sys.exit(1 if user_abort else 0)
 
     else:
         if not Options.quiet:
             output(f"all {total} tests successful")
 
-        sys.exit(0)
+        sys.exit(1 if user_abort else 0)
