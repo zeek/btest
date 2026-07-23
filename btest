@@ -681,6 +681,11 @@ class RunState:
             out.close()
 
 
+def run_test(test, state):
+    test.run(state)
+    state.testReplayOutput(test)
+
+
 # Main class distributing the work across threads.
 class TestManager(mp_managers.SyncManager):
     def __init__(self, *args, **kwargs):
@@ -834,8 +839,7 @@ class TestManager(mp_managers.SyncManager):
             all_tests += thread_tests
 
             for t in thread_tests:
-                t.run(self)
-                self.testReplayOutput(t)
+                run_test(t, self)
 
             if Options.update_times:
                 self.saveTiming(all_tests)
