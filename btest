@@ -409,9 +409,7 @@ class RunState:
         ):
             return None
 
-        for i in range(len(self._tests)):
-            t = self._tests[i]
-
+        for i, t in enumerate(self._tests):
             if not t:
                 continue
 
