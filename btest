@@ -306,18 +306,18 @@ def replaceEnvs(s):
 # Execute one of test's command line *cmdline*. *measure_time* indicates if
 # timing measurement is desired. *kw_args* are further keyword arguments
 # interpreted the same way as with subprocess.check_call().
-async def asyncRunTestCommandLine(cmdline, measure_time, *, cwd, env, stdout, stderr):
+async def runTestCommandLine(cmdline, measure_time, *, cwd, env, stdout, stderr):
     if measure_time and Timer:
-        return await Timer.asyncTimeSubprocess(
+        return await Timer.timeSubprocess(
             cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
         )
-    (success, rc) = await asyncRunSubprocess(
+    (success, rc) = await runSubprocess(
         cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
     )
     return (success, rc, -1)
 
 
-async def asyncRunSubprocess(cmdline, *, cwd, env, stdout, stderr):
+async def runSubprocess(cmdline, *, cwd, env, stdout, stderr):
     async def _result(proc):
         try:
             await proc.wait()
@@ -637,7 +637,7 @@ async def run_test(test, state):
     state.testReplayOutput(test)
 
 
-async def _async_run_all(state, n):
+async def run_all_tests(state, n):
     async def worker(thread_num):
         all_tests = []
         while True:
@@ -687,7 +687,7 @@ def run_tests(tests, output_handler):
     user_abort = False
 
     try:
-        asyncio.run(_async_run_all(state, Options.threads))
+        asyncio.run(run_all_tests(state, Options.threads))
     except Abort:
         user_abort = True
 
@@ -1110,7 +1110,7 @@ class Test:
                 self.finish()
                 return
 
-        monitor_task = asyncio.create_task(self._async_progress_monitor())
+        monitor_task = asyncio.create_task(self._progress_monitor())
 
         # Run test's commands. First, construct a series of command sequences:
         # each sequence consists of test commands with an optional teardown that
@@ -1268,7 +1268,7 @@ class Test:
         self.stdout.close()
         self.stderr.close()
 
-    async def _async_progress_monitor(self):
+    async def _progress_monitor(self):
         try:
             while True:
                 self.parseProgress()
@@ -1344,7 +1344,7 @@ class Test:
             Options.update_times or self.utime_base >= 0
         )
 
-        (success, rc, utime) = await asyncRunTestCommandLine(
+        (success, rc, utime) = await runTestCommandLine(
             cmdline,
             measure_time,
             cwd=self.tmpdir,
@@ -2283,8 +2283,8 @@ class TimerBase:
     def available(self):
         raise NotImplementedError("Timer.available not implemented")
 
-    async def asyncTimeSubprocess(self, *args, **kwargs):
-        raise NotImplementedError("Timer.asyncTimeSubprocess not implemented")
+    async def timeSubprocess(self, *args, **kwargs):
+        raise NotImplementedError("Timer.timeSubprocess not implemented")
 
 
 # Linux version of time measurements. Uses "perf".
@@ -2307,14 +2307,14 @@ class LinuxTimer(TimerBase):
             == 0
         )
 
-    async def asyncTimeSubprocess(self, cmdline, *, cwd, env, stdout, stderr):
+    async def timeSubprocess(self, cmdline, *, cwd, env, stdout, stderr):
         assert self.perf
 
         # fmt: off
         targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c", cmdline]
         # fmt: on
 
-        (success, rc) = await asyncRunSubprocess(
+        (success, rc) = await runSubprocess(
             " ".join(targs), cwd=cwd, env=env, stdout=stdout, stderr=stderr
         )
 
