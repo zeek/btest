@@ -8,6 +8,10 @@ on:
       - 'v*'
       - '!v*-dev'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   Run-BTest:
     strategy:

@@ -1,3 +1,7 @@
+1.3-28 | 2026-07-24 14:37:13 -0700
+
+  * Automatically cancel exisiting GH CI workflows on PR update (Tim Wojtulewicz, Corelight)
+
 1.3-26 | 2026-06-22 20:50:36 +0200
 
   * Bump and freeze pre-commit hooks (Benjamin Bannier, Corelight)
