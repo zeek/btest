@@ -401,7 +401,7 @@ class RunState:
         test.reruns += 1
         self._tests += [test.clone(increment=False)]
 
-    def nextTests(self, thread_num):
+    def nextTests(self, worker_num):
         if (
             Options.abort_on_failure
             and self._failed > 0
@@ -415,7 +415,7 @@ class RunState:
             if not t:
                 continue
 
-            if t.serialize and t.serialize_hash() % Options.threads != thread_num:
+            if t.serialize and t.serialize_hash() % Options.threads != worker_num:
                 # Not ours.
                 continue
 
@@ -638,15 +638,15 @@ async def run_test(test, state):
 
 
 async def run_all_tests(state, n):
-    async def worker(thread_num):
+    async def worker(worker_num):
         all_tests = []
         while True:
-            thread_tests = state.nextTests(thread_num)
-            if thread_tests is None:
+            worker_tests = state.nextTests(worker_num)
+            if worker_tests is None:
                 return
-            all_tests += thread_tests
-            for t in thread_tests:
-                t.worker_num = thread_num
+            all_tests += worker_tests
+            for t in worker_tests:
+                t.worker_num = worker_num
                 await run_test(t, state)
             if Options.update_times:
                 state.saveTiming(all_tests)
@@ -1468,7 +1468,7 @@ class OutputHandler:
         """Returns the current optparser instance."""
         return self._options
 
-    def threadPrefix(self, test):
+    def workerPrefix(self, test):
         if self.options().threads > 1:
             width = len(str(self.options().threads)) + 1
             return f"[{'#' + str(test.worker_num):>{width}}]"
@@ -1486,7 +1486,7 @@ class OutputHandler:
 
     def output(self, test, msg, nl=True, file=None):
         """Output one line of output to user. Unless we're just using a single
-        thread, this will be buffered until the test has finished;
+        worker, this will be buffered until the test has finished;
         then all output is printed as a block.
 
         This should only be called from other members of this class, or
@@ -1502,7 +1502,7 @@ class OutputHandler:
             self._buffered_output[test.name] = [(msg, nl, file)]
 
     def replayOutput(self, test):
-        """Prints out all output buffered in threaded mode by output()."""
+        """Prints out all output buffered in parallel mode by output()."""
         if test.name not in self._buffered_output:
             return
 
@@ -1612,11 +1612,11 @@ class Standard(OutputHandler):
     The default output handler, writing plain lines with test outcome.
 
     Each test result is reported. For parallelized operation, the output
-    includes the thread number processing the test.
+    includes the worker number processing the test.
     """
 
     def testStart(self, test):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ...", nl=False)
         test._std_nl = False
 
@@ -1643,7 +1643,7 @@ class Standard(OutputHandler):
 
     def finalMsg(self, test, msg):
         if test._std_nl:
-            self.output(test, self.threadPrefix(test), nl=False)
+            self.output(test, self.workerPrefix(test), nl=False)
             self.output(test, f"{test.displayName()} ...", nl=False)
 
         self.output(test, msg)
@@ -1815,11 +1815,11 @@ class Brief(OutputHandler):
         pass
 
     def testFailed(self, test, msg):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ... {msg}")
 
     def testUnstable(self, test, msg):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ... {msg}")
 
     def testSkipped(self, test, msg):
@@ -1830,7 +1830,7 @@ class Verbose(OutputHandler):
     """Output handler for producing the verbose output format."""
 
     def testStart(self, test):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ...")
 
     def testCommand(self, test, cmdline):
@@ -1839,7 +1839,7 @@ class Verbose(OutputHandler):
         if cmdline.part > 1:
             part = f" [part #{cmdline.part}]"
 
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"  > {cmdline.cmdline}{part}")
 
     def testProgress(self, test, msg):
@@ -1847,22 +1847,22 @@ class Verbose(OutputHandler):
         self.output(test, "  - " + msg)
 
     def testSucceeded(self, test, msg):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testFailed(self, test, msg):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testUnstable(self, test, msg):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testSkipped(self, test, msg):
-        self.output(test, self.threadPrefix(test), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
