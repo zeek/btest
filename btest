@@ -772,7 +772,7 @@ class Test:
         self.known_failure = False
         self.log = None
         self.measure_time = False
-        self.mgr = None
+        self.state = None
 
         self.name = None
         self.number = 1
@@ -998,14 +998,14 @@ class Test:
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
 
-    def getPorts(self, mgr, count):
+    def getPorts(self, state, count):
         if not count:
             return []
 
         attempts = 5
 
         while True:
-            rval = mgr.getAvailablePorts(count)
+            rval = state.getAvailablePorts(count)
 
             if rval:
                 return rval
@@ -1021,16 +1021,16 @@ class Test:
 
             time.sleep(15)
 
-    async def run(self, mgr):
-        bound_sockets = self.getPorts(mgr, len(self.ports))
+    async def run(self, state):
+        bound_sockets = self.getPorts(state, len(self.ports))
         self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
 
         for bs in bound_sockets:
             bs.close()
 
         self.start = time.time()
-        self.mgr = mgr
-        mgr.testStart(self)
+        self.state = state
+        state.testStart(self)
 
         self.tmpdir = normalize_path_join(TmpDir, self.name)
         self.diag = normalize_path_join(self.tmpdir, ".diag")
@@ -1040,7 +1040,7 @@ class Test:
             self.baselines.append(normalize_path_join(d, self.name))
         self.diagmsgs = []
         self.utime = -1
-        self.utime_base = self.mgr.testTimingBaseline(self)
+        self.utime_base = self.state.testTimingBaseline(self)
         self.utime_perc = 0.0
         self.utime_exceeded = False
 
@@ -1102,7 +1102,7 @@ class Test:
             (success, rc) = await self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
-                self.mgr.testSkipped(self)
+                self.state.testSkipped(self)
                 if not Options.tmps:
                     self.rmTmp(with_close=True)
                 self.finish()
@@ -1173,12 +1173,12 @@ class Test:
                         if Options.sphinx:
                             # We still execute the remaining commands and
                             # raise a failure for each one that fails.
-                            self.mgr.testFailed(self)
+                            self.state.testFailed(self)
                             skip_part = cmd.part
                             continue
 
                         if failures == 1:
-                            self.mgr.testFailed(self)
+                            self.state.testFailed(self)
 
                         if rc != 100:
                             break
@@ -1204,7 +1204,7 @@ class Test:
                     failures += 1
 
                     if Options.sphinx or failures == 1:
-                        self.mgr.testFailed(self)
+                        self.state.testFailed(self)
 
             return need_teardown
 
@@ -1218,7 +1218,7 @@ class Test:
         # and the user aborts the run.
         if rc == 200:
             # Flush remaining command output before aborting the run.
-            mgr.testReplayOutput(self)
+            state.testReplayOutput(self)
             raise Abort("Aborted by user.")
 
         self.utime_perc = 0.0
@@ -1238,10 +1238,10 @@ class Test:
                 self.diagmsgs += [
                     f"'{self.name}' exceeded permitted execution time deviation{self.timePostfix()}"
                 ]
-                self.mgr.testFailed(self)
+                self.state.testFailed(self)
 
             else:
-                self.mgr.testSucceeded(self)
+                self.state.testSucceeded(self)
 
             if not Options.tmps and self.reruns == 0:
                 self.rmTmp(with_close=True)
@@ -1250,7 +1250,7 @@ class Test:
 
     def finish(self):
         if self.bound_ports:
-            self.mgr.returnPorts(list(self.bound_ports))
+            self.state.returnPorts(list(self.bound_ports))
 
         self.bound_ports = []
 
@@ -1318,7 +1318,7 @@ class Test:
             if not success:
                 return (False, rc)
 
-        self.mgr.testCommand(self, cmd)
+        self.state.testCommand(self, cmd)
 
         # Replace special names.
 
@@ -1435,7 +1435,7 @@ class Test:
             try:
                 for line in open(file):
                     msg = line.strip()
-                    self.mgr.testProgress(self, msg)
+                    self.state.testProgress(self, msg)
 
                 os.unlink(file)
             except OSError:
@@ -1672,7 +1672,7 @@ class Console(OutputHandler):
         OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
 
     def testStart(self, test):
-        msg = f"[{int(test.mgr.percentage()):>3d}%] {test.displayName()} ..."
+        msg = f"[{int(test.state.percentage()):>3d}%] {test.displayName()} ..."
         self.output(test, msg, nl=False)
 
     def testProgress(self, test, msg):
@@ -1771,7 +1771,7 @@ class CompactConsole(Console):
         self._outfile.flush()
 
     def _consoleOutput(self, test, msg, sticky):
-        line = f"[{int(test.mgr.percentage()):>3d}%] {test.displayName()} ..."
+        line = f"[{int(test.state.percentage()):>3d}%] {test.displayName()} ..."
 
         if msg:
             line += " " + msg
@@ -2196,12 +2196,12 @@ class OSC94ProgressBar(OutputHandler):
     def testFinished(self, test, msg):
         fmt = self.ProgressDefault
 
-        if test.mgr.hasFailure():
+        if test.state.hasFailure():
             fmt = self.ProgressError
-        elif test.mgr.hasUnstable():
+        elif test.state.hasUnstable():
             fmt = self.ProgressWarning
 
-        progress = fmt.format(percentage=int(test.mgr.percentage()))
+        progress = fmt.format(percentage=int(test.state.percentage()))
         sys.stdout.write(progress)
         sys.stdout.flush()
 
