@@ -446,7 +446,7 @@ class RunState:
         for p in ports:
             self._ports.append(p)
 
-    def getAvailablePorts(self, count):
+    def available_ports(self, count):
         if count > len(self._ports):
             return []
 
@@ -980,14 +980,14 @@ class Test:
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
 
-    def getPorts(self, state, count):
+    def allocate_ports(self, state, count):
         if not count:
             return []
 
         attempts = 5
 
         while True:
-            rval = state.getAvailablePorts(count)
+            rval = state.available_ports(count)
 
             if rval:
                 return rval
@@ -1004,7 +1004,7 @@ class Test:
             time.sleep(15)
 
     async def run(self, state):
-        bound_sockets = self.getPorts(state, len(self.ports))
+        bound_sockets = self.allocate_ports(state, len(self.ports))
         self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
 
         for bs in bound_sockets:
