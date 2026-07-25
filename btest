@@ -430,18 +430,17 @@ class RunState:
         self._tests += [test.clone(increment=False)]
 
     def nextTests(self, worker_num):
-        for i, t in enumerate(self._tests):
-            if t.serialize and t.serialize_hash() % Options.threads != worker_num:
-                # Not ours.
-                continue
+        while True:
+            for i, t in enumerate(self._tests):
+                if t.serialize and t.serialize_hash() % Options.threads != worker_num:
+                    # Not ours.
+                    continue
 
-            # We'll execute it, delete from queue.
-            del self._tests[i]
-
-            return list(_expand_alternatives(t))
-
-        # No more tests for us.
-        return None
+                del self._tests[i]
+                yield from _expand_alternatives(t)
+                break
+            else:
+                return
 
     def returnPorts(self, ports):
         for p in ports:
@@ -625,16 +624,12 @@ async def run_test(test, state):
 async def run_all_tests(state, n):
     async def worker(worker_num):
         all_tests = []
-        while True:
-            worker_tests = state.nextTests(worker_num)
-            if worker_tests is None:
-                return
-            all_tests += worker_tests
-            for t in worker_tests:
-                t.worker_num = worker_num
-                await run_test(t, state)
-            if Options.update_times:
-                state.saveTiming(all_tests)
+        for t in state.nextTests(worker_num):
+            t.worker_num = worker_num
+            await run_test(t, state)
+            all_tests.append(t)
+        if Options.update_times:
+            state.saveTiming(all_tests)
 
     await asyncio.gather(*[worker(i) for i in range(n)])
 
