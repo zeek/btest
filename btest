@@ -370,6 +370,34 @@ class Abort(Exception):
     pass
 
 
+def _expand_alternatives(t):
+    if Options.alternatives:
+        for alternative in Options.alternatives:
+            if alternative in t.ignore_alternatives:
+                continue
+
+            if t.include_alternatives and alternative not in t.include_alternatives:
+                continue
+
+            alternative_test = copy.deepcopy(t)
+
+            if alternative == Alternative.DEFAULT:
+                alternative = ""
+
+            alternative_test.setAlternative(alternative)
+            yield alternative_test
+
+    else:
+        if t.include_alternatives and Alternative.DEFAULT not in t.include_alternatives:
+            return
+
+        elif Alternative.DEFAULT in t.ignore_alternatives:
+            return
+
+        else:
+            yield t
+
+
 class RunState:
     def __init__(self, output_handler, tests, failed_tests, ports, timing):
         self._output_handler = output_handler
@@ -410,41 +438,7 @@ class RunState:
             # We'll execute it, delete from queue.
             del self._tests[i]
 
-            if Options.alternatives:
-                tests = []
-
-                for alternative in Options.alternatives:
-                    if alternative in t.ignore_alternatives:
-                        continue
-
-                    if (
-                        t.include_alternatives
-                        and alternative not in t.include_alternatives
-                    ):
-                        continue
-
-                    alternative_test = copy.deepcopy(t)
-
-                    if alternative == Alternative.DEFAULT:
-                        alternative = ""
-
-                    alternative_test.setAlternative(alternative)
-                    tests += [alternative_test]
-
-            else:
-                if (
-                    t.include_alternatives
-                    and Alternative.DEFAULT not in t.include_alternatives
-                ):
-                    tests = []
-
-                elif Alternative.DEFAULT in t.ignore_alternatives:
-                    tests = []
-
-                else:
-                    tests = [t]
-
-            return tests
+            return list(_expand_alternatives(t))
 
         # No more tests for us.
         return None
