@@ -402,13 +402,6 @@ class RunState:
         self._tests += [test.clone(increment=False)]
 
     def nextTests(self, worker_num):
-        if (
-            Options.abort_on_failure
-            and self._failed > 0
-            and self._failed > self._failed_expected
-        ):
-            return None
-
         for i, t in enumerate(self._tests):
             if t.serialize and t.serialize_hash() % Options.threads != worker_num:
                 # Not ours.
@@ -573,6 +566,9 @@ class RunState:
 
         if test.reruns < Options.retries and not test.known_failure:
             self.rerun(test)
+
+        if Options.abort_on_failure and self._failed > self._failed_expected:
+            self._tests.clear()
 
     def testSkipped(self, test):
         msg = "not available, skipped"
