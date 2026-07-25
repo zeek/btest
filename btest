@@ -410,9 +410,6 @@ class RunState:
             return None
 
         for i, t in enumerate(self._tests):
-            if not t:
-                continue
-
             if t.serialize and t.serialize_hash() % Options.threads != worker_num:
                 # Not ours.
                 continue
@@ -611,7 +608,7 @@ class RunState:
         timing = self.loadTiming()
 
         for t in tests:
-            if t and t.measure_time and t.utime >= 0:
+            if t.measure_time and t.utime >= 0:
                 changed = True
                 timing[t.name] = t.utime
 
