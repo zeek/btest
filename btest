@@ -370,6 +370,34 @@ class Abort(Exception):
     pass
 
 
+def _expand_alternatives(t):
+    if Options.alternatives:
+        for alternative in Options.alternatives:
+            if alternative in t.ignore_alternatives:
+                continue
+
+            if t.include_alternatives and alternative not in t.include_alternatives:
+                continue
+
+            alternative_test = copy.deepcopy(t)
+
+            if alternative == Alternative.DEFAULT:
+                alternative = ""
+
+            alternative_test.setAlternative(alternative)
+            yield alternative_test
+
+    else:
+        if t.include_alternatives and Alternative.DEFAULT not in t.include_alternatives:
+            return
+
+        elif Alternative.DEFAULT in t.ignore_alternatives:
+            return
+
+        else:
+            yield t
+
+
 class RunState:
     def __init__(self, output_handler, tests, failed_tests, ports, timing):
         self._output_handler = output_handler
@@ -401,69 +429,24 @@ class RunState:
         test.reruns += 1
         self._tests += [test.clone(increment=False)]
 
-    def nextTests(self, worker_num):
-        if (
-            Options.abort_on_failure
-            and self._failed > 0
-            and self._failed > self._failed_expected
-        ):
-            return None
+    def tests(self, worker_num):
+        while True:
+            for i, t in enumerate(self._tests):
+                if t.serialize and t.serialize_hash() % Options.threads != worker_num:
+                    # Not ours.
+                    continue
 
-        for i, t in enumerate(self._tests):
-            if not t:
-                continue
-
-            if t.serialize and t.serialize_hash() % Options.threads != worker_num:
-                # Not ours.
-                continue
-
-            # We'll execute it, delete from queue.
-            del self._tests[i]
-
-            if Options.alternatives:
-                tests = []
-
-                for alternative in Options.alternatives:
-                    if alternative in t.ignore_alternatives:
-                        continue
-
-                    if (
-                        t.include_alternatives
-                        and alternative not in t.include_alternatives
-                    ):
-                        continue
-
-                    alternative_test = copy.deepcopy(t)
-
-                    if alternative == Alternative.DEFAULT:
-                        alternative = ""
-
-                    alternative_test.setAlternative(alternative)
-                    tests += [alternative_test]
-
+                del self._tests[i]
+                yield from _expand_alternatives(t)
+                break
             else:
-                if (
-                    t.include_alternatives
-                    and Alternative.DEFAULT not in t.include_alternatives
-                ):
-                    tests = []
-
-                elif Alternative.DEFAULT in t.ignore_alternatives:
-                    tests = []
-
-                else:
-                    tests = [t]
-
-            return tests
-
-        # No more tests for us.
-        return None
+                return
 
     def returnPorts(self, ports):
         for p in ports:
             self._ports.append(p)
 
-    def getAvailablePorts(self, count):
+    def available_ports(self, count):
         if count > len(self._ports):
             return []
 
@@ -577,6 +560,9 @@ class RunState:
         if test.reruns < Options.retries and not test.known_failure:
             self.rerun(test)
 
+        if Options.abort_on_failure and self._failed > self._failed_expected:
+            self._tests.clear()
+
     def testSkipped(self, test):
         msg = "not available, skipped"
 
@@ -611,7 +597,7 @@ class RunState:
         timing = self.loadTiming()
 
         for t in tests:
-            if t and t.measure_time and t.utime >= 0:
+            if t.measure_time and t.utime >= 0:
                 changed = True
                 timing[t.name] = t.utime
 
@@ -638,16 +624,12 @@ async def run_test(test, state):
 async def run_all_tests(state, n):
     async def worker(worker_num):
         all_tests = []
-        while True:
-            worker_tests = state.nextTests(worker_num)
-            if worker_tests is None:
-                return
-            all_tests += worker_tests
-            for t in worker_tests:
-                t.worker_num = worker_num
-                await run_test(t, state)
-            if Options.update_times:
-                state.saveTiming(all_tests)
+        for t in state.tests(worker_num):
+            t.worker_num = worker_num
+            await run_test(t, state)
+            all_tests.append(t)
+        if Options.update_times:
+            state.saveTiming(all_tests)
 
     await asyncio.gather(*[worker(i) for i in range(n)])
 
@@ -998,14 +980,14 @@ class Test:
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
 
-    def getPorts(self, state, count):
+    def allocate_ports(self, state, count):
         if not count:
             return []
 
         attempts = 5
 
         while True:
-            rval = state.getAvailablePorts(count)
+            rval = state.available_ports(count)
 
             if rval:
                 return rval
@@ -1022,7 +1004,7 @@ class Test:
             time.sleep(15)
 
     async def run(self, state):
-        bound_sockets = self.getPorts(state, len(self.ports))
+        bound_sockets = self.allocate_ports(state, len(self.ports))
         self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
 
         for bs in bound_sockets:
