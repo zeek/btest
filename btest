@@ -5,6 +5,7 @@
 # pylint: disable=line-too-long,too-many-lines,invalid-name,missing-function-docstring,
 # pylint: disable=missing-class-docstring
 
+import asyncio
 import atexit
 import binascii
 import configparser
@@ -18,43 +19,15 @@ import os.path
 import pathlib
 import platform as pform
 import re
-import shlex
 import shutil
-import signal
 import socket
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 import uuid
 import xml.dom.minidom
 from datetime import datetime
-
-# We require the external multiprocess library on Windows due to pickling issues
-# with the standard one.
-if sys.platform == "win32":
-    try:
-        import multiprocess as mp
-        import multiprocess.managers as mp_managers
-        import multiprocess.sharedctypes as mp_sharedctypes
-    except ImportError as error:
-        print(
-            "error: btest failed to import the 'multiprocess' library\n"
-            "\n"
-            "This library is required for btest to function on Windows. "
-            "It can be installed from pip like:\n"
-            "\n"
-            "    pip install multiprocess\n"
-            "\n"
-            "Also check the following exception output for possible alternate explanations:\n\n"
-            f"{type(error).__name__}: {error}",
-            file=sys.stderr,
-        )
-else:
-    import multiprocessing as mp
-    import multiprocessing.managers as mp_managers
-    import multiprocessing.sharedctypes as mp_sharedctypes
 
 VERSION = "1.3-28"  # Automatically filled in.
 
@@ -65,8 +38,6 @@ DEFAULT_CONFIG_NAME = "btest.cfg"
 
 ConfigDefault = os.environ.get("BTEST_CFG", DEFAULT_CONFIG_NAME)
 
-# These regexes have fixed patterns and are used in child processes, so they
-# must be module-level constants to survive multiprocess spawn on Windows.
 RE_INPUT = re.compile(r"%INPUT")
 RE_DIR = re.compile(r"%DIR")
 RE_ENV = re.compile(r"\$\{(\w+)}")
@@ -335,62 +306,45 @@ def replaceEnvs(s):
 # Execute one of test's command line *cmdline*. *measure_time* indicates if
 # timing measurement is desired. *kw_args* are further keyword arguments
 # interpreted the same way as with subprocess.check_call().
-# Returns a 3-tuple (success, rc, time) where the former two likewise
-# have the same meaning as with runSubprocess(), and 'time' is an integer
-# value corresponding to the commands execution time measured in some
-# appropiate integer measure. If 'time' is negative, that's an indicator
-# that time measurement wasn't possible and the value is to be ignored.
-def runTestCommandLine(cmdline, measure_time, **kwargs):
+async def runTestCommandLine(cmdline, measure_time, *, cwd, env, stdout, stderr):
     if measure_time and Timer:
-        return Timer.timeSubprocess(cmdline, **kwargs)
-    (success, rc) = runSubprocess(cmdline, **kwargs)
+        return await Timer.timeSubprocess(
+            cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+        )
+    (success, rc) = await runSubprocess(
+        cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+    )
     return (success, rc, -1)
 
 
-# Runs a subprocess. Takes same arguments as subprocess.check_call()
-# and returns a 2-tuple (success, rc) where *success* is a boolean
-# indicating if the command executed, and *rc* is its exit code if it did.
-def runSubprocess(*args, **kwargs):
-    def child(q):
+async def runSubprocess(cmdline, *, cwd, env, stdout, stderr):
+    async def _result(proc):
         try:
-            if sys.platform == "win32":
-                tmpdir = normalize_path(kwargs.get("cwd", ""))
-                if len(args) > 1:
-                    cmd = shlex.join(args)
-                else:
-                    cmd = args[0]
+            await proc.wait()
+        except asyncio.CancelledError:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+            await proc.wait()
+            raise
 
-                tf, bash_cmd = _build_win_subprocess_cmd_script(cmd, tmpdir)
-                with tf:
-                    subprocess.check_call(bash_cmd, **kwargs)
-            else:
-                subprocess.check_call(*args, **kwargs)
-            success = True
-            rc = 0
+        if proc.returncode != 0:
+            return (False, proc.returncode)
+        return (True, 0)
 
-        except subprocess.CalledProcessError as e:
-            success = False
-            rc = e.returncode
-
-        except KeyboardInterrupt:
-            success = False
-            rc = 0
-
-        q.put([success, rc])
-
-    try:
-        q = mp.Queue()
-        p = mp.Process(target=child, args=(q,))
-        p.start()
-        result = q.get()
-        p.join()
-
-    except KeyboardInterrupt:
-        # Bail out here directly as otherwise we'd get a bunch of errors.
-        # from all the childs.
-        sys.exit(1)
-
-    return result
+    if sys.platform == "win32":
+        tmpdir = normalize_path(cwd)
+        tf, bash_cmd = _build_win_subprocess_cmd_script(cmdline, tmpdir)
+        with tf:
+            proc = await asyncio.create_subprocess_exec(
+                *bash_cmd, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+            )
+            return await _result(proc)
+    proc = await asyncio.create_subprocess_shell(
+        cmdline, cwd=cwd, env=env, stdout=stdout, stderr=stderr
+    )
+    return await _result(proc)
 
 
 # Description of an alternative configuration.
@@ -416,328 +370,161 @@ class Abort(Exception):
     pass
 
 
-# Main class distributing the work across threads.
-class TestManager(mp_managers.SyncManager):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._output_handler = None
-        self._lock = None
-        self._succeeded = None
-        self._failed = None
-        self._failed_expected = None
-        self._unstable = None
-        self._skipped = None
-        self._tests = None
-        self._failed_tests = None
-        self._num_tests = None
-        self._timing = None
-        self._ports = None
-
-    def run(self, tests, output_handler):
-        self.start()
-
-        mgr_data = self.dict()
-        mgr_data["Alternatives"] = Alternatives
-        mgr_data["BaselineDirs"] = BaselineDirs
-        mgr_data["Initializer"] = Initializer
-        mgr_data["Finalizer"] = Finalizer
-        mgr_data["Teardown"] = Teardown
-        mgr_data["Options"] = Options
-        mgr_data["TestBase"] = TestBase
-        mgr_data["TmpDir"] = TmpDir
-
-        output_handler.prepare(self)
+class RunState:
+    def __init__(self, output_handler, tests, failed_tests, ports, timing):
         self._output_handler = output_handler
-        self._lock = self.RLock()
-        self._succeeded = mp_sharedctypes.RawValue("i", 0)
-        self._failed = mp_sharedctypes.RawValue("i", 0)
-        self._failed_expected = mp_sharedctypes.RawValue("i", 0)
-        self._unstable = mp_sharedctypes.RawValue("i", 0)
-        self._skipped = mp_sharedctypes.RawValue("i", 0)
-        self._tests = self.list(tests)
-        self._failed_tests = self.list([])
-        self._num_tests = len(self._tests)
-        self._timing = self.loadTiming()
-
-        port_range = getOption("PortRange", "1024-65535")
-        port_range_lo = int(port_range.split("-")[0])
-        port_range_hi = int(port_range.split("-")[1])
-
-        if port_range_lo > port_range_hi:
-            error(f"invalid PortRange value: {port_range}")
-
-        max_test_ports = 0
-        test_with_most_ports = None
-
-        for t in self._tests:
-            if len(t.ports) > max_test_ports:
-                max_test_ports = len(t.ports)
-                test_with_most_ports = t
-
-        if max_test_ports > port_range_hi - port_range_lo + 1:
-            error(
-                f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
-            )
-
-        self._ports = self.list(list(range(port_range_lo, port_range_hi + 1)))
-
-        threads = []
-
-        # With interactive input possibly required, we run tests
-        # directly. This avoids noisy output appearing from detached
-        # processes post-btest-exit when using CTRL-C during the input
-        # stage.
-        if Options.mode == "UPDATE_INTERACTIVE":
-            self.threadRun(0, mgr_data)
-        else:
-            try:
-                # Create a set of processes for running each of the tests. This isn't the actual
-                # zeek processes, but runner processes executing individual test commands.
-                for i in range(Options.threads):
-                    t = mp.Process(
-                        name=f"#{i + 1}", target=lambda: self.threadRun(i, mgr_data)
-                    )
-                    t.start()
-                    threads += [t]
-
-                for t in threads:
-                    t.join()
-
-            except KeyboardInterrupt:
-                for t in threads:
-                    t.terminate()
-                    t.join()
-
-        if (
-            Options.abort_on_failure
-            and self._failed.value > 0
-            and self._failed.value > self._failed_expected.value
-        ):
-            # Signal abort. The child processes will already have
-            # finished because the join() above still ran.
-            raise Abort("Aborted after first failure.")
-
-        # Record failed tests if not updating.
-        if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
-            try:
-                state = open(StateFile, "w", encoding="utf-8")
-            except OSError:
-                error(f"cannot open state file {StateFile}")
-
-            for t in sorted(self._failed_tests):
-                print(t, file=state)
-
-            state.close()
-
-        return (
-            self._succeeded.value,
-            self._failed.value,
-            self._skipped.value,
-            self._unstable.value,
-            self._failed_expected.value,
-        )
+        self._succeeded = 0
+        self._failed = 0
+        self._failed_expected = 0
+        self._unstable = 0
+        self._skipped = 0
+        self._tests = tests
+        self._failed_tests = failed_tests
+        self._num_tests = len(tests)
+        self._timing = timing
+        self._ports = ports
 
     def percentage(self):
         if not self._num_tests:
             return 0
 
-        count = self._succeeded.value + self._failed.value + self._skipped.value
+        count = self._succeeded + self._failed + self._skipped
         return 100.0 * count / self._num_tests
 
-    # Returns true if there's at least one unexpected failure so far.
     def hasFailure(self):
-        return (self._failed.value - self._failed_expected.value) > 0
+        return (self._failed - self._failed_expected) > 0
 
-    # Returns true if there's at least one unstable test so far.
     def hasUnstable(self):
-        return self._unstable.value > 0
-
-    # Worker method for each of the "threads" specified by the "-j" argument passed
-    # at run time. This basically segments the list of tests into chunks and runs
-    # until we're out of chunks.
-    def threadRun(self, thread_num, mgr_data):
-        # This should prevent the child processes from receiving SIGINT signals and
-        # let the KeyboardInterrupt handler in the manager's run() method handle
-        # those.
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        all_tests = []
-
-        # Globals get lost moving from the parent to the child on Windows, so we need to use
-        # the data proxied from the manager to rebuild the dict of globals before continuing.
-        if sys.platform == "win32":
-            for global_key, global_value in mgr_data.items():
-                globals()[global_key] = global_value
-
-            # multiprocess/dill may reconstruct this method with its own globals
-            # dict, separate from the module-level globals used by functions like
-            # replaceEnvs. Also set globals in __mp_main__, which is where
-            # multiprocess imports the script in spawned child processes.
-            mp_main = sys.modules.get("__mp_main__")
-            if mp_main is not None:
-                for global_key, global_value in mgr_data.items():
-                    setattr(mp_main, global_key, global_value)
-
-        while True:
-            # Pull the next test from the list that was built at startup. This may
-            # be more than one test if there were alternatives requested in the
-            # arguments passed to btest.
-            thread_tests = self.nextTests(thread_num)
-            if thread_tests is None:
-                # No more work for us.
-                return
-
-            all_tests += thread_tests
-
-            for t in thread_tests:
-                t.run(self)
-                self.testReplayOutput(t)
-
-            if Options.update_times:
-                self.saveTiming(all_tests)
+        return self._unstable > 0
 
     def rerun(self, test):
         test.reruns += 1
         self._tests += [test.clone(increment=False)]
 
-    def nextTests(self, thread_num):
-        with self._lock:
-            if (
-                Options.abort_on_failure
-                and self._failed.value > 0
-                and self._failed.value > self._failed_expected.value
-            ):
-                # Don't hand out any more tests if we are to abort after
-                # first failure. Doing so will let all the processes terminate.
-                return None
+    def nextTests(self, worker_num):
+        if (
+            Options.abort_on_failure
+            and self._failed > 0
+            and self._failed > self._failed_expected
+        ):
+            return None
 
-            for i in range(len(self._tests)):
-                t = self._tests[i]
+        for i, t in enumerate(self._tests):
+            if not t:
+                continue
 
-                if not t:
-                    continue
+            if t.serialize and t.serialize_hash() % Options.threads != worker_num:
+                # Not ours.
+                continue
 
-                if t.serialize and t.serialize_hash() % Options.threads != thread_num:
-                    # Not ours.
-                    continue
+            # We'll execute it, delete from queue.
+            del self._tests[i]
 
-                # We'll execute it, delete from queue.
-                del self._tests[i]
+            if Options.alternatives:
+                tests = []
 
-                if Options.alternatives:
-                    tests = []
+                for alternative in Options.alternatives:
+                    if alternative in t.ignore_alternatives:
+                        continue
 
-                    for alternative in Options.alternatives:
-                        if alternative in t.ignore_alternatives:
-                            continue
-
-                        if (
-                            t.include_alternatives
-                            and alternative not in t.include_alternatives
-                        ):
-                            continue
-
-                        alternative_test = copy.deepcopy(t)
-
-                        if alternative == Alternative.DEFAULT:
-                            alternative = ""
-
-                        alternative_test.setAlternative(alternative)
-                        tests += [alternative_test]
-
-                else:
                     if (
                         t.include_alternatives
-                        and Alternative.DEFAULT not in t.include_alternatives
+                        and alternative not in t.include_alternatives
                     ):
-                        tests = []
+                        continue
 
-                    elif Alternative.DEFAULT in t.ignore_alternatives:
-                        tests = []
+                    alternative_test = copy.deepcopy(t)
 
-                    else:
-                        tests = [t]
+                    if alternative == Alternative.DEFAULT:
+                        alternative = ""
 
-                return tests
+                    alternative_test.setAlternative(alternative)
+                    tests += [alternative_test]
+
+            else:
+                if (
+                    t.include_alternatives
+                    and Alternative.DEFAULT not in t.include_alternatives
+                ):
+                    tests = []
+
+                elif Alternative.DEFAULT in t.ignore_alternatives:
+                    tests = []
+
+                else:
+                    tests = [t]
+
+            return tests
 
         # No more tests for us.
         return None
 
     def returnPorts(self, ports):
-        with self._lock:
-            for p in ports:
-                self._ports.append(p)
+        for p in ports:
+            self._ports.append(p)
 
     def getAvailablePorts(self, count):
-        with self._lock:
-            if count > len(self._ports):
-                return []
+        if count > len(self._ports):
+            return []
 
-            first_port = -1
-            rval = []
+        first_port = -1
+        rval = []
 
-            for _ in range(count):
-                while True:
-                    if len(self._ports) == 0:
-                        for s in rval:
-                            s.close()
-                            self._ports.append(s.getsockname()[1])
-                        return []
+        for _ in range(count):
+            while True:
+                if len(self._ports) == 0:
+                    for s in rval:
+                        s.close()
+                        self._ports.append(s.getsockname()[1])
+                    return []
 
-                    next_port = self._ports[0]
+                next_port = self._ports[0]
 
-                    if next_port == first_port:
-                        # Looped over port pool once, bail out.
-                        for s in rval:
-                            s.close()
-                            self._ports.append(s.getsockname()[1])
+                if next_port == first_port:
+                    # Looped over port pool once, bail out.
+                    for s in rval:
+                        s.close()
+                        self._ports.append(s.getsockname()[1])
 
-                        return []
+                    return []
 
-                    if first_port == -1:
-                        first_port = next_port
+                if first_port == -1:
+                    first_port = next_port
 
-                    del self._ports[0]
+                del self._ports[0]
 
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-                    # Setting REUSEADDR would allow ports to be recycled
-                    # more quickly, but on macOS, seems to also have the
-                    # effect of allowing multiple sockets to bind to the
-                    # same port, even if REUSEPORT is off, so just try to
-                    # ensure both are off.
-                    if hasattr(socket, "SO_REUSEADDR"):
-                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
-                    if hasattr(socket, "SO_REUSEPORT"):
-                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+                # Setting REUSEADDR would allow ports to be recycled
+                # more quickly, but on macOS, seems to also have the
+                # effect of allowing multiple sockets to bind to the
+                # same port, even if REUSEPORT is off, so just try to
+                # ensure both are off.
+                if hasattr(socket, "SO_REUSEADDR"):
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+                if hasattr(socket, "SO_REUSEPORT"):
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
 
-                    try:
-                        sock.bind(("", next_port))
-                    except Exception:
-                        self._ports.append(next_port)
-                        continue
-                    else:
-                        break
+                try:
+                    sock.bind(("", next_port))
+                except Exception:
+                    self._ports.append(next_port)
+                    continue
+                else:
+                    break
 
-                rval.append(sock)
+            rval.append(sock)
 
-            return rval
-
-    def lock(self):
-        return self._lock
+        return rval
 
     def testStart(self, test):
-        with self._lock:
-            self._output_handler.testStart(test)
+        self._output_handler.testStart(test)
 
     def testCommand(self, test, cmdline):
-        with self._lock:
-            self._output_handler.testCommand(test, cmdline)
+        self._output_handler.testCommand(test, cmdline)
 
     def testProgress(self, test, msg):
-        with self._lock:
-            self._output_handler.testProgress(test, msg)
+        self._output_handler.testProgress(test, msg)
 
     def testSucceeded(self, test):
         test.parseProgress()
@@ -749,20 +536,19 @@ class TestManager(mp_managers.SyncManager):
 
         msg += test.timePostfix()
 
-        with self._lock:
-            if test.reruns == 0:
-                self._succeeded.value += 1
-                self._output_handler.testSucceeded(test, msg)
-            else:
-                self._failed.value -= 1
-                if test.known_failure:
-                    self._failed_expected.value -= 1
+        if test.reruns == 0:
+            self._succeeded += 1
+            self._output_handler.testSucceeded(test, msg)
+        else:
+            self._failed -= 1
+            if test.known_failure:
+                self._failed_expected -= 1
 
-                self._unstable.value += 1
-                msg += f" on retry #{test.reruns}, unstable"
-                self._output_handler.testUnstable(test, msg)
+            self._unstable += 1
+            msg += f" on retry #{test.reruns}, unstable"
+            self._output_handler.testUnstable(test, msg)
 
-            self._output_handler.testFinished(test, msg)
+        self._output_handler.testFinished(test, msg)
 
     def testFailed(self, test):
         test.parseProgress()
@@ -777,81 +563,160 @@ class TestManager(mp_managers.SyncManager):
 
         msg += test.timePostfix()
 
-        with self._lock:
-            self._output_handler.testFailed(test, msg)
-            self._output_handler.testFinished(test, msg)
+        self._output_handler.testFailed(test, msg)
+        self._output_handler.testFinished(test, msg)
 
-            if test.reruns == 0:
-                self._failed.value += 1
+        if test.reruns == 0:
+            self._failed += 1
 
-                if test.known_failure:
-                    self._failed_expected.value += 1
-                else:
-                    self._failed_tests += [test.name]
+            if test.known_failure:
+                self._failed_expected += 1
+            else:
+                self._failed_tests += [test.name]
 
-            if test.reruns < Options.retries and not test.known_failure:
-                self.rerun(test)
+        if test.reruns < Options.retries and not test.known_failure:
+            self.rerun(test)
 
     def testSkipped(self, test):
         msg = "not available, skipped"
 
-        with self._lock:
-            self._output_handler.testSkipped(test, msg)
-            self._skipped.value += 1
+        self._output_handler.testSkipped(test, msg)
+        self._skipped += 1
 
     def testReplayOutput(self, test):
-        with self._lock:
-            self._output_handler.replayOutput(test)
+        self._output_handler.replayOutput(test)
 
     def testTimingBaseline(self, test):
         return self._timing.get(test.name, -1)
 
-    # Returns the name of the file to store the timing baseline in for this host.
     def timingPath(self):
         id = uuid.uuid3(uuid.NAMESPACE_DNS, str(uuid.getnode()))
         return os.path.abspath(os.path.join(BaselineTimingDir, id.hex))
 
-    # Loads baseline timing information for this host if available. Returns
-    # empty directory if not.
     def loadTiming(self):
+        path = self.timingPath()
+
+        if not os.path.exists(path):
+            return {}
+
         timing = {}
-
-        with self._lock:
-            path = self.timingPath()
-
-            if not os.path.exists(path):
-                return {}
-
-            for line in open(path):
-                (k, v) = line.split()
-                timing[k] = float(v)
+        for line in open(path):
+            (k, v) = line.split()
+            timing[k] = float(v)
 
         return timing
 
-    # Updates the timing baseline for the given tests on this host.
     def saveTiming(self, tests):
-        with self._lock:
-            changed = False
-            timing = self.loadTiming()
+        changed = False
+        timing = self.loadTiming()
 
-            for t in tests:
-                if t and t.measure_time and t.utime >= 0:
-                    changed = True
-                    timing[t.name] = t.utime
+        for t in tests:
+            if t and t.measure_time and t.utime >= 0:
+                changed = True
+                timing[t.name] = t.utime
 
-            if not changed:
+        if not changed:
+            return
+
+        path = self.timingPath()
+        (dir, base) = os.path.split(path)
+        mkdir(dir)
+
+        out = open(path, "w")
+
+        for k, v in timing.items():
+            print(f"{k} {v}", file=out)
+
+        out.close()
+
+
+async def run_test(test, state):
+    await test.run(state)
+    state.testReplayOutput(test)
+
+
+async def run_all_tests(state, n):
+    async def worker(worker_num):
+        all_tests = []
+        while True:
+            worker_tests = state.nextTests(worker_num)
+            if worker_tests is None:
                 return
+            all_tests += worker_tests
+            for t in worker_tests:
+                t.worker_num = worker_num
+                await run_test(t, state)
+            if Options.update_times:
+                state.saveTiming(all_tests)
 
-            path = self.timingPath()
-            (dir, base) = os.path.split(path)
-            mkdir(dir)
+    await asyncio.gather(*[worker(i) for i in range(n)])
 
-            out = open(path, "w")
 
-            for k, v in timing.items():
-                print(f"{k} {v}", file=out)
+def run_tests(tests, output_handler):
+    tests = list(tests)
+    failed_tests = []
 
-            out.close()
+    port_range = getOption("PortRange", "1024-65535")
+    port_range_lo = int(port_range.split("-")[0])
+    port_range_hi = int(port_range.split("-")[1])
+
+    if port_range_lo > port_range_hi:
+        error(f"invalid PortRange value: {port_range}")
+
+    max_test_ports = 0
+    test_with_most_ports = None
+
+    for t in tests:
+        if len(t.ports) > max_test_ports:
+            max_test_ports = len(t.ports)
+            test_with_most_ports = t
+
+    if max_test_ports > port_range_hi - port_range_lo + 1:
+        error(
+            f"PortRange {port_range} cannot satisfy requirement of {max_test_ports} ports in test {test_with_most_ports.name}"
+        )
+
+    ports = list(range(port_range_lo, port_range_hi + 1))
+
+    state = RunState(output_handler, tests, failed_tests, ports, {})
+    state._timing = state.loadTiming()
+    output_handler.prepare()
+
+    user_abort = False
+
+    try:
+        asyncio.run(run_all_tests(state, Options.threads))
+    except Abort:
+        user_abort = True
+
+    if (
+        Options.abort_on_failure
+        and state._failed > 0
+        and state._failed > state._failed_expected
+    ):
+        raise Abort("Aborted after first failure.")
+
+    # Record failed tests if not updating.
+    if Options.mode != "UPDATE" and Options.mode != "UPDATE_INTERACTIVE":
+        try:
+            state_file = open(StateFile, "w", encoding="utf-8")
+        except OSError:
+            error(f"cannot open state file {StateFile}")
+
+        for t in sorted(state._failed_tests):
+            print(t, file=state_file)
+
+        state_file.close()
+
+    counts = (
+        state._succeeded,
+        state._failed,
+        state._skipped,
+        state._unstable,
+        state._failed_expected,
+    )
+
+    return counts, user_abort
 
 
 class CmdLine:
@@ -907,14 +772,13 @@ class Test:
         self.known_failure = False
         self.log = None
         self.measure_time = False
-        self.mgr = None
-        self.monitor = None
-        self.monitor_quit = None
+        self.state = None
+
         self.name = None
         self.number = 1
+        self.worker_num = 0
         self.part = -1
         self.ports = set()
-        self.progress_lock = None
         self.requires = []
         self.reruns = 0
         self.serialize = []
@@ -1134,14 +998,14 @@ class Test:
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
 
-    def getPorts(self, mgr, count):
+    def getPorts(self, state, count):
         if not count:
             return []
 
         attempts = 5
 
         while True:
-            rval = mgr.getAvailablePorts(count)
+            rval = state.getAvailablePorts(count)
 
             if rval:
                 return rval
@@ -1157,17 +1021,16 @@ class Test:
 
             time.sleep(15)
 
-    def run(self, mgr):
-        bound_sockets = self.getPorts(mgr, len(self.ports))
+    async def run(self, state):
+        bound_sockets = self.getPorts(state, len(self.ports))
         self.bound_ports = [s.getsockname()[1] for s in bound_sockets]
 
         for bs in bound_sockets:
             bs.close()
 
-        self.progress_lock = threading.Lock()
         self.start = time.time()
-        self.mgr = mgr
-        mgr.testStart(self)
+        self.state = state
+        state.testStart(self)
 
         self.tmpdir = normalize_path_join(TmpDir, self.name)
         self.diag = normalize_path_join(self.tmpdir, ".diag")
@@ -1177,7 +1040,7 @@ class Test:
             self.baselines.append(normalize_path_join(d, self.name))
         self.diagmsgs = []
         self.utime = -1
-        self.utime_base = self.mgr.testTimingBaseline(self)
+        self.utime_base = self.state.testTimingBaseline(self)
         self.utime_perc = 0.0
         self.utime_exceeded = False
 
@@ -1236,27 +1099,16 @@ class Test:
         self.stderr = open(os.path.join(self.tmpdir, ".stderr"), "ab")
 
         for cmd in self.requires:
-            (success, rc) = self.execute(cmd, apply_alternative=self.alternative)
+            (success, rc) = await self.execute(cmd, apply_alternative=self.alternative)
 
             if not success:
-                self.mgr.testSkipped(self)
+                self.state.testSkipped(self)
                 if not Options.tmps:
                     self.rmTmp(with_close=True)
                 self.finish()
                 return
 
-        # Spawn thread that monitors for progress updates.
-        # Note: We do indeed spawn a thread here, not a process, so
-        # that the callback can modify the test object to maintain
-        # state.
-        def monitor_cb():
-            while not self.monitor_quit.is_set():
-                self.parseProgress()
-                time.sleep(0.1)
-
-        self.monitor = threading.Thread(target=monitor_cb, daemon=True)
-        self.monitor_quit = threading.Event()
-        self.monitor.start()
+        monitor_task = asyncio.create_task(self._progress_monitor())
 
         # Run test's commands. First, construct a series of command sequences:
         # each sequence consists of test commands with an optional teardown that
@@ -1282,7 +1134,7 @@ class Test:
 
         # Executes the provided Cmdseq command sequence. Helper function, so we
         # can recurse when a Cmdseq's command list includes other sequences.
-        def run_cmdseq(seq):
+        async def run_cmdseq(seq):
             nonlocal failures, rc
             need_teardown = False
 
@@ -1304,13 +1156,13 @@ class Test:
                     # isinstance(). So we take the class name as a sufficent
                     # signal.
                     if type(cmd).__name__ == "CmdSeq":
-                        need_teardown |= run_cmdseq(cmd)
+                        need_teardown |= await run_cmdseq(cmd)
                         continue
 
                     if skip_part >= 0 and skip_part == cmd.part:
                         continue
 
-                    (success, rc) = self.execute(
+                    (success, rc) = await self.execute(
                         cmd, apply_alternative=self.alternative
                     )
                     need_teardown = True
@@ -1321,18 +1173,18 @@ class Test:
                         if Options.sphinx:
                             # We still execute the remaining commands and
                             # raise a failure for each one that fails.
-                            self.mgr.testFailed(self)
+                            self.state.testFailed(self)
                             skip_part = cmd.part
                             continue
 
                         if failures == 1:
-                            self.mgr.testFailed(self)
+                            self.state.testFailed(self)
 
                         if rc != 100:
                             break
 
             if need_teardown and seq.teardown:
-                (success, teardown_rc) = self.execute(
+                (success, teardown_rc) = await self.execute(
                     seq.teardown,
                     apply_alternative=self.alternative,
                     addl_envs={
@@ -1352,21 +1204,22 @@ class Test:
                     failures += 1
 
                     if Options.sphinx or failures == 1:
-                        self.mgr.testFailed(self)
+                        self.state.testFailed(self)
 
             return need_teardown
 
-        run_cmdseq(seq)
+        await run_cmdseq(seq)
+
+        monitor_task.cancel()
+        await monitor_task
 
         # Return code 200 aborts further processing, now that any teardowns have
         # run. btest-diff uses this code when we run with --update-interactive
         # and the user aborts the run.
         if rc == 200:
-            # Abort all tests.
-            self.monitor_quit.set()
-            # Flush remaining command output prior to exit:
-            mgr.testReplayOutput(self)
-            sys.exit(1)
+            # Flush remaining command output before aborting the run.
+            state.testReplayOutput(self)
+            raise Abort("Aborted by user.")
 
         self.utime_perc = 0.0
         self.utime_exceeded = False
@@ -1385,10 +1238,10 @@ class Test:
                 self.diagmsgs += [
                     f"'{self.name}' exceeded permitted execution time deviation{self.timePostfix()}"
                 ]
-                self.mgr.testFailed(self)
+                self.state.testFailed(self)
 
             else:
-                self.mgr.testSucceeded(self)
+                self.state.testSucceeded(self)
 
             if not Options.tmps and self.reruns == 0:
                 self.rmTmp(with_close=True)
@@ -1397,7 +1250,7 @@ class Test:
 
     def finish(self):
         if self.bound_ports:
-            self.mgr.returnPorts(list(self.bound_ports))
+            self.state.returnPorts(list(self.bound_ports))
 
         self.bound_ports = []
 
@@ -1413,11 +1266,15 @@ class Test:
         self.stdout.close()
         self.stderr.close()
 
-        if self.monitor:
-            self.monitor_quit.set()
-            self.monitor.join()
+    async def _progress_monitor(self):
+        try:
+            while True:
+                self.parseProgress()
+                await asyncio.sleep(0.1)
+        except asyncio.CancelledError:
+            pass
 
-    def execute(self, cmd, apply_alternative=None, addl_envs=None):
+    async def execute(self, cmd, apply_alternative=None, addl_envs=None):
         filter_cmd = None
         cmdline = cmd.cmdline
         env = {}
@@ -1451,17 +1308,17 @@ class Test:
                 f"{filter_cmd} {localfile} {filtered}", True, 1, "<Filter>"
             )
 
-            (success, rc) = self.execute(filter, apply_alternative=None)
+            (success, rc) = await self.execute(filter, apply_alternative=None)
             if not success:
                 return (False, rc)
 
             mv = CmdLine(f"mv {filtered} {localfile}", True, 1, "<Filter-Move>")
-            (success, rc) = self.execute(mv, apply_alternative=None)
+            (success, rc) = await self.execute(mv, apply_alternative=None)
 
             if not success:
                 return (False, rc)
 
-        self.mgr.testCommand(self, cmd)
+        self.state.testCommand(self, cmd)
 
         # Replace special names.
 
@@ -1485,14 +1342,13 @@ class Test:
             Options.update_times or self.utime_base >= 0
         )
 
-        (success, rc, utime) = runTestCommandLine(
+        (success, rc, utime) = await runTestCommandLine(
             cmdline,
             measure_time,
             cwd=self.tmpdir,
-            shell=True,
             env=env,
-            stderr=self.stderr,
             stdout=self.stdout,
+            stderr=self.stderr,
         )
 
         if utime > 0:
@@ -1574,17 +1430,16 @@ class Test:
 
     # Picks up any progress output that has a test has written out.
     def parseProgress(self):
-        with self.progress_lock:
-            path = os.path.join(self.tmpdir, ".progress.*")
-            for file in sorted(glob.glob(path)):
-                try:
-                    for line in open(file):
-                        msg = line.strip()
-                        self.mgr.testProgress(self, msg)
+        path = os.path.join(self.tmpdir, ".progress.*")
+        for file in sorted(glob.glob(path)):
+            try:
+                for line in open(file):
+                    msg = line.strip()
+                    self.state.testProgress(self, msg)
 
-                    os.unlink(file)
-                except OSError:
-                    pass
+                os.unlink(file)
+            except OSError:
+                pass
 
 
 ### Output handlers.
@@ -1596,11 +1451,6 @@ class OutputHandler:
         several classes from this one, with the one being used depending on
         which output the users wants.
 
-        A handler's method are called from test TestMgr and may be called
-        interleaved from different tests. However, the TestMgr locks before
-        each call so that it's guaranteed that two calls don't run
-        concurrently.
-
         options: An optparser with the global options.
 
         outfile: The destination file object to write output to.
@@ -1609,26 +1459,17 @@ class OutputHandler:
         self._options = options
         self._outfile = outfile
 
-    def prepare(self, mgr):
-        """The TestManager calls this with itself as an argument just before
-        it starts running tests."""
+    def prepare(self):
         pass
 
     def options(self):
         """Returns the current optparser instance."""
         return self._options
 
-    def threadPrefix(self):
-        """With multiple threads, returns a string with the thread's name in
-        a form suitable to prefix output with. With a single thread, returns
-        the empty string."""
+    def workerPrefix(self, test):
         if self.options().threads > 1:
-            # TestManager.run() defines the process names to "#<n>".  Align the
-            # prefixes by using enough space for the number of threads
-            # requested, plus 1 for "#".
             width = len(str(self.options().threads)) + 1
-            return f"[{mp.current_process().name:>{width}}]"
-
+            return f"[{'#' + str(test.worker_num):>{width}}]"
         return ""
 
     def _output(self, msg, nl=True, file=None):
@@ -1643,7 +1484,7 @@ class OutputHandler:
 
     def output(self, test, msg, nl=True, file=None):
         """Output one line of output to user. Unless we're just using a single
-        thread, this will be buffered until the test has finished;
+        worker, this will be buffered until the test has finished;
         then all output is printed as a block.
 
         This should only be called from other members of this class, or
@@ -1659,7 +1500,7 @@ class OutputHandler:
             self._buffered_output[test.name] = [(msg, nl, file)]
 
     def replayOutput(self, test):
-        """Prints out all output buffered in threaded mode by output()."""
+        """Prints out all output buffered in parallel mode by output()."""
         if test.name not in self._buffered_output:
             return
 
@@ -1713,10 +1554,9 @@ class Forwarder(OutputHandler):
         OutputHandler.__init__(self, options)
         self._handlers = handlers
 
-    def prepare(self, mgr):
-        """Called just before test manager starts running tests."""
+    def prepare(self):
         for h in self._handlers:
-            h.prepare(mgr)
+            h.prepare()
 
     def testStart(self, test):
         """Called just before a test begins."""
@@ -1770,11 +1610,11 @@ class Standard(OutputHandler):
     The default output handler, writing plain lines with test outcome.
 
     Each test result is reported. For parallelized operation, the output
-    includes the thread number processing the test.
+    includes the worker number processing the test.
     """
 
     def testStart(self, test):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ...", nl=False)
         test._std_nl = False
 
@@ -1801,7 +1641,7 @@ class Standard(OutputHandler):
 
     def finalMsg(self, test, msg):
         if test._std_nl:
-            self.output(test, self.threadPrefix(), nl=False)
+            self.output(test, self.workerPrefix(test), nl=False)
             self.output(test, f"{test.displayName()} ...", nl=False)
 
         self.output(test, msg)
@@ -1832,7 +1672,7 @@ class Console(OutputHandler):
         OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
 
     def testStart(self, test):
-        msg = f"[{int(test.mgr.percentage()):>3d}%] {test.displayName()} ..."
+        msg = f"[{int(test.state.percentage()):>3d}%] {test.displayName()} ..."
         self.output(test, msg, nl=False)
 
     def testProgress(self, test, msg):
@@ -1931,7 +1771,7 @@ class CompactConsole(Console):
         self._outfile.flush()
 
     def _consoleOutput(self, test, msg, sticky):
-        line = f"[{int(test.mgr.percentage()):>3d}%] {test.displayName()} ..."
+        line = f"[{int(test.state.percentage()):>3d}%] {test.displayName()} ..."
 
         if msg:
             line += " " + msg
@@ -1973,11 +1813,11 @@ class Brief(OutputHandler):
         pass
 
     def testFailed(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ... {msg}")
 
     def testUnstable(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ... {msg}")
 
     def testSkipped(self, test, msg):
@@ -1988,7 +1828,7 @@ class Verbose(OutputHandler):
     """Output handler for producing the verbose output format."""
 
     def testStart(self, test):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"{test.displayName()} ...")
 
     def testCommand(self, test, cmdline):
@@ -1997,7 +1837,7 @@ class Verbose(OutputHandler):
         if cmdline.part > 1:
             part = f" [part #{cmdline.part}]"
 
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.output(test, f"  > {cmdline.cmdline}{part}")
 
     def testProgress(self, test, msg):
@@ -2005,22 +1845,22 @@ class Verbose(OutputHandler):
         self.output(test, "  - " + msg)
 
     def testSucceeded(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testFailed(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testUnstable(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
     def testSkipped(self, test, msg):
-        self.output(test, self.threadPrefix(), nl=False)
+        self.output(test, self.workerPrefix(test), nl=False)
         self.showTestVerbose(test)
         self.output(test, f"... {test.displayName()} {msg}")
 
@@ -2183,8 +2023,8 @@ class XMLReport(OutputHandler):
         self._timestamp = datetime.now().isoformat()
         self._results = None
 
-    def prepare(self, mgr):
-        self._results = mgr.list([])
+    def prepare(self):
+        self._results = []
 
     def testStart(self, test):
         pass
@@ -2312,15 +2152,15 @@ class ChromeTracing(OutputHandler):
         self._file = tracefile
         self._results = None
 
-    def prepare(self, mgr):
-        self._results = mgr.list([])
+    def prepare(self):
+        self._results = []
 
     def testFinished(self, test, _):
         self._results.append(
             {
                 "name": test.name,
                 "ts": test.start * 1e6,
-                "tid": mp.current_process().pid,
+                "tid": os.getpid(),
                 "pid": 1,
                 "ph": "X",
                 "cat": "test",
@@ -2356,12 +2196,12 @@ class OSC94ProgressBar(OutputHandler):
     def testFinished(self, test, msg):
         fmt = self.ProgressDefault
 
-        if test.mgr.hasFailure():
+        if test.state.hasFailure():
             fmt = self.ProgressError
-        elif test.mgr.hasUnstable():
+        elif test.state.hasUnstable():
             fmt = self.ProgressWarning
 
-        progress = fmt.format(percentage=int(test.mgr.percentage()))
+        progress = fmt.format(percentage=int(test.state.percentage()))
         sys.stdout.write(progress)
         sys.stdout.flush()
 
@@ -2441,11 +2281,7 @@ class TimerBase:
     def available(self):
         raise NotImplementedError("Timer.available not implemented")
 
-    # Runs a subprocess and measures its execution time. Arguments are as with
-    # runSubprocess. Return value is the same with runTestCommandLine(). This
-    # method must only be called if available() returns True. Must be overidden
-    # by derived classes.
-    def timeSubprocess(self, *args, **kwargs):
+    async def timeSubprocess(self, *args, **kwargs):
         raise NotImplementedError("Timer.timeSubprocess not implemented")
 
 
@@ -2462,31 +2298,27 @@ class LinuxTimer(TimerBase):
             return False
 
         # Make sure it works.
-        (success, rc) = runSubprocess(
-            f"{self.perf} stat -o /dev/null true 2>/dev/null", shell=True
+        return (
+            subprocess.call(
+                f"{self.perf} stat -o /dev/null true 2>/dev/null", shell=True
+            )
+            == 0
         )
-        return success and rc == 0
 
-    def timeSubprocess(self, *args, **kwargs):
+    async def timeSubprocess(self, cmdline, *, cwd, env, stdout, stderr):
         assert self.perf
 
-        cargs = args
-        ckwargs = kwargs
-
         # fmt: off
-        targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c"]
+        targs = [self.perf, "stat", "-o", ".timing", "-x", " ", "-e", "instructions", "sh", "-c", cmdline]
         # fmt: on
 
-        targs += [" ".join(cargs)]
-        cargs = [targs]
-        del ckwargs["shell"]
-
-        (success, rc) = runSubprocess(*cargs, **ckwargs)
+        (success, rc) = await runSubprocess(
+            " ".join(targs), cwd=cwd, env=env, stdout=stdout, stderr=stderr
+        )
 
         utime = -1
 
         try:
-            cwd = kwargs["cwd"] if "cwd" in kwargs else "."
             for line in open(os.path.join(cwd, ".timing")):
                 if "instructions" in line and "not supported" not in line:
                     try:
@@ -2706,7 +2538,7 @@ def readTestFile(filename):
 
 
 def jOption(option, _, __, parser):
-    val = mp.cpu_count()
+    val = os.cpu_count()
 
     if parser.rargs and not parser.rargs[0].startswith("-"):
         try:
@@ -3047,16 +2879,7 @@ def parse_options():
 ### Main
 
 if __name__ == "__main__":
-    # Python 3.8+ on macOS no longer uses "fork" as the default start-method
-    # See https://github.com/zeek/btest/issues/26
-    pyver_maj = sys.version_info[0]
-    pyver_min = sys.version_info[1]
-
     if sys.platform == "win32":
-        # The "fork" method doesn't exist at all on Windows, so force over to
-        # "spawn" instead.
-        mp.set_start_method("spawn")
-
         # Double-check that `bash.exe` exists and is executable, since it's
         # required for pretty much anything here to work on Windows. Note we're
         # doing this prior to parsing the config file because it's required for
@@ -3073,9 +2896,6 @@ if __name__ == "__main__":
                 file=sys.stderr,
             )
             sys.exit(1)
-
-    elif (pyver_maj == 3 and pyver_min >= 8) or pyver_maj > 3:
-        mp.set_start_method("fork")
 
     (Options, args) = parse_options()
 
@@ -3423,29 +3243,6 @@ if __name__ == "__main__":
 
     mkdir(TmpDir)
 
-    if sys.platform == "win32":
-        # On win32 we have to use a named pipe so that python's multiprocessing
-        # chooses AF_PIPE as the family type.
-        addr = f"\\\\.\\pipe\\btest-pipe-{os.getpid()}"
-    else:
-        # Building our own path to avoid "error: AF_UNIX path too long" on
-        # some platforms. See BIT-862.
-        sname = f"btest-socket-{os.getpid()}"
-        addr = os.path.join(tempfile.gettempdir(), sname)
-
-        # Check if the pathname is too long to fit in struct sockaddr_un (the
-        # maximum length is system-dependent, so here we just use 100, which seems
-        # a safe default choice).
-        if len(addr) > 100:
-            # Try relative path to TmpDir (which would usually be ".tmp").
-            addr = os.path.join(os.path.relpath(TmpDir), sname)
-
-            # If the path is still too long, then use the global tmp directory.
-            if len(addr) > 100:
-                addr = os.path.join("/tmp", sname)
-
-    mgr = TestManager(address=addr)
-
     try:
         if Options.list:
             for test in sorted(tests):
@@ -3453,8 +3250,8 @@ if __name__ == "__main__":
                     print(test.name)
             sys.exit(0)
         else:
-            (succeeded, failed, skipped, unstable, failed_expected) = mgr.run(
-                copy.deepcopy(tests), output_handler
+            (succeeded, failed, skipped, unstable, failed_expected), user_abort = (
+                run_tests(tests, output_handler)
             )
             total = succeeded + failed + skipped
 
@@ -3463,11 +3260,11 @@ if __name__ == "__main__":
     # Ctrl-C can lead to broken pipe (e.g. FreeBSD), so include IOError here:
     except (Abort, KeyboardInterrupt, OSError) as exc:
         output_handler.finished()
-        print(str(exc) or f"Aborted with {type(exc).__name__}.", file=sys.stderr)
+        if str(exc):
+            print(str(exc), file=sys.stderr)
+        elif not isinstance(exc, Abort):
+            print(f"Aborted with {type(exc).__name__}.", file=sys.stderr)
         sys.stderr.flush()
-        # Explicitly shut down sync manager to avoid leaking manager
-        # processes, particularly with --abort-on-failure:
-        mgr.shutdown()
         sys.exit(1)
 
     skip = f", {skipped} skipped" if skipped > 0 else ""
@@ -3489,7 +3286,7 @@ if __name__ == "__main__":
                 )
             )
 
-        if failed == failed_expected:
+        if not user_abort and failed == failed_expected:
             sys.exit(0)
         else:
             sys.exit(1)
@@ -3502,10 +3299,10 @@ if __name__ == "__main__":
                 )
             )
 
-        sys.exit(0)
+        sys.exit(1 if user_abort else 0)
 
     else:
         if not Options.quiet:
             output(f"all {total} tests successful")
 
-        sys.exit(0)
+        sys.exit(1 if user_abort else 0)
