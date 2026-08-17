@@ -3041,6 +3041,9 @@ def parse_options():
         warning("ignoring requested parallelism in interactive-update mode")
         options.threads = 1
 
+    if options.mode == "UPDATE_INTERACTIVE" and not sys.stdout.isatty():
+        error("interactive-update mode must have a TTY")
+
     return options, parsed_args
 
 

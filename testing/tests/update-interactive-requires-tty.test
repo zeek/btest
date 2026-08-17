@@ -1,0 +1,8 @@
+# %TEST-DOC: --update-interactive errors out early when stdout is not a TTY.
+#
+# Running btest inside btest redirects the inner stdout, so it is not a
+# TTY and the guard must fire before any test would prompt for input.
+# %TEST-EXEC-FAIL: btest -u . >output 2>&1
+# %TEST-EXEC: btest-diff output
+
+@TEST-EXEC: exit 1
