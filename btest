@@ -2380,7 +2380,7 @@ def create_output_handler(options):
         output_handlers += [Brief(options)]
 
     else:
-        if sys.stdout.isatty():
+        if sys.stdout.isatty() or os.getenv("BTEST_FORCE_CONSOLE_OUTPUT", "0") == "1":
             if options.show_all:
                 output_handlers += [Console(options)]
             else:
