@@ -43,6 +43,10 @@ RE_DIR = re.compile(r"%DIR")
 RE_ENV = re.compile(r"\$\{(\w+)}")
 
 
+def isatty(options):
+    return sys.stdout.isatty() or options.force_tty
+
+
 def normalize_path(path):
     """Ensures that paths on Windows convert backslashes to forward slashes, to
     make path handling easier in lots of other places. On non-Windows platforms
@@ -2202,7 +2206,7 @@ def create_output_handler(options):
         output_handlers += [Brief(options)]
 
     else:
-        if sys.stdout.isatty():
+        if isatty(options):
             if options.show_all:
                 output_handlers += [Console(options)]
             else:
@@ -2247,7 +2251,7 @@ def create_output_handler(options):
         except OSError as e:
             print(f"cannot open {options.tracefile}: {e}", file=sys.stderr)
 
-    if options.osc94_progress and sys.stdout.isatty():
+    if options.osc94_progress and isatty(options):
         output_handlers += [OSC94ProgressBar(options)]
 
     return Forwarder(options, output_handlers)
@@ -2845,6 +2849,13 @@ def parse_options():
         default=os.environ.get("BTEST_OSC94_PROGRESS", ""),
         help="display progress bar using OSC 9;4 escape sequences (set BTEST_OSC94_PROGRESS to permanently enable)",
     )
+    optparser.add_option(
+        "--tty",
+        action="store_true",
+        dest="force_tty",
+        default=os.environ.get("BTEST_FORCE_TTY", ""),
+        help="Force TTY mode in output (set BTEST_FORCE_TTY to permanently enable)",
+    )
 
     optparser.set_defaults(mode="TEST")
 
@@ -2855,7 +2866,7 @@ def parse_options():
         warning("ignoring requested parallelism in interactive-update mode")
         options.threads = 1
 
-    if options.mode == "UPDATE_INTERACTIVE" and not sys.stdout.isatty():
+    if options.mode == "UPDATE_INTERACTIVE" and not isatty(options):
         error("interactive-update mode must have a TTY")
 
     return options, parsed_args
