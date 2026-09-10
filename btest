@@ -1611,7 +1611,7 @@ class Test:
                 os.remove(self.tmpdir)
 
             if os.path.isdir(self.tmpdir):
-                subprocess.call(["rm", "-rf", self.tmpdir], stderr=subprocess.DEVNULL)
+                shutil.rmtree(self.tmpdir, ignore_errors=True)
 
         except OSError as e:
             error(f"cannot remove tmp directory {self.tmpdir}: {e}")
