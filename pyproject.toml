@@ -29,12 +29,6 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-dependencies = [
-    # We require the external multiprocess library on Windows due to pickling
-    # issues with the standard one.
-    "multiprocess>=0.70.16",
-]
-
 [project.urls]
 Repository = "https://github.com/zeek/btest"
 
