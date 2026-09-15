@@ -1,3 +1,189 @@
+1.3-59 | 2026-09-15 09:12:09 +0200
+
+  * Rename `getPorts` / `getAvailablePorts` (Benjamin Bannier, Corelight)
+
+    Align with the snake_case convention used throughout the newer parts of
+    the codebase.
+
+  * Rename `nextTests` to `tests` (Benjamin Bannier, Corelight)
+
+  * Convert `nextTests` to a generator (Benjamin Bannier, Corelight)
+
+    Replaces the `None`-sentinel protocol with a generator that yields
+    individual tests. The worker loop simplifies to a plain `for` and the
+    `saveTiming` call moves to after the loop, so the timing file is read
+    and written once per worker rather than once per test.
+
+    Reruns appended to the queue by `testFailed` are picked up naturally
+    on the next outer `while True` iteration.
+
+  * Extract `_expand_alternatives` helper (Benjamin Bannier, Corelight)
+
+    Isolates the alternatives-expansion logic from the dispatch loop so the
+    upcoming generator conversion of `nextTests` stays readable.
+
+  * Move abort-on-failure queue-clear into `testFailed` (Benjamin Bannier, Corelight)
+
+    Workers drain naturally when the queue empties rather than checking an
+    abort flag on every dispatch. The queue is cleared at the point where
+    the failure is recorded, which is where the abort decision logically
+    belongs.
+
+  * Remove dead truthiness guards (Benjamin Bannier, Corelight)
+
+    `Test` defines no `__bool__`, so every instance is always truthy.
+
+  * Rename `mgr` to `state` in `Test` (Benjamin Bannier, Corelight)
+
+    `TestManager` is gone; the parameter and attribute now hold a `RunState`.
+
+  * Simplify `nextTests` index loop with `enumerate` (Benjamin Bannier, Corelight)
+
+  * Replace thread with worker in names (Benjamin Bannier, Corelight)
+
+    The concurrency model is now asyncio workers, not OS threads. Update
+    variable names, method names, and docstrings to match.
+
+    User-visible names (--threads flag, Options.threads) are unchanged.
+
+  * Drop redundant async/Async prefix from function names (Benjamin Bannier, Corelight)
+
+    All affected functions are already `async def`; the prefix adds no
+    information now that the sync counterparts are gone.
+
+  * Drop dependency on `multiprocess` since we do not use it anymore (Benjamin Bannier, Corelight)
+
+    The last caller of `runSubprocess`, `LinuxTimer.available()`, can use
+    `subprocess.call()` directly now that the sync wrapper is gone. Remove
+    `runSubprocess` and the `shlex` import it needed.
+
+  * Remove stale OutputHandler docstring referencing TestMgr and locking (Benjamin Bannier, Corelight)
+
+    The asyncio migration removed TestMgr and all locking; the docstring
+    claiming handlers are called under a lock is no longer accurate.
+
+  * Remove stale comments referencing multiprocessing (Benjamin Bannier, Corelight)
+
+    These comments referenced child worker processes and Windows multiprocess
+    spawn constraints that no longer apply after the asyncio migration.
+
+  * Flatten `TestManager` into `run_tests` function (Benjamin Bannier, Corelight)
+
+    `TestManager` was a pure delegation wrapper over `RunState` with no
+    independent state. Replace it with a top-level `run_tests()` function,
+    pass `RunState` directly as `mgr` to tests, and drop the `prepare(mgr)`
+    parameter since no handler uses it.
+
+  * Remove `RunState` lock and threading machinery (Benjamin Bannier, Corelight)
+
+    All test execution is now single-threaded (asyncio event loop), so
+    mutual exclusion is no longer needed. Drop `threading.Lock` from `RunState`,
+    the `progress_lock` from `Test`, and the sync progress monitor thread along
+    with `import threading`. Also remove the `asyncio.Semaphore(n)` from
+    `run_all_tests`: each worker already processes its assigned tests
+    sequentially, so the semaphore was redundant and inadvertently
+    serialized all workers.
+
+  * Replace `mp.*` calls with `os.*` equivalents, remove multiprocess imports (Benjamin Bannier, Corelight)
+
+    `mp.cpu_count()` -> `os.cpu_count()`, `mp.current_process().pid` -> `os.getpid()`.
+    Remove the multiprocess/multiprocessing import block
+    and the `deepcopy` of tests in `main()`, no longer needed in a single-process model.
+
+  * GH-26: Unify all execution modes under asyncio, remove `threadRun` (Benjamin Bannier, Corelight)
+
+    `UPDATE_INTERACTIVE` now uses the same `asyncio.run` path as normal mode.
+    Remove `threadRun` and the `mp.set_start_method` calls that were only needed
+    for multiprocessing worker spawning. This also removes the Python >=3.8
+    version-detection block that forced the `"fork"` start method on macOS
+    (the workaround for the regression noted in issue #26); it is no longer
+    relevant once multiprocessing is gone. `import signal` is also removed as
+    it was only used inside `threadRun`.
+
+  * Drop `SyncManager` base from `TestManager` (Benjamin Bannier, Corelight)
+
+    `TestManager` is now a plain class. Replace proxy list/lock objects with
+    plain list and `threading.Lock`, remove the `SyncManager` socket address
+    setup, remove `mp_managers` imports, and drop the `mgr.shutdown()` call.
+
+  * Remove `mgr_data` Windows globals re-injection (Benjamin Bannier, Corelight)
+
+    Workers are coroutines in the same process, so globals are already shared.
+    The proxy dict and the code that pushed it into child-process namespaces
+    is dead.
+
+  * Replace `RawValue` atomics with plain int in `RunState` (Benjamin Bannier, Corelight)
+
+    Workers are now coroutines in a single process, so cross-process atomic
+    integers are no longer needed. Drop the `mp_sharedctypes` imports.
+
+  * Convert test execution stack to async/await (Benjamin Bannier, Corelight)
+
+    Makes `execute()`, `run()`, `run_cmdseq()`, and `run_test()` all async. The
+    `asyncio.run()` shim introduced in the previous commit becomes a plain
+    `await`; the progress monitor thread becomes an asyncio `Task`; and
+    `run_tests()` drives the worker pool via `asyncio.run(_async_run_all)`.
+
+    The `rc==200` (user-initiated abort) path no longer calls `sys.exit()` from
+    inside a coroutine; it raises `Abort` instead, which `run_tests()` catches
+    via a `user_abort` flag so the test summary can print before exiting. The
+    process exits with code 1 when a user-abort occurs. The
+    `--abort-on-failure` path still re-raises `Abort` to the top-level handler.
+
+    The threads test is simplified: the old baseline verified that
+    `@TEST-SERIALIZE` co-located tests 4 and 5 on the same thread; under
+    asyncio that thread-identity check no longer applies, so the test now
+    only verifies that all five tests complete successfully with `-j 5`.
+
+  * Replace `subprocess.call` with `shutil.rmtree` in `rmTmp` (Benjamin Bannier, Corelight)
+
+    Under asyncio, spawning a synchronous subprocess triggers
+    "Unknown child process" warnings from the child watcher.
+    `shutil.rmtree` does the same work without a child process.
+
+  * Add async subprocess helpers and wire `execute()` to asyncio (Benjamin Bannier, Corelight)
+
+    Adds `runSubprocess` and `runTestCommandLine` (with an async
+    `LinuxTimer.timeSubprocess` for the timing path; a matching stub is
+    added to `TimerBase`). `execute()` now calls
+    `asyncio.run(runTestCommandLine(...))`, a sync shim that a later
+    commit replaces with a plain `await` once the call stack goes async.
+
+    The new helpers take explicit `cwd`, `env`, `stdout`, `stderr` parameters
+    rather than `**kwargs`, which also drops the `shell=True` flag from the
+    `execute()` call site; `asyncio.create_subprocess_shell` preserves the
+    shell-expansion behaviour on non-Windows.
+
+  * Extract progress monitor thread into `_start_progress_monitor`/`_stop_progress_monitor` (Benjamin Bannier, Corelight)
+
+    Encapsulates the `threading.Thread`+`Event` lifecycle into two methods on
+    `Test`, hiding the threading details and preparing the seam for replacing
+    the thread with an asyncio task.
+
+  * Extract per-test execution into `run_test` function (Benjamin Bannier, Corelight)
+
+    Pulls the `test.run()`+`testReplayOutput()` body out of `threadRun` into a
+    top-level `run_test(test, state)` function, making the worker loop a thin
+    scheduler and preparing the seam for an async replacement.
+
+  * Extract shared runner state into `RunState` class (Benjamin Bannier, Corelight)
+
+    Moves all mutable state (counters, test queue, port pool, output handler,
+    lock) and the methods that operate on it out of `TestManager` into a plain
+    `RunState` class. `TestManager` delegates to it; the `SyncManager` proxy
+    machinery is otherwise unchanged.
+
+  * Replace per-command `mp.Process`+`Queue` with `subprocess.Popen` (Benjamin Bannier, Corelight)
+
+    The process-per-command pattern existed solely to contain `KeyboardInterrupt`.
+    Replace with a plain `Popen`+wait loop that kills the child on interrupt and
+    re-raises, removing the `mp.Queue` and `mp.Process` machinery from the hot path.
+
+  * Extract `runSubprocess` `mp.Process`+`Queue` body into `_run_subprocess_mp` shim (Benjamin Bannier, Corelight)
+
+    Isolates the multiprocessing implementation behind a single callable so
+    later commits can swap it without touching callers.
+
 1.3-30 | 2026-08-18 10:41:16 -0400
 
   * Error for `-u` without a TTY (Evan Typanski, Corelight)
