@@ -1,3 +1,4 @@
+# %TEST-REQUIRES: test "${CI}" != "true"
 # %TEST-REQUIRES: test "`uname`" = "Linux"
 # %TEST-REQUIRES: which perf
 # %TEST-REQUIRES: perf stat -o /dev/null true 2> /dev/null
