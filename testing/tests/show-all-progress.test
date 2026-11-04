@@ -1,0 +1,10 @@
+# %TEST-DOC: Validate that `-A` shows monotonically increasing percentages. We need `--tty` to trigger percentage display via the `Console` output handler.
+# %TEST-EXEC: python3 -I gen.py
+# %TEST-EXEC: btest --tty -A -j 4 X*.test 2>&1 | cut -d'X' -f1 >output
+# %TEST-EXEC: btest-diff output
+
+# %TEST-START-FILE gen.py
+for i in range(4):
+    with open(f"X{i:02d}.test", "w") as f:
+        print("@TEST-EXEC: true", file=f)
+# %TEST-END-FILE
