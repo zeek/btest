@@ -1,3 +1,11 @@
+1.3-70 | 2026-11-04 15:42:39 -0700
+
+  * Reorder options alphabetically in btest script (Tim Wojtulewicz, Corelight)
+
+  * Reorder configuration options in README, add a few missing ones (Tim Wojtulewicz, Corelight)
+
+  * Add section about environment variables (Tim Wojtulewicz, Corelight)
+
 1.3-66 | 2026-11-04 09:04:53 -0700
 
   * CI: Upgrade actions used and pin to commits (Tim Wojtulewicz, Corelight)

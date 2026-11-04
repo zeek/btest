@@ -2,7 +2,7 @@
 ..
 .. Version number is filled in automatically.
 
-.. |version| replace:: 1.3-66
+.. |version| replace:: 1.3-70
 
 ==================================================
 BTest - A Generic Driver for Powerful System Tests
@@ -306,6 +306,9 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     Writes diagnostics for all failed tests into the given file.
     If the file already exists, it will be overwritten.
 
+-F, --abort-on-failure
+    Terminates btest after the first test failure.
+
 -g GROUPS, --groups=GROUPS
     Runs only tests assigned to the given test groups, see
     `@TEST-GROUP`_. Multiple groups can be given as a
@@ -316,6 +319,14 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     variants to create ambiguous situations, it's left
     undefined which tests will end up running).
 
+-i FILE, --tests-file=FILE
+    Loads the list of tests to execute from a file. Each line in the
+    file is interpreted as the name of a test, or a group of tests, to
+    execute, just like the tests would be specified on the command
+    line. Empty lines and lines starting with ``#`` are ignored. (This
+    format is compatible with that of the ``btest`` `StateFile
+    <state_file_>`_.)
+
 -j THREADS, --jobs=THREADS
     Runs up to the given number of tests in parallel. If no number
     is given, BTest substitutes the number of available CPU cores
@@ -325,6 +336,9 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     concurrently without further constraints. One can however
     ensure serialization of subsets by assigning them to the same
     serialization set, see `@TEST-SERIALIZE`_.
+
+-l, --list
+    List available tests instead of executing them.
 
 -P, --progress-bar
     Displays a progress bar using ``OSC 9;4`` escape codes if
@@ -376,6 +390,17 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     loaded in Chrome-based browsers at `<about:tracing>`_, or converted to
     standalone HTML with `trace2html <https://pypi.org/project/trace2html/>`_.
 
+--tty
+    Force the output to be as if the terminal is in TTY mode. This
+    can be used to fix various terminals (like some in Windows) that
+    report non-TTY modes, even though they would actually support the
+    output.
+
+-u, --update-interactive
+    Each time a ``btest-diff`` command fails in any tests that are
+    run, ``btest`` will stop and ask whether or not the user wants to
+    record a new baseline.
+
 -U, --update-baseline
     Records a new baseline for all ``btest-diff`` commands found
     in any of the specified tests. To do this, all tests are run
@@ -383,11 +408,6 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     does not compute a diff but instead considers the given file
     to be authoritative and records it as the version to compare
     with in future runs.
-
--u, --update-interactive
-    Each time a ``btest-diff`` command fails in any tests that are
-    run, ``btest`` will stop and ask whether or not the user wants to
-    record a new baseline.
 
 -v, --verbose
     Shows all test command lines as they are executed.
@@ -404,13 +424,30 @@ and 1 otherwise. Exit code 1 can also result in case of other errors.
     Retry any failed tests up to this many times to determine if
     they are unstable.
 
--i FILE, --tests-file=FILE
-    Loads the list of tests to execute from a file. Each line in the
-    file is interpreted as the name of a test, or a group of tests, to
-    execute, just like the tests would be specified on the command
-    line. Empty lines and lines starting with ``#`` are ignored. (This
-    format is compatible with that of the ``btest`` `StateFile
-    <state_file_>`_.)
+Environment Variables
+---------------------
+
+BTEST_BASELINE_DIR
+    Used as a value for the ``baselinedir`` configuration option if that option is not
+    set.
+
+BTEST_CFG
+    Can be set to the path to a BTest configuration file. If this is unset, the default
+    filename of btest.cfg will be used.
+
+BTEST_FORCE_TTY
+    Can be set to ``1`` to force the ``--tty`` option to on. See the documentation for
+    that option for more information.
+
+BTEST_OSC94_PROGRESS
+    Can be set to ``1`` to force the ``--progress`` option to on. See the documentation
+    for that option for information.
+
+BTEST_RST_OUTPUT
+    Can be set to ``1`` to force the Sphinx output handler to output in RestructuredText.
+
+BTEST_TEST_BASE
+    Used as a value for the ``testbase`` configuration option if that option is not set.
 
 .. _configuration file: configuration_
 .. _configuration:

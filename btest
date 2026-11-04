@@ -29,7 +29,7 @@ import uuid
 import xml.dom.minidom
 from datetime import datetime
 
-VERSION = "1.3-66"  # Automatically filled in.
+VERSION = "1.3-70"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -2614,20 +2614,40 @@ def parse_options():
         usage="%prog [options] <directories>", version=VERSION
     )
     optparser.add_option(
-        "-U",
-        "--update-baseline",
-        action="store_const",
-        dest="mode",
-        const="UPDATE",
-        help="create a new baseline from the tests' output",
+        "-a",
+        "--alternative",
+        action="store",
+        type="string",
+        dest="alternatives",
+        default=None,
+        help="activate given alternative",
     )
     optparser.add_option(
-        "-u",
-        "--update-interactive",
-        action="store_const",
-        dest="mode",
-        const="UPDATE_INTERACTIVE",
-        help="interactively asks whether to update baseline for a failed test",
+        "-A",
+        "--show-all",
+        action="store_true",
+        default=False,
+        help=(
+            "For console output, show one-liners for passing/skipped tests "
+            "in addition to any failing ones"
+        ),
+    )
+    optparser.add_option(
+        "-b",
+        "--brief",
+        action="store_true",
+        dest="brief",
+        default=False,
+        help="outputs only failed tests",
+    )
+    optparser.add_option(
+        "-c",
+        "--config",
+        action="store",
+        type="string",
+        dest="config",
+        default=ConfigDefault,
+        help="configuration file",
     )
     optparser.add_option(
         "-d",
@@ -2658,6 +2678,148 @@ def parse_options():
         ),
     )
     optparser.add_option(
+        "-F",
+        "--abort-on-failure",
+        action="store_true",
+        dest="abort_on_failure",
+        help="terminate after first test failure",
+    )
+    optparser.add_option(
+        "-g",
+        "--groups",
+        action="store",
+        type="string",
+        dest="groups",
+        default="",
+        help="execute only tests of given comma-separated list of groups",
+    )
+    optparser.add_option(
+        "-i",
+        "--tests-file",
+        action="store",
+        type="string",
+        dest="tests_file",
+        default="",
+        help=("Load list of tests to execute from file."),
+    )
+    optparser.add_option(
+        "-j",
+        "--jobs",
+        action="callback",
+        callback=jOption,
+        dest="threads",
+        default=1,
+        help="number of threads running tests in parallel; with no argument will use all CPUs",
+    )
+    optparser.add_option(
+        "-l",
+        "--list",
+        action="store_true",
+        dest="list",
+        default=False,
+        help="list available tests instead of executing them",
+    )
+    optparser.add_option(
+        "-P",
+        "--progress-bar",
+        action="store_true",
+        dest="osc94_progress",
+        default=os.environ.get("BTEST_OSC94_PROGRESS", ""),
+        help="display progress bar using OSC 9;4 escape sequences (set BTEST_OSC94_PROGRESS to permanently enable)",
+    )
+    optparser.add_option(
+        "-q",
+        "--quiet",
+        action="store_true",
+        dest="quiet",
+        default=False,
+        help="suppress information output other than about failed tests",
+    )
+    optparser.add_option(
+        "-r",
+        "--rerun",
+        action="store_true",
+        dest="rerun",
+        default=False,
+        help="execute commands for tests that failed last time",
+    )
+    optparser.add_option(
+        "-R",
+        "--documentation",
+        action="store",
+        type="choice",
+        dest="doc",
+        choices=("rst", "md"),
+        metavar="format",
+        default=None,
+        help="Output documentation for tests, supported formats: rst, md",
+    )
+    optparser.add_option(
+        "-s",
+        "--set",
+        action="append",
+        dest="defaults",
+        default=[],
+        help=(
+            "Override default key used in btest.cfg with another value. "
+            "Can be specified multiple times."
+        ),
+    )
+    optparser.add_option(
+        "-S",
+        "--sphinx",
+        action="store_true",
+        dest="sphinx",
+        default=False,
+        help="indicates that we're running from inside Sphinx; for internal purposes",
+    )
+    optparser.add_option(
+        "-t",
+        "--tmp-keep",
+        action="store_true",
+        dest="tmps",
+        default=False,
+        help="do not delete tmp files created for running tests",
+    )
+    optparser.add_option(
+        "-T",
+        "--update-times",
+        action="store_true",
+        dest="update_times",
+        default=False,
+        help="create a new timing baseline for tests being measured",
+    )
+    optparser.add_option(
+        "--trace-file",
+        action="store",
+        dest="tracefile",
+        default="",
+        help="write Chrome tracing file to file; if file exists, it is overwritten",
+    )
+    optparser.add_option(
+        "--tty",
+        action="store_true",
+        dest="force_tty",
+        default=os.environ.get("BTEST_FORCE_TTY", ""),
+        help="Force TTY mode in output (set BTEST_FORCE_TTY to permanently enable)",
+    )
+    optparser.add_option(
+        "-u",
+        "--update-interactive",
+        action="store_const",
+        dest="mode",
+        const="UPDATE_INTERACTIVE",
+        help="interactively asks whether to update baseline for a failed test",
+    )
+    optparser.add_option(
+        "-U",
+        "--update-baseline",
+        action="store_const",
+        dest="mode",
+        const="UPDATE",
+        help="create a new baseline from the tests' output",
+    )
+    optparser.add_option(
         "-v",
         "--verbose",
         action="store_true",
@@ -2674,65 +2836,6 @@ def parse_options():
         help="wait for <enter> after each failed (with -d) or all (with -D) tests",
     )
     optparser.add_option(
-        "-b",
-        "--brief",
-        action="store_true",
-        dest="brief",
-        default=False,
-        help="outputs only failed tests",
-    )
-    optparser.add_option(
-        "-c",
-        "--config",
-        action="store",
-        type="string",
-        dest="config",
-        default=ConfigDefault,
-        help="configuration file",
-    )
-    optparser.add_option(
-        "-t",
-        "--tmp-keep",
-        action="store_true",
-        dest="tmps",
-        default=False,
-        help="do not delete tmp files created for running tests",
-    )
-    optparser.add_option(
-        "-j",
-        "--jobs",
-        action="callback",
-        callback=jOption,
-        dest="threads",
-        default=1,
-        help="number of threads running tests in parallel; with no argument will use all CPUs",
-    )
-    optparser.add_option(
-        "-g",
-        "--groups",
-        action="store",
-        type="string",
-        dest="groups",
-        default="",
-        help="execute only tests of given comma-separated list of groups",
-    )
-    optparser.add_option(
-        "-r",
-        "--rerun",
-        action="store_true",
-        dest="rerun",
-        default=False,
-        help="execute commands for tests that failed last time",
-    )
-    optparser.add_option(
-        "-q",
-        "--quiet",
-        action="store_true",
-        dest="quiet",
-        default=False,
-        help="suppress information output other than about failed tests",
-    )
-    optparser.add_option(
         "-x",
         "--xml",
         action="store",
@@ -2745,52 +2848,6 @@ def parse_options():
         ),
     )
     optparser.add_option(
-        "-a",
-        "--alternative",
-        action="store",
-        type="string",
-        dest="alternatives",
-        default=None,
-        help="activate given alternative",
-    )
-    optparser.add_option(
-        "-S",
-        "--sphinx",
-        action="store_true",
-        dest="sphinx",
-        default=False,
-        help="indicates that we're running from inside Sphinx; for internal purposes",
-    )
-    optparser.add_option(
-        "-T",
-        "--update-times",
-        action="store_true",
-        dest="update_times",
-        default=False,
-        help="create a new timing baseline for tests being measured",
-    )
-    optparser.add_option(
-        "-R",
-        "--documentation",
-        action="store",
-        type="choice",
-        dest="doc",
-        choices=("rst", "md"),
-        metavar="format",
-        default=None,
-        help="Output documentation for tests, supported formats: rst, md",
-    )
-    optparser.add_option(
-        "-A",
-        "--show-all",
-        action="store_true",
-        default=False,
-        help=(
-            "For console output, show one-liners for passing/skipped tests "
-            "in addition to any failing ones"
-        ),
-    )
-    optparser.add_option(
         "-z",
         "--retries",
         action="store",
@@ -2798,63 +2855,6 @@ def parse_options():
         type="int",
         default=0,
         help="Retry failed tests this many times to determine if they are unstable",
-    )
-    optparser.add_option(
-        "--trace-file",
-        action="store",
-        dest="tracefile",
-        default="",
-        help="write Chrome tracing file to file; if file exists, it is overwritten",
-    )
-    optparser.add_option(
-        "-F",
-        "--abort-on-failure",
-        action="store_true",
-        dest="abort_on_failure",
-        help="terminate after first test failure",
-    )
-    optparser.add_option(
-        "-l",
-        "--list",
-        action="store_true",
-        dest="list",
-        default=False,
-        help="list available tests instead of executing them",
-    )
-    optparser.add_option(
-        "-s",
-        "--set",
-        action="append",
-        dest="defaults",
-        default=[],
-        help=(
-            "Override default key used in btest.cfg with another value. "
-            "Can be specified multiple times."
-        ),
-    )
-    optparser.add_option(
-        "-i",
-        "--tests-file",
-        action="store",
-        type="string",
-        dest="tests_file",
-        default="",
-        help=("Load list of tests to execute from file."),
-    )
-    optparser.add_option(
-        "-P",
-        "--progress-bar",
-        action="store_true",
-        dest="osc94_progress",
-        default=os.environ.get("BTEST_OSC94_PROGRESS", ""),
-        help="display progress bar using OSC 9;4 escape sequences (set BTEST_OSC94_PROGRESS to permanently enable)",
-    )
-    optparser.add_option(
-        "--tty",
-        action="store_true",
-        dest="force_tty",
-        default=os.environ.get("BTEST_FORCE_TTY", ""),
-        help="Force TTY mode in output (set BTEST_FORCE_TTY to permanently enable)",
     )
 
     optparser.set_defaults(mode="TEST")
