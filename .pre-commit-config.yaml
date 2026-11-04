@@ -8,7 +8,7 @@ repos:
     exclude: examples/|testing/tests/.*\.sh
 
 - repo: https://github.com/maxwinterstein/shfmt-py
-  rev: 85cc16bc0319e182d7b62b0a2de351358083ce4c  # frozen: v4.0.0
+  rev: 259c873d8ebd3f0c90052cf29b5cb829391bc1b3  # frozen: v4.2.0
   hooks:
   - id: shfmt
     exclude: examples/t6.sh
@@ -23,7 +23,7 @@ repos:
     exclude: ^testing/Baseline|examples/.*Baseline.*
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: 77039ccbba72c8aede339c5f8ae29b42aced0a2e  # frozen: v0.15.18
+  rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c  # frozen: v0.17.3
   hooks:
     - id: ruff-check
       args: [--fix]
