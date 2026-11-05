@@ -802,12 +802,22 @@ trigger certain functionality. It knows the following keywords:
     Copy the given file into the test's directory before the test is
     run. If ``<file>`` is a relative path, it's interpreted relative
     to the BTest's base directory. Environment variables in ``<file>``
-    will be replaced if enclosed in ``${..}``. This command can be
-    given multiple times.
+    will be replaced if enclosed in ``${..}``, including ones set
+    through ``@TEST-ENV``. This command can be given multiple times.
 
 ``@TEST-DOC: <docstring>``
     Associates a documentation string with the test. These strings
     get included into the output of the ``--documentation`` option.
+
+``@TEST-ENV: <name>=<value>``
+    Sets an environment variable that applies to all other directives that run shell
+    commands (``@TEST-REQUIRES``, ``@TEST-EXEC``, ``@TEST-EXEC-FAIL``, ``Initializer``,
+    ``Finalizer``, ``Teardown``).  The variables are also used when expanding ``${..}`` in
+    ``@TEST-COPY-FILE`` paths.  Quoted values will have the surrounding quotes stripped at
+    runtime.  This should be used for setting simple values only (e.g. variable expansion
+    does not take place). If the same name is set more than once, including across parts,
+    the last value applies to all of the test's commands. Environment variables defined by
+    an alternative, including ``-NAME`` removals, take precedence over ``@TEST-ENV``.
 
 .. _@TEST-EXEC:
 

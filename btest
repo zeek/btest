@@ -94,6 +94,12 @@ def error(msg):
     sys.exit(1)
 
 
+def strip_quote_pairs(s: str) -> str:
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        return s[1:-1]
+    return s
+
+
 def mkdir(folder):
     if not os.path.exists(folder):
         try:
@@ -297,10 +303,13 @@ def getcfgparser(defaults):
 
 
 # Replace environment variables in string.
-def replaceEnvs(s):
+def replaceEnvs(s, env=None):
+    if env is None:
+        env = os.environ
+
     def replace_with_env(m):
         try:
-            return os.environ[m.group(1)]
+            return env[m.group(1)]
         except KeyError:
             return ""
 
@@ -751,6 +760,7 @@ class Test:
         self.diag = None
         self.diagmsgs = []
         self.doc = []
+        self.env = []
         self.files = []
         self.groups = set()
         self.ignore_alternatives = []
@@ -925,6 +935,19 @@ class Test:
         if "doc" in cmds:
             self.doc = cmds["doc"]
 
+        if "env" in cmds:
+            for e in cmds["env"]:
+                if "=" not in e:
+                    error(f"{file}: TEST-ENV missing '='")
+
+                [k, v] = e.strip().split("=", 1)
+                k = k.strip()
+                if not re.fullmatch(r"\w+", k):
+                    error(f"{file}: TEST-ENV has invalid variable name '{k}'")
+
+                v = strip_quote_pairs(v.strip())
+                self.env.append((k, v))
+
         return True
 
     # Copies all control information over to a new Test but replacing the test's
@@ -960,6 +983,7 @@ class Test:
 
         clone.files = self.files
         clone.dir = self.dir
+        clone.env = self.env
         self.cloned = True
 
         return clone
@@ -983,6 +1007,7 @@ class Test:
         self.doc += part.doc
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
+        self.env += part.env
 
     def allocate_ports(self, state, count):
         if not count:
@@ -1053,8 +1078,11 @@ class Test:
 
             ffile.close()
 
+        env = dict(os.environ)
+        env.update(self.env)
+
         for file in self.copy_files:
-            src = replaceEnvs(file)
+            src = replaceEnvs(file, env)
             try:
                 shutil.copy2(src, self.tmpdir)
             except OSError as e:
@@ -1374,6 +1402,9 @@ class Test:
         if addl is None:
             addl = {}
         env = copy.deepcopy(os.environ)
+
+        for [k, v] in self.env:
+            env[k] = v
 
         env["TEST_BASELINE"] = os.pathsep.join(self.baselines)
         env["TEST_DIAGNOSTICS"] = self.diag
@@ -3122,6 +3153,7 @@ if __name__ == "__main__":
     RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
     RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
     RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
+    RE_TEST_ENV            = ("env",             re.compile(CommandPrefix + "ENV: *(.*)"), True, True, 1, -1)
     # fmt: on
     # pylint: enable=bad-whitespace
 
@@ -3137,6 +3169,7 @@ if __name__ == "__main__":
         RE_KNOWN_FAILURE,
         RE_MEASURE_TIME,
         RE_DOC,
+        RE_TEST_ENV,
     )
 
     StateFile = normalize_path(

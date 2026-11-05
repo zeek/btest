@@ -1,0 +1,68 @@
+# %TEST-DOC: Tests the TEST-ENV directive
+#
+# %TEST-ENV: BTEST_TESTING_VAR1="set1"
+# %TEST-ENV: BTEST_TESTING_VAR2="set2"
+#
+# Verify the values are set in the global environment
+# %TEST-EXEC: echo ${BTEST_TESTING_VAR1} ${BTEST_TESTING_VAR2}
+#
+# Verify we can override the globals
+# %TEST-EXEC: BTEST_TESTING_VAR1="set3"; echo ${BTEST_TESTING_VAR1} ${BTEST_TESTING_VAR2}
+#
+# Quote and whitespace handling: only a single matching pair of surrounding
+# quotes is removed, and whitespace around the name and value is ignored.
+# %TEST-ENV: BTEST_TESTING_UNQUOTED=plain
+# %TEST-ENV: BTEST_TESTING_SINGLE='single'
+# %TEST-ENV: BTEST_TESTING_INNER='say "hi"'
+# %TEST-ENV: BTEST_TESTING_MISMATCH="abc'
+# %TEST-ENV: BTEST_TESTING_SPACES = spaced
+# %TEST-ENV: BTEST_TESTING_SPACES_QUOTED = "  padded  "
+# %TEST-ENV: BTEST_TESTING_EQUALS=a=b
+# %TEST-ENV: BTEST_TESTING_EMPTY=''
+# %TEST-EXEC: printf '[%s]\n' "${BTEST_TESTING_UNQUOTED}" "${BTEST_TESTING_SINGLE}" "${BTEST_TESTING_INNER}" "${BTEST_TESTING_MISMATCH}" "${BTEST_TESTING_SPACES}" "${BTEST_TESTING_SPACES_QUOTED}" "${BTEST_TESTING_EQUALS}" "${BTEST_TESTING_EMPTY}"
+#
+# The variable is visible to TEST-REQUIRES, and the last value of a name
+# that is set more than once (here across parts) wins.
+# %TEST-EXEC: btest -d env-test >>output 2>&1
+#
+# The variable is used when expanding TEST-COPY-FILE paths.
+# %TEST-ENV: BTEST_TESTING_SCRIPTS=Scripts
+# %TEST-COPY-FILE: ${BTEST_TESTING_SCRIPTS}/dummy-script
+# %TEST-EXEC: test -e dummy-script
+#
+# A TEST-ENV line without '=' is an error.
+# %TEST-EXEC-FAIL: btest missing-equals >>output 2>&1
+#
+# TEST-ENV names must be valid variable names.
+# %TEST-EXEC-FAIL: btest invalid-name >>output 2>&1
+# %TEST-EXEC-FAIL: btest empty-name >>output 2>&1
+#
+# %TEST-EXEC: btest-diff .stdout
+# %TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
+# %TEST-EXEC: btest-diff parts-output
+
+# %TEST-START-FILE env-test
+@TEST-ENV: BTEST_TESTING_PART=first
+@TEST-REQUIRES: test "${BTEST_TESTING_PART}" = last
+@TEST-EXEC: echo "part 1: ${BTEST_TESTING_PART}" >>../../parts-output
+# %TEST-END-FILE
+
+# %TEST-START-FILE env-test#2
+@TEST-ENV: BTEST_TESTING_PART=last
+@TEST-EXEC: echo "part 2: ${BTEST_TESTING_PART}" >>../../parts-output
+# %TEST-END-FILE
+
+# %TEST-START-FILE missing-equals
+@TEST-ENV: BTEST_TESTING_NO_VALUE
+@TEST-EXEC: true
+# %TEST-END-FILE
+
+# %TEST-START-FILE invalid-name
+@TEST-ENV: export BTEST_TESTING_EXPORTED=1
+@TEST-EXEC: true
+# %TEST-END-FILE
+
+# %TEST-START-FILE empty-name
+@TEST-ENV: =value
+@TEST-EXEC: true
+# %TEST-END-FILE
