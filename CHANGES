@@ -1,3 +1,20 @@
+1.3-72 | 2026-11-05 13:41:00 +0100
+
+  * Fix displayed percent values in `Console` output handler (Benjamin Bannier, Corelight)
+
+    The `Console` output handler displays progress percent values. When
+    invoked with `-A` which would keep lines on the screen and `-j`, the
+    values could previously jump all over the place, or could all be `0%`
+    like in the test added here. This was because this output handler would
+    compute and display the percentage values when _starting_ a test as
+    opposed to when it finished, so the counts of the finished tests
+    involved in the percentage computation made no sense when they were
+    displayed when a test finished, they could e.g., all be zero when a test
+    started.
+
+    This patch moves the percentage computation and display to when a test
+    has finished which shows correct values.
+
 1.3-70 | 2026-11-04 15:42:39 -0700
 
   * Reorder options alphabetically in btest script (Tim Wojtulewicz, Corelight)

@@ -29,7 +29,7 @@ import uuid
 import xml.dom.minidom
 from datetime import datetime
 
-VERSION = "1.3-70"  # Automatically filled in.
+VERSION = "1.3-72"  # Automatically filled in.
 
 Name = "btest"
 Config = None
@@ -1657,9 +1657,8 @@ class Console(OutputHandler):
     def __init__(self, options):
         OutputHandler.__init__(self, options, reopen_std_file(sys.__stdout__))
 
-    def testStart(self, test):
-        msg = f"[{int(test.state.percentage()):>3d}%] {test.displayName()} ..."
-        self.output(test, msg, nl=False)
+    def _resultLine(self, test, msg):
+        return f"[{int(test.state.percentage()):>3d}%] {test.displayName()} ... {msg}"
 
     def testProgress(self, test, msg):
         """Called when a test signals having made progress."""
@@ -1672,7 +1671,7 @@ class Console(OutputHandler):
         else:
             msg = self.Green + msg + self.Normal
 
-        self.output(test, msg)
+        self.output(test, self._resultLine(test, msg))
 
     def testFailed(self, test, msg):
         if test.known_failure:
@@ -1680,15 +1679,15 @@ class Console(OutputHandler):
         else:
             msg = self.Red + msg + self.Normal
 
-        self.output(test, msg)
+        self.output(test, self._resultLine(test, msg))
 
     def testUnstable(self, test, msg):
         msg = self.Yellow + msg + self.Normal
-        self.output(test, msg)
+        self.output(test, self._resultLine(test, msg))
 
     def testSkipped(self, test, msg):
         msg = self.Gray + msg + self.Normal
-        self.output(test, msg)
+        self.output(test, self._resultLine(test, msg))
 
 
 class CompactConsole(Console):
