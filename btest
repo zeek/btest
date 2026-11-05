@@ -2346,7 +2346,19 @@ def findTests(paths, *, cwd=None, expand_globs=False):
     for path in expanded:
         rpath = os.path.relpath(path, TestBase)
 
-        if os.path.isdir(path) and os.path.basename(path) in ignore_dirs:
+        # Walk up the path and verify that none of the parent directories are in the
+        # ignore list.
+        cur_path = rpath
+        skip = False
+        while True:
+            if os.path.isdir(cur_path) and os.path.basename(cur_path) in ignore_dirs:
+                skip = True
+
+            cur_path = os.path.dirname(cur_path)
+            if not cur_path or cur_path == "/":
+                break
+
+        if skip:
             continue
 
         ignores = [normalize_path_join(path, dir) for dir in ignore_dirs]
