@@ -751,6 +751,7 @@ class Test:
         self.diag = None
         self.diagmsgs = []
         self.doc = []
+        self.env = []
         self.files = []
         self.groups = set()
         self.ignore_alternatives = []
@@ -925,6 +926,12 @@ class Test:
         if "doc" in cmds:
             self.doc = cmds["doc"]
 
+        if "env" in cmds:
+            for e in cmds["env"]:
+                [k, v] = e.strip().split("=", 1)
+                v = v.strip("\"'")
+                self.env.append((k, v))
+
         return True
 
     # Copies all control information over to a new Test but replacing the test's
@@ -960,6 +967,7 @@ class Test:
 
         clone.files = self.files
         clone.dir = self.dir
+        clone.env = self.env
         self.cloned = True
 
         return clone
@@ -983,6 +991,7 @@ class Test:
         self.doc += part.doc
         self.known_failure |= part.known_failure
         self.measure_time |= part.measure_time
+        self.env += part.env
 
     def allocate_ports(self, state, count):
         if not count:
@@ -1382,6 +1391,9 @@ class Test:
         env["TEST_VERBOSE"] = self.verbose
         env["TEST_PART"] = str(cmd.part)
         env["TEST_BASE"] = TestBase
+
+        for [k, v] in self.env:
+            env[k] = v
 
         for key, val in addl.items():
             # Environment variables with a leading "-" are to be
@@ -3122,6 +3134,7 @@ if __name__ == "__main__":
     RE_KNOWN_FAILURE       = ("known-failure",   re.compile(CommandPrefix + "KNOWN-FAILURE"), False, True, -1, -1)
     RE_MEASURE_TIME        = ("measure-time",    re.compile(CommandPrefix + "MEASURE-TIME"), False, True, -1, -1)
     RE_DOC                 = ("doc",             re.compile(CommandPrefix + "DOC: *(.*)"), True, True, 1, -1)
+    RE_TEST_ENV            = ("env",             re.compile(CommandPrefix + "ENV: *(.*)"), True, True, 1, -1)
     # fmt: on
     # pylint: enable=bad-whitespace
 
@@ -3137,6 +3150,7 @@ if __name__ == "__main__":
         RE_KNOWN_FAILURE,
         RE_MEASURE_TIME,
         RE_DOC,
+        RE_TEST_ENV,
     )
 
     StateFile = normalize_path(

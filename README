@@ -809,6 +809,17 @@ trigger certain functionality. It knows the following keywords:
     Associates a documentation string with the test. These strings
     get included into the output of the ``--documentation`` option.
 
+``@TEST-ENV: <environment variable>``
+
+    Sets an environment variable that applies to all other directives
+    that run shell commands, such as ``@TEST-REQUIRES``, ``@TEST-EXEC``,
+    and ``@TEST-EXEC-FAIL``. Quoted values will have the surrounding
+    quotes stripped at runtime. This should be used for setting simple
+    values only (e.g. variable expansion does not take place). Storing
+    of the value takes place at startup one time, meaning resetting the
+    same variable name stores only the last value before all other
+    commands are run.
+
 .. _@TEST-EXEC:
 
 ``@TEST-EXEC: <cmdline>``

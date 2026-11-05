@@ -1,0 +1,11 @@
+# %TEST-DOC: Tests the TEST-ENV directive
+#
+# %TEST-ENV: BTEST_TESTING_VAR1="set1"
+# %TEST-ENV: BTEST_TESTING_VAR2="set2"
+#
+# Verify the values are set in the global environment
+# %TEST-EXEC: echo ${BTEST_TESTING_VAR1} ${BTEST_TESTING_VAR2}
+#
+# Verify we can override the globals
+# %TEST-EXEC: BTEST_TESTING_VAR1="set3"; echo ${BTEST_TESTING_VAR1} ${BTEST_TESTING_VAR2}
+# %TEST-EXEC: btest-diff .stdout
