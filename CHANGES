@@ -1,3 +1,7 @@
+1.3-74 | 2026-11-12 13:12:49 -0700
+
+  * Walk test paths to verify that parents aren't ignored (Tim Wojtulewicz, Corelight)
+
 1.3-72 | 2026-11-05 13:41:00 +0100
 
   * Fix displayed percent values in `Console` output handler (Benjamin Bannier, Corelight)
